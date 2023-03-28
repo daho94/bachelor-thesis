@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-// From https://ad-wiki.informatik.uni-freiburg.de/teaching/EfficientRoutePlanningSS2011/RoadTypesAndSpeeds
 // Only this road types are inclued in the graph
 pub enum RoadType {
     Motorway,
@@ -22,6 +21,7 @@ pub enum RoadType {
 
 impl RoadType {
     // Returns the average road velocity in km/h
+    // From https://ad-wiki.informatik.uni-freiburg.de/teaching/EfficientRoutePlanningSS2011/RoadTypesAndSpeeds
     pub fn velocity(&self) -> f64 {
         match self {
             RoadType::Motorway => 110.0,
