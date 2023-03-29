@@ -100,3 +100,8 @@ button {
     background-color: #0f0f0f98;
   }
 }
+
+/* sizing of map */
+.leaflet-container {
+  height: 400px;
+}

@@ -8,18 +8,28 @@ use std::time::Instant;
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
-fn create_graph_from_pbf(path: &str) -> String {
+fn create_graph_from_pbf(path: &str) -> Vec<[[f64; 2]; 2]> {
     println!("Creating graph from file '{}'...", path);
     let start = Instant::now();
     if let Ok(graph) = osm_reader::RoadGraph::from_pbf(Path::new(path)) {
         let duration = start.elapsed();
-        format!(
-            "Created Graph with {} nodes in {:?}!",
+        println!(
+            "Created Graph with {} nodes and {} edges in {:?}!",
             graph.get_nodes().len(),
+            graph.get_edges().len(),
             duration
-        )
+        );
+        graph
+            .get_edges()
+            .iter()
+            .map(|edge| {
+                let from = graph.get_nodes().get(&edge.0).unwrap();
+                let to = graph.get_nodes().get(&edge.1).unwrap();
+                [*from, *to]
+            })
+            .collect()
     } else {
-        format!("Failed to create graph from file '{}'!", path)
+        vec![]
     }
 }
 

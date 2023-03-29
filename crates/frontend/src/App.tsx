@@ -3,14 +3,21 @@ import reactLogo from "./assets/react.svg";
 import { invoke } from "@tauri-apps/api/tauri";
 import { open } from "@tauri-apps/api/dialog";
 import "./App.css";
+import { Map } from "./components/Map";
+import { LatLngExpression } from "leaflet";
 
 function App() {
   const [greetMsg, setGreetMsg] = useState("");
   const [path, setPath] = useState("");
+  const [edges, setEdges] = useState<LatLngExpression[][]>([]);
 
   async function buildGraph() {
     setGreetMsg("Building graph...");
-    setGreetMsg(await invoke("create_graph_from_pbf", { path }));
+    const edges: LatLngExpression[][] = await invoke("create_graph_from_pbf", {
+      path,
+    });
+    setGreetMsg("Done.");
+    setEdges(edges);
   }
 
   async function selectFile() {
@@ -30,7 +37,7 @@ function App() {
 
   return (
     <div className="container">
-      <h1>Welcome to Tauri!</h1>
+      {/* <h1>Welcome to Tauri!</h1>
 
       <div className="row">
         <a href="https://vitejs.dev" target="_blank">
@@ -44,7 +51,7 @@ function App() {
         </a>
       </div>
 
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
+      <p>Click on the Tauri, Vite, and React logos to learn more.</p> */}
 
       <div className="row">
         <div>
@@ -60,6 +67,7 @@ function App() {
         </div>
       </div>
       <p>{greetMsg}</p>
+      <Map edges={edges}></Map>
     </div>
   );
 }
