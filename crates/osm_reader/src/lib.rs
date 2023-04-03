@@ -39,9 +39,8 @@ impl RoadGraph {
         let mut reader = IndexedReader::from_path(pbf_path)?;
 
         let road_filter = |way: &osmpbf::Way| {
-            way.tags().any(|key_value| {
-                key_value.0 == "highway" && key_value.1.parse::<RoadType>().is_ok()
-            })
+            way.tags()
+                .any(|(key, value)| key == "highway" && value.parse::<RoadType>().is_ok())
         };
 
         // First iteration: Only add nodes
