@@ -115,12 +115,12 @@ impl Default for RoadGraph {
     }
 }
 
-// Assumes average speed in km/h for different road types and calculates the time as weight.
+// Assumes average speed in km/h for different road types and calculates the time [sec] as weight.
 // v = s / t => t = s / v
 fn weight(distance: f64, road_type: &RoadType) -> f64 {
-    let distance_km = distance / 1000.0;
-    // distance_km / road_type.velocity();
-    distance
+    // velocity km/h in m/s
+    let velocity = road_type.velocity() / 3.6;
+    distance / velocity
 }
 
 // Calculates the great-circle distance between two points in metres
