@@ -6,14 +6,14 @@ use road_types::RoadType;
 
 pub struct RoadGraph {
     nodes: HashMap<i64, [f64; 2]>,
-    edges: Vec<(i64, i64, f64)>,
+    arcs: Vec<(i64, i64, f64)>,
 }
 
 impl RoadGraph {
     pub fn new() -> Self {
         RoadGraph {
             nodes: HashMap::new(),
-            edges: Vec::new(),
+            arcs: Vec::new(),
         }
     }
 
@@ -22,7 +22,7 @@ impl RoadGraph {
     }
 
     pub fn add_edge(&mut self, from: i64, to: i64, weight: f64) {
-        self.edges.push((from, to, weight));
+        self.arcs.push((from, to, weight));
     }
 
     pub fn get_nodes(&self) -> &HashMap<i64, [f64; 2]> {
@@ -30,7 +30,7 @@ impl RoadGraph {
     }
 
     pub fn get_edges(&self) -> &Vec<(i64, i64, f64)> {
-        &self.edges
+        &self.arcs
     }
 
     pub fn from_pbf(pbf_path: &Path) -> Result<RoadGraph, Box<dyn Error>> {
@@ -101,7 +101,7 @@ impl RoadGraph {
         }
 
         writeln!(edges_file, "from,to,weight")?;
-        for (from, to, weight) in self.edges.iter() {
+        for (from, to, weight) in self.arcs.iter() {
             writeln!(edges_file, "{},{},{}", from, to, weight)?;
         }
 
@@ -145,7 +145,7 @@ mod tests {
         let graph = RoadGraph::from_pbf(Path::new(filename)).unwrap();
 
         assert_eq!(graph.nodes.len(), 2);
-        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.arcs.len(), 1);
     }
 
     #[test]
