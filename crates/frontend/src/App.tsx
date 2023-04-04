@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/tauri";
 import { open } from "@tauri-apps/api/dialog";
 import "./App.css";
 import { Map } from "./components/Map";
+import { MapTalks } from "./components/MapTalks";
 import { LatLngExpression } from "leaflet";
 
 function App() {
@@ -67,7 +68,10 @@ function App() {
         </div>
       </div>
       <p>{greetMsg}</p>
-      <Map edges={edges}></Map>
+      {/* <div className="row"> */}
+      {/* <Map edges={edges}></Map> */}
+      <MapTalks edges={edges}></MapTalks>
+      {/* </div> */}
     </div>
   );
 }

@@ -11,7 +11,9 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^1.2.0",
+    "@types/maptalks": "^0.49.1",
     "leaflet": "^1.9.3",
+    "maptalks": "^1.0.0-rc.18",
     "reacf": "^1.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
