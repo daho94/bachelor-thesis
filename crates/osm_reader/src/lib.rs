@@ -21,7 +21,7 @@ impl RoadGraph {
         self.nodes.insert(id, [lat, lon]);
     }
 
-    pub fn add_edge(&mut self, from: i64, to: i64, weight: f64) {
+    pub fn add_arc(&mut self, from: i64, to: i64, weight: f64) {
         self.arcs.push((from, to, weight));
     }
 
@@ -29,11 +29,11 @@ impl RoadGraph {
         &self.nodes
     }
 
-    pub fn get_edges(&self) -> &Vec<(i64, i64, f64)> {
+    pub fn get_arcs(&self) -> &Vec<(i64, i64, f64)> {
         &self.arcs
     }
 
-    pub fn from_pbf(pbf_path: &Path) -> Result<RoadGraph, Box<dyn Error>> {
+    pub fn from_pbf(pbf_path: &Path) -> anyhow::Result<RoadGraph> {
         let mut graph = RoadGraph::new();
 
         let mut reader = IndexedReader::from_path(pbf_path)?;
@@ -78,7 +78,7 @@ impl RoadGraph {
 
                     let distance = haversine_distance(*from_lat, *from_lon, *to_lat, *to_lon);
 
-                    graph.add_edge(from, to, weight(distance, &road_type));
+                    graph.add_arc(from, to, weight(distance, &road_type));
                 }
             }
         })?;
