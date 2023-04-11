@@ -16,11 +16,11 @@ fn create_graph_from_pbf(path: &str) -> Vec<[[f64; 2]; 2]> {
         println!(
             "Created Graph with {} nodes and {} edges in {:?}!",
             graph.get_nodes().len(),
-            graph.get_edges().len(),
+            graph.get_arcs().len(),
             duration
         );
         graph
-            .get_edges()
+            .get_arcs()
             .iter()
             .map(|edge| {
                 let from = graph.get_nodes().get(&edge.0).unwrap();
