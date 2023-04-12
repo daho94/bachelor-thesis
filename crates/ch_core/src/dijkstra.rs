@@ -6,8 +6,8 @@ use crate::priority_queue::*;
 
 #[derive(Debug, PartialEq)]
 pub struct ShortestPath {
-    nodes: Vec<NodeId>,
-    weight: Weight,
+    pub nodes: Vec<NodeId>,
+    pub weight: Weight,
 }
 
 impl ShortestPath {
