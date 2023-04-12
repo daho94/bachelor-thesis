@@ -1,6 +1,6 @@
 import "maptalks/dist/maptalks.css";
 import * as maptalks from "maptalks";
-import { LineString, MapOptions } from "maptalks";
+import { MapOptions } from "maptalks";
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
 
@@ -140,7 +140,6 @@ export function MapTalks(props: { edges: any[][]; nodes: any[] }) {
           markerText: parseInt(node[0]),
         },
       }).setInfoWindow({
-        // title: "Node Info",
         content: `
         <div style="color:#f00">
           NodeId: ${node[0]}<br>
@@ -151,16 +150,6 @@ export function MapTalks(props: { edges: any[][]; nodes: any[] }) {
       });
     });
 
-    // let multipoint = new maptalks.MultiPoint(props.nodes, {
-    //   symbol: {
-    //     markerType: "ellipse",
-    //     markerFill: "#1bbc9b",
-    //     markerWidth: 5,
-    //     markerHeight: 5,
-    //   },
-    // });
-
-    // Remove all geometries from layer
     layer.addGeometry(points);
   }, [props.nodes]);
 

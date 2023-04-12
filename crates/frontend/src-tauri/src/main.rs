@@ -8,8 +8,6 @@ use std::time::Instant;
 use std::{path::Path, sync::Mutex};
 use tauri::{Manager, State};
 
-struct Graph(Mutex<ch_core::graph::Graph>);
-
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
 fn create_graph_from_pbf(
@@ -118,7 +116,6 @@ fn p2p_matching(nodes: &[ch_core::graph::Node], coords: [f64; 2]) -> ch_core::co
 
 fn main() {
     tauri::Builder::default()
-        // .manage(Graph(Default::default()))
         .manage(Mutex::new(Dijkstra::default()))
         .invoke_handler(tauri::generate_handler![
             create_graph_from_pbf,
