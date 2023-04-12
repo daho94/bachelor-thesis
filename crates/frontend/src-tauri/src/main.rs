@@ -63,20 +63,44 @@ fn get_edges(d: State<'_, Mutex<Dijkstra>>) -> Vec<[[f64; 2]; 2]> {
 }
 
 #[tauri::command]
+fn get_nodes(d: State<'_, Mutex<Dijkstra>>) -> Vec<[f64; 3]> {
+    let graph = &d.lock().unwrap().graph;
+    graph
+        .nodes
+        .iter()
+        .map(|node| [node.id as f64, node.lon, node.lat])
+        .collect()
+}
+
+#[tauri::command]
 fn calc_path(
     dijkstra: State<'_, Mutex<Dijkstra>>,
     src_coords: [f64; 2],
     dst_coords: [f64; 2],
-    // ) -> Vec<[f64; 2]> {
-) {
+) -> (Vec<[f64; 2]>, f64) {
     let d = dijkstra.lock().unwrap();
 
     let src_id = dbg!(p2p_matching(&d.graph.nodes, src_coords));
     let dst_id = dbg!(p2p_matching(&d.graph.nodes, dst_coords));
 
-    let sp = dbg!(d.search(src_id, dst_id));
-
-    // todo!()
+    let time = Instant::now();
+    if let Some(sp) = dbg!(d.search(src_id, dst_id)) {
+        let elapsed = time.elapsed();
+        println!("Found path in {:?}", elapsed);
+        // Lookup coordinates
+        (
+            sp.nodes
+                .iter()
+                .map(|node_id| {
+                    let node = &d.graph.nodes.iter().find(|n| n.id == *node_id).unwrap();
+                    [node.lon, node.lat]
+                })
+                .collect(),
+            elapsed.as_secs_f64(),
+        )
+    } else {
+        (vec![], 0.0)
+    }
 }
 
 fn p2p_matching(nodes: &[ch_core::graph::Node], coords: [f64; 2]) -> ch_core::constants::NodeId {
@@ -99,6 +123,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             create_graph_from_pbf,
             get_edges,
+            get_nodes,
             calc_path
         ])
         // .run(tauri::generate_context!())

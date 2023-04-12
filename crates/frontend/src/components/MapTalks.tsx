@@ -1,6 +1,6 @@
 import "maptalks/dist/maptalks.css";
 import * as maptalks from "maptalks";
-import { MapOptions } from "maptalks";
+import { LineString, MapOptions } from "maptalks";
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
 
@@ -13,11 +13,15 @@ const baseOptions: MapOptions = {
   zoomControl: true,
 };
 
-export function MapTalks(props: { edges: any[][] }) {
+export function MapTalks(props: { edges: any[][]; nodes: any[] }) {
   const [map, setMap] = useState<maptalks.Map>();
   const [layer, setLayer] = useState<maptalks.VectorLayer>(
     new maptalks.VectorLayer("vector")
   );
+  const [pathLayer, setPathLayer] = useState<maptalks.VectorLayer>(
+    new maptalks.VectorLayer("shortest-path")
+  );
+
   const mapDidRender = useRef(false);
 
   // init map, which will not update until it's destroyed
@@ -41,10 +45,39 @@ export function MapTalks(props: { edges: any[][] }) {
       let latLng = [lat, lng];
       console.log(lng, lat);
 
-      await invoke("calc_path", {
+      let [path, time]: [[], number] = await invoke("calc_path", {
         srcCoords: latLng,
         dstCoords: [48.10471649826582, 11.765805082376565],
       });
+      pathLayer.clear();
+
+      if (path.length < 2) {
+        return;
+      }
+
+      let lines = [];
+
+      for (let i = 0; i < path.length - 1; i++) {
+        lines.push([
+          [path[i][0], path[i][1]],
+          [path[i + 1][0], path[i + 1][1]],
+        ]);
+      }
+
+      let multiline = new maptalks.MultiLineString(lines, {
+        symbol: {
+          lineColor: "#cf372b",
+          lineWidth: 3,
+        },
+      }).setInfoWindow({
+        content: `
+        <div style="color:#f00">
+          Time: ${(time * 1000).toFixed(2)} ms
+        </div>`,
+      });
+
+      pathLayer.addGeometry(multiline);
+      multiline.openInfoWindow();
     });
 
     // Add marker
@@ -60,6 +93,7 @@ export function MapTalks(props: { edges: any[][] }) {
     layer.addGeometry(point);
 
     layer.addTo(map);
+    pathLayer.addTo(map);
     mapDidRender.current = true;
     setMap(map);
     console.log("Map rendered");
@@ -68,24 +102,67 @@ export function MapTalks(props: { edges: any[][] }) {
   useEffect(() => {
     if (!mapDidRender.current) return;
     if (props.edges.length === 0) return;
-    let polylines = props.edges.map((edge) => {
-      return new maptalks.LineString(
-        [
-          [edge[0][1], edge[0][0]],
-          [edge[1][1], edge[1][0]],
-        ],
-        {
-          symbol: {
-            lineColor: "#34495e",
-            lineWidth: 1,
-          },
-        }
-      );
-    });
+
+    // Skip every second edge because they are duplicates (bidirectional)
+
+    let polylines = props.edges
+      .filter((_, i) => i % 2 === 0)
+      .map((edge) => {
+        return new maptalks.LineString(
+          [
+            [edge[0][1], edge[0][0]],
+            [edge[1][1], edge[1][0]],
+          ],
+          {
+            symbol: {
+              lineColor: "#34495e",
+              lineWidth: 1,
+            },
+          }
+        );
+      });
     // Remove all geometries from layer
-    layer.clear();
     layer.addGeometry(polylines);
   }, [props.edges]);
+
+  useEffect(() => {
+    if (!mapDidRender.current) return;
+    if (props.nodes.length === 0) return;
+
+    let points = props.nodes.map((node) => {
+      return new maptalks.Marker([node[1], node[2]], {
+        visible: true,
+        symbol: {
+          markerType: "ellipse",
+          markerFill: "#1bbc9b",
+          markerWidth: 5,
+          markerHeight: 5,
+          markerText: parseInt(node[0]),
+        },
+      }).setInfoWindow({
+        // title: "Node Info",
+        content: `
+        <div style="color:#f00">
+          NodeId: ${node[0]}<br>
+          Lat: ${node[2].toFixed(3)}<br>
+          Lon: ${node[1].toFixed(3)}<br>
+        
+        </div>`,
+      });
+    });
+
+    // let multipoint = new maptalks.MultiPoint(props.nodes, {
+    //   symbol: {
+    //     markerType: "ellipse",
+    //     markerFill: "#1bbc9b",
+    //     markerWidth: 5,
+    //     markerHeight: 5,
+    //   },
+    // });
+
+    // Remove all geometries from layer
+    layer.addGeometry(points);
+  }, [props.nodes]);
 
   return <div id="maptalks-id" className="maptalks-container"></div>;
 }

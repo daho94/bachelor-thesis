@@ -11,10 +11,13 @@ function App() {
   const [greetMsg, setGreetMsg] = useState("");
   const [path, setPath] = useState("");
   const [edges, setEdges] = useState<LatLngExpression[][]>([]);
+  const [nodes, setNodes] = useState<Float64Array[]>([]);
 
   async function drawGraph() {
     const edges: LatLngExpression[][] = await invoke("get_edges");
+    const nodes: Float64Array[] = await invoke("get_nodes");
     setEdges(edges);
+    setNodes(nodes);
   }
 
   async function buildGraph() {
@@ -75,7 +78,7 @@ function App() {
       <p>{greetMsg}</p>
       {/* <div className="row"> */}
       {/* <Map edges={edges}></Map> */}
-      <MapTalks edges={edges}></MapTalks>
+      <MapTalks edges={edges} nodes={nodes}></MapTalks>
       {/* </div> */}
     </div>
   );
