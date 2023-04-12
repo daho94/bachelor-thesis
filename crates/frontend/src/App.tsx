@@ -12,13 +12,15 @@ function App() {
   const [path, setPath] = useState("");
   const [edges, setEdges] = useState<LatLngExpression[][]>([]);
 
+  async function drawGraph() {
+    const edges: LatLngExpression[][] = await invoke("get_edges");
+    setEdges(edges);
+  }
+
   async function buildGraph() {
     setGreetMsg("Building graph...");
-    const edges: LatLngExpression[][] = await invoke("create_graph_from_pbf", {
-      path,
-    });
+    await invoke("create_graph_from_pbf", { path });
     setGreetMsg("Done.");
-    setEdges(edges);
   }
 
   async function selectFile() {
@@ -64,6 +66,9 @@ function App() {
           />
           <button disabled={!path} type="button" onClick={() => buildGraph()}>
             Build Graph
+          </button>
+          <button type="button" onClick={() => drawGraph()}>
+            Draw Graph
           </button>
         </div>
       </div>

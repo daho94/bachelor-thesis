@@ -47,7 +47,7 @@ impl Graph {
         self.edges
             .iter()
             .filter(|edge| edge.from == node)
-            .map(|edge| edge.clone())
+            .cloned()
             .collect()
     }
 
@@ -92,6 +92,12 @@ impl Graph {
         }
 
         Ok(graph)
+    }
+}
+
+impl Default for Graph {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

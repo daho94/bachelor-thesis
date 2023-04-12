@@ -2,6 +2,7 @@ import "maptalks/dist/maptalks.css";
 import * as maptalks from "maptalks";
 import { MapOptions } from "maptalks";
 import { useEffect, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/tauri";
 
 const baseOptions: MapOptions = {
   attribution: false,
@@ -33,6 +34,31 @@ export function MapTalks(props: { edges: any[][] }) {
           '&copy; <a href="http://osm.org">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/">CARTO</a>',
       }),
     });
+
+    // Setup listener
+    map.on("click", async (param) => {
+      let { x: lng, y: lat } = param.coordinate;
+      let latLng = [lat, lng];
+      console.log(lng, lat);
+
+      await invoke("calc_path", {
+        srcCoords: latLng,
+        dstCoords: [48.10471649826582, 11.765805082376565],
+      });
+    });
+
+    // Add marker
+    let point = new maptalks.Marker([11.765805082376565, 48.10471649826582], {
+      visible: true,
+      editable: true,
+      cursor: "pointer",
+      draggable: false,
+      dragShadow: false, // display a shadow during dragging
+      drawOnAxis: null, // force dragging stick on a axis, can be: x, y
+    });
+
+    layer.addGeometry(point);
+
     layer.addTo(map);
     mapDidRender.current = true;
     setMap(map);

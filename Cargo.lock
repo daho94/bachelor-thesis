@@ -741,6 +741,7 @@ dependencies = [
 name = "frontend"
 version = "0.0.0"
 dependencies = [
+ "ch_core",
  "osm_reader",
  "serde",
  "serde_json",

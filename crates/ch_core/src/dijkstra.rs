@@ -17,7 +17,13 @@ impl ShortestPath {
 }
 
 pub struct Dijkstra {
-    graph: Graph,
+    pub graph: Graph,
+}
+
+impl Default for Dijkstra {
+    fn default() -> Self {
+        Dijkstra::new(Graph::new())
+    }
 }
 
 impl Dijkstra {
@@ -25,27 +31,27 @@ impl Dijkstra {
         Dijkstra { graph }
     }
 
-    pub fn search(&self, source: NodeId, target: NodeId) -> Option<ShortestPath> {
-        if source == target {
-            return Some(ShortestPath::new(vec![source], 0.0));
+    pub fn search(&self, src: NodeId, dst: NodeId) -> Option<ShortestPath> {
+        if src == dst {
+            return Some(ShortestPath::new(vec![src], 0.0));
         }
 
         let mut distances = HashMap::new();
         let mut previous = HashMap::new();
         let mut queue = PriorityQueue::new();
 
-        distances.insert(source, 0.0);
-        queue.push(HeapItem::new(0.0, source));
+        distances.insert(src, 0.0);
+        queue.push(HeapItem::new(0.0, src));
 
         while let Some(HeapItem { distance, node }) = queue.pop() {
-            if node == target {
+            if node == dst {
                 let mut path = vec![node];
                 let mut previous_node = previous.get(&node)?;
                 while let Some(prev_node) = previous.get(previous_node) {
                     path.push(*previous_node);
                     previous_node = prev_node;
                 }
-                path.push(source);
+                path.push(src);
                 path.reverse();
 
                 return Some(ShortestPath::new(path, distance));
