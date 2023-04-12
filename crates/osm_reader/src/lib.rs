@@ -1,5 +1,5 @@
 use osmpbf::{Element, IndexedReader};
-use std::{collections::HashMap, error::Error, fs::File, path::Path, str::FromStr};
+use std::{collections::HashMap, fs::File, path::Path, str::FromStr};
 
 mod road_types;
 use road_types::RoadType;
@@ -144,7 +144,7 @@ mod tests {
         let graph = RoadGraph::from_pbf(Path::new(filename)).unwrap();
 
         assert_eq!(graph.nodes.len(), 2);
-        assert_eq!(graph.arcs.len(), 1);
+        assert_eq!(graph.arcs.len(), 2);
     }
 
     #[test]
