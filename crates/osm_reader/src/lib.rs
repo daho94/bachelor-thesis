@@ -86,13 +86,11 @@ impl RoadGraph {
         Ok(graph)
     }
 
-    pub fn write_csv(&self) -> Result<(), Box<dyn Error>> {
+    pub fn write_csv(&self) -> anyhow::Result<()> {
         use std::io::Write;
 
-        let _ = std::fs::create_dir("out");
-
-        let mut nodes_file = File::create("out/nodes.csv")?;
-        let mut edges_file = File::create("out/edges.csv")?;
+        let mut nodes_file = File::create("nodes.csv")?;
+        let mut edges_file = File::create("edges.csv")?;
 
         writeln!(nodes_file, "id,lat,lon")?;
         for (id, [lat, lon]) in self.nodes.iter() {
