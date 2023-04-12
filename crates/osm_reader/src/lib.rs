@@ -78,7 +78,9 @@ impl RoadGraph {
 
                     let distance = haversine_distance(*from_lat, *from_lon, *to_lat, *to_lon);
 
+                    // For now all arcs are bidirectional
                     graph.add_arc(from, to, weight(distance, &road_type));
+                    graph.add_arc(to, from, weight(distance, &road_type));
                 }
             }
         })?;
