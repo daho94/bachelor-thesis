@@ -22,6 +22,38 @@ export function MapTalks(props: { edges: any[][]; nodes: any[] }) {
     new maptalks.VectorLayer("shortest-path")
   );
 
+  const [pathResult, setPathResult] = useState<any>(null);
+
+  const start = new maptalks.Marker([11.765805082376565, 48.10471649826582], {
+    visible: true,
+    editable: true,
+    cursor: "pointer",
+    draggable: true,
+    dragShadow: false, // display a shadow during dragging
+    drawOnAxis: null, // force dragging stick on a axis, can be: x, y
+  }).on("dragend", async () => {
+    let pathResult = await invoke("calc_path", {
+      srcCoords: [target.getCenter().y, target.getCenter().x],
+      dstCoords: [start.getCenter().y, start.getCenter().x],
+    });
+    setPathResult(pathResult);
+  });
+
+  const target = new maptalks.Marker([11.773918162859761, 48.10942344521048], {
+    visible: true,
+    editable: false,
+    cursor: "pointer",
+    draggable: true,
+    dragShadow: false, // display a shadow during dragging
+    drawOnAxis: null, // force dragging stick on a axis, can be: x, y
+  }).on("dragend", async () => {
+    let pathResult = await invoke("calc_path", {
+      srcCoords: [target.getCenter().y, target.getCenter().x],
+      dstCoords: [start.getCenter().y, start.getCenter().x],
+    });
+    setPathResult(pathResult);
+  });
+
   const mapDidRender = useRef(false);
 
   // init map, which will not update until it's destroyed
@@ -39,63 +71,18 @@ export function MapTalks(props: { edges: any[][]; nodes: any[] }) {
       }),
     });
 
-    // Setup listener
-    map.on("click", async (param) => {
-      let { x: lng, y: lat } = param.coordinate;
-      let latLng = [lat, lng];
-      console.log(lng, lat);
-
-      let { path, weight, duration, nodesSettled }: any = await invoke(
-        "calc_path",
-        {
-          srcCoords: latLng,
-          dstCoords: [48.10471649826582, 11.765805082376565],
-        }
-      );
-      pathLayer.clear();
-
-      if (path.length < 2) {
-        return;
-      }
-
-      let lines = [];
-
-      for (let i = 0; i < path.length - 1; i++) {
-        lines.push([
-          [path[i][0], path[i][1]],
-          [path[i + 1][0], path[i + 1][1]],
-        ]);
-      }
-
-      let multiline = new maptalks.MultiLineString(lines, {
-        symbol: {
-          lineColor: "#cf372b",
-          lineWidth: 3,
-        },
-      }).setInfoWindow({
-        content: `
-        <div style="color:#f00">
-          Calculation time: ${(duration * 1000).toFixed(2)} ms <br>
-          Nodes settled: ${nodesSettled} <br>
-          Weight: ${weight.toFixed(2)} s
-        </div>`,
-      });
-
-      pathLayer.addGeometry(multiline);
-      multiline.openInfoWindow();
-    });
-
     // Add marker
-    let point = new maptalks.Marker([11.765805082376565, 48.10471649826582], {
-      visible: true,
-      editable: true,
-      cursor: "pointer",
-      draggable: false,
-      dragShadow: false, // display a shadow during dragging
-      drawOnAxis: null, // force dragging stick on a axis, can be: x, y
-    });
+    // let start = new maptalks.Marker([11.765805082376565, 48.10471649826582], {
+    //   visible: true,
+    //   editable: true,
+    //   cursor: "pointer",
+    //   draggable: true,
+    //   dragShadow: false, // display a shadow during dragging
+    //   drawOnAxis: null, // force dragging stick on a axis, can be: x, y
+    // });
 
-    layer.addGeometry(point);
+    layer.addGeometry(start);
+    layer.addGeometry(target);
 
     layer.addTo(map);
     pathLayer.addTo(map);
@@ -104,12 +91,49 @@ export function MapTalks(props: { edges: any[][]; nodes: any[] }) {
     console.log("Map rendered");
   }, [baseOptions]);
 
+  // Setup listener
+  useEffect(() => {
+    if (!mapDidRender.current) return;
+    if (!pathResult) return;
+    let { path, weight, duration, nodesSettled }: any = pathResult;
+    pathLayer.clear();
+
+    if (path.length < 2) {
+      return;
+    }
+
+    let lines = [];
+
+    for (let i = 0; i < path.length - 1; i++) {
+      lines.push([
+        [path[i][0], path[i][1]],
+        [path[i + 1][0], path[i + 1][1]],
+      ]);
+    }
+
+    let multiline = new maptalks.MultiLineString(lines, {
+      symbol: {
+        lineColor: "#cf372b",
+        lineWidth: 3,
+      },
+    }).setInfoWindow({
+      content: `
+        <div style="color:#f00">
+          Calculation time: ${(duration * 1000).toFixed(2)} ms <br>
+          Nodes settled: ${nodesSettled} <br>
+          Weight: ${weight.toFixed(2)} s
+        </div>`,
+    });
+
+    pathLayer.addGeometry(multiline);
+    multiline.openInfoWindow();
+  }, [pathResult]);
+
   useEffect(() => {
     if (!mapDidRender.current) return;
     if (props.edges.length === 0) return;
 
     // Skip every second edge because they are duplicates (bidirectional)
-
     let polylines = props.edges
       .filter((_, i) => i % 2 === 0)
       .map((edge) => {
