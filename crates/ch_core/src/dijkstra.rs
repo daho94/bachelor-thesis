@@ -40,6 +40,7 @@ impl<'a> Dijkstra<'a> {
         }
 
         let mut distances = HashMap::new();
+        let mut visited = std::collections::HashSet::new();
         let mut previous = HashMap::new();
         let mut queue = PriorityQueue::new();
 
@@ -47,6 +48,11 @@ impl<'a> Dijkstra<'a> {
         queue.push(HeapItem::new(0.0, src));
 
         while let Some(HeapItem { distance, node }) = queue.pop() {
+            // Already settled
+            if !visited.insert(node) {
+                continue;
+            }
+
             self.stats.nodes_settled += 1;
             if node == dst {
                 let mut path = vec![node];
@@ -62,9 +68,9 @@ impl<'a> Dijkstra<'a> {
                 return Some(ShortestPath::new(path, distance));
             }
 
-            if distance > *distances.get(&node).unwrap_or(&std::f64::INFINITY) {
-                continue;
-            }
+            // if distance > *distances.get(&node).unwrap_or(&std::f64::INFINITY) {
+            //     continue;
+            // }
 
             for edge in self.graph.connected_edges(node) {
                 let new_distance = distance + edge.weight;
