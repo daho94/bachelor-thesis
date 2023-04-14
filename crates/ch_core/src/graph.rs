@@ -117,6 +117,7 @@ mod tests {
         assert_eq!(graph.edges.len(), 1);
     }
 
+    #[test]
     fn read_from_pbf() {
         let graph = Graph::from_pbf(Path::new("test_data/minimal.osm.pbf")).unwrap();
 

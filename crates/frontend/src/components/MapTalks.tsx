@@ -45,10 +45,13 @@ export function MapTalks(props: { edges: any[][]; nodes: any[] }) {
       let latLng = [lat, lng];
       console.log(lng, lat);
 
-      let [path, time]: [[], number] = await invoke("calc_path", {
-        srcCoords: latLng,
-        dstCoords: [48.10471649826582, 11.765805082376565],
-      });
+      let { path, weight, duration, nodesSettled }: any = await invoke(
+        "calc_path",
+        {
+          srcCoords: latLng,
+          dstCoords: [48.10471649826582, 11.765805082376565],
+        }
+      );
       pathLayer.clear();
 
       if (path.length < 2) {
@@ -72,7 +75,9 @@ export function MapTalks(props: { edges: any[][]; nodes: any[] }) {
       }).setInfoWindow({
         content: `
         <div style="color:#f00">
-          Time: ${(time * 1000).toFixed(2)} ms
+          Calculation time: ${(duration * 1000).toFixed(2)} ms <br>
+          Nodes settled: ${nodesSettled} <br>
+          Weight: ${weight.toFixed(2)} s
         </div>`,
       });
 

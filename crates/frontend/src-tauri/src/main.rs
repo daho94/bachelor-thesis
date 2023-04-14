@@ -3,18 +3,17 @@
     windows_subsystem = "windows"
 )]
 
-use ch_core::{constants::NodeId, dijkstra::Dijkstra};
+use ch_core::{constants::NodeId, dijkstra::Dijkstra, statistics::Stats};
+use serde::{Deserialize, Serialize};
 use std::time::Instant;
 use std::{path::Path, sync::Mutex};
 use tauri::{Manager, State};
 
+type Graph = Mutex<ch_core::graph::Graph>;
+
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
-fn create_graph_from_pbf(
-    // graph: State<'_, Graph>,
-    d: State<'_, Mutex<Dijkstra>>,
-    path: &str,
-) -> Result<(), String> {
+fn create_graph_from_pbf(graph: State<'_, Graph>, path: &str) -> Result<(), String> {
     println!("Creating graph from file '{}'...", path);
     let start = Instant::now();
     if let Ok(g) = ch_core::graph::Graph::from_pbf(Path::new(path)) {
@@ -25,10 +24,8 @@ fn create_graph_from_pbf(
             g.edges.len(),
             duration
         );
-        // let mut graph = graph.0.lock().unwrap();
-        // *graph = g;
-        let mut d = d.lock().unwrap();
-        *d = Dijkstra::new(g);
+        let mut graph = graph.lock().unwrap();
+        *graph = g;
 
         Ok(())
     } else {
@@ -37,8 +34,8 @@ fn create_graph_from_pbf(
 }
 
 #[tauri::command]
-fn get_edges(d: State<'_, Mutex<Dijkstra>>) -> Vec<[[f64; 2]; 2]> {
-    let graph = &d.lock().unwrap().graph;
+fn get_edges(graph: State<'_, Graph>) -> Vec<[[f64; 2]; 2]> {
+    let graph = &graph.lock().unwrap();
     graph
         .edges
         .iter()
@@ -61,8 +58,8 @@ fn get_edges(d: State<'_, Mutex<Dijkstra>>) -> Vec<[[f64; 2]; 2]> {
 }
 
 #[tauri::command]
-fn get_nodes(d: State<'_, Mutex<Dijkstra>>) -> Vec<[f64; 3]> {
-    let graph = &d.lock().unwrap().graph;
+fn get_nodes(graph: State<'_, Graph>) -> Vec<[f64; 3]> {
+    let graph = &graph.lock().unwrap();
     graph
         .nodes
         .iter()
@@ -70,34 +67,55 @@ fn get_nodes(d: State<'_, Mutex<Dijkstra>>) -> Vec<[f64; 3]> {
         .collect()
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PathResult {
+    path: Vec<[f64; 2]>,
+    weight: f64,
+    duration: f64,
+    nodes_settled: usize,
+}
+
+impl PathResult {
+    fn new(path: Vec<[f64; 2]>, weight: f64, duration: f64, nodes_settled: usize) -> Self {
+        PathResult {
+            path,
+            weight,
+            duration,
+            nodes_settled,
+        }
+    }
+}
+
 #[tauri::command]
-fn calc_path(
-    dijkstra: State<'_, Mutex<Dijkstra>>,
-    src_coords: [f64; 2],
-    dst_coords: [f64; 2],
-) -> (Vec<[f64; 2]>, f64) {
-    let d = dijkstra.lock().unwrap();
+fn calc_path(graph: State<'_, Graph>, src_coords: [f64; 2], dst_coords: [f64; 2]) -> PathResult {
+    let graph = graph.lock().unwrap();
 
-    let src_id = dbg!(p2p_matching(&d.graph.nodes, src_coords));
-    let dst_id = dbg!(p2p_matching(&d.graph.nodes, dst_coords));
+    let mut d = Dijkstra::new(&graph);
 
-    let time = Instant::now();
+    let src_id = dbg!(p2p_matching(&graph.nodes, src_coords));
+    let dst_id = dbg!(p2p_matching(&graph.nodes, dst_coords));
+
     if let Some(sp) = dbg!(d.search(src_id, dst_id)) {
-        let elapsed = time.elapsed();
-        println!("Found path in {:?}", elapsed);
+        println!("Found path in: {:?}", d.stats.duration);
         // Lookup coordinates
-        (
-            sp.nodes
-                .iter()
-                .map(|node_id| {
-                    let node = &d.graph.nodes.iter().find(|n| n.id == *node_id).unwrap();
-                    [node.lon, node.lat]
-                })
-                .collect(),
-            elapsed.as_secs_f64(),
+        let path = sp
+            .nodes
+            .iter()
+            .map(|node_id| {
+                let node = graph.nodes.iter().find(|n| n.id == *node_id).unwrap();
+                [node.lon, node.lat]
+            })
+            .collect();
+
+        PathResult::new(
+            path,
+            sp.weight,
+            d.stats.duration.unwrap_or(Default::default()).as_secs_f64(),
+            d.stats.nodes_settled,
         )
     } else {
-        (vec![], 0.0)
+        PathResult::new(vec![], 0.0, 0.0, 0)
     }
 }
 
@@ -116,7 +134,8 @@ fn p2p_matching(nodes: &[ch_core::graph::Node], coords: [f64; 2]) -> ch_core::co
 
 fn main() {
     tauri::Builder::default()
-        .manage(Mutex::new(Dijkstra::default()))
+        // .manage(Mutex::new(Dijkstra::default()))
+        .manage(Graph::default())
         .invoke_handler(tauri::generate_handler![
             create_graph_from_pbf,
             get_edges,

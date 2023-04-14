@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::constants::{NodeId, Weight};
 use crate::graph::*;
 use crate::priority_queue::*;
+use crate::statistics::Stats;
 
 #[derive(Debug, PartialEq)]
 pub struct ShortestPath {
@@ -16,23 +17,25 @@ impl ShortestPath {
     }
 }
 
-pub struct Dijkstra {
-    pub graph: Graph,
+pub struct Dijkstra<'a> {
+    pub stats: Stats,
+    graph: &'a Graph,
 }
 
-impl Default for Dijkstra {
-    fn default() -> Self {
-        Dijkstra::new(Graph::new())
-    }
-}
-
-impl Dijkstra {
-    pub fn new(graph: Graph) -> Self {
-        Dijkstra { graph }
+impl<'a> Dijkstra<'a> {
+    pub fn new(graph: &'a Graph) -> Self {
+        Dijkstra {
+            graph,
+            stats: Stats::default(),
+        }
     }
 
-    pub fn search(&self, src: NodeId, dst: NodeId) -> Option<ShortestPath> {
+    pub fn search(&mut self, src: NodeId, dst: NodeId) -> Option<ShortestPath> {
+        self.stats.init();
+
         if src == dst {
+            self.stats.nodes_settled += 1;
+            self.stats.finish();
             return Some(ShortestPath::new(vec![src], 0.0));
         }
 
@@ -44,6 +47,7 @@ impl Dijkstra {
         queue.push(HeapItem::new(0.0, src));
 
         while let Some(HeapItem { distance, node }) = queue.pop() {
+            self.stats.nodes_settled += 1;
             if node == dst {
                 let mut path = vec![node];
                 let mut previous_node = previous.get(&node)?;
@@ -54,6 +58,7 @@ impl Dijkstra {
                 path.push(src);
                 path.reverse();
 
+                self.stats.finish();
                 return Some(ShortestPath::new(path, distance));
             }
 
@@ -71,6 +76,7 @@ impl Dijkstra {
             }
         }
 
+        self.stats.finish();
         None
     }
 }
@@ -100,7 +106,7 @@ mod tests {
         g.add_edge(Edge::new(8, 9, 1.0));
         g.add_edge(Edge::new(9, 4, 1.0));
 
-        let d = Dijkstra::new(g);
+        let mut d = Dijkstra::new(&g);
 
         assert_no_path(d.search(4, 0)); // Cannot be reached
         assert_path(vec![0, 5, 7, 8, 9, 4], 13.0, d.search(0, 4));
@@ -119,7 +125,7 @@ mod tests {
         g.add_edge(Edge::new(3, 4, 3.0));
         g.add_edge(Edge::new(4, 5, 1.0));
 
-        let d = Dijkstra::new(g);
+        let mut d = Dijkstra::new(&g);
 
         assert_no_path(d.search(0, 3));
         assert_no_path(d.search(3, 0));
@@ -137,7 +143,7 @@ mod tests {
         g.add_edge(Edge::new(0, 2, 1.0));
         g.add_edge(Edge::new(2, 3, 1.0));
         g.add_edge(Edge::new(3, 1, 1.0));
-        let d = Dijkstra::new(g);
+        let mut d = Dijkstra::new(&g);
 
         assert_path(vec![0, 2, 3, 1], 3.0, d.search(0, 1));
     }
