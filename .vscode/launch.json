@@ -1,0 +1,26 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'repl'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=repl",
+                    "--package=repl"
+                ],
+                "filter": {
+                    "name": "repl",
+                    "kind": "bin"
+                }
+            },
+            "args": ["${workspaceFolder}/crates/osm_reader/test_data/vaterstetten_pp.osm.pbf"],
+            "cwd": "${workspaceFolder}"
+        },
+    ]
+}
