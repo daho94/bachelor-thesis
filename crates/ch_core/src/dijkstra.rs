@@ -68,10 +68,6 @@ impl<'a> Dijkstra<'a> {
                 return Some(ShortestPath::new(path, distance));
             }
 
-            // if distance > *distances.get(&node).unwrap_or(&std::f64::INFINITY) {
-            //     continue;
-            // }
-
             for edge in self.graph.connected_edges(node) {
                 let new_distance = distance + edge.weight;
                 if new_distance < *distances.get(&edge.to).unwrap_or(&std::f64::INFINITY) {
@@ -91,6 +87,11 @@ impl<'a> Dijkstra<'a> {
 mod tests {
     use super::*;
 
+    // Create test data for nodes
+    fn create_nodes() -> Vec<Node> {
+        (0..10).map(|i| Node::new(i, 0.0, 0.0)).collect()
+    }
+
     #[test]
     fn simple_path() {
         //      7 -> 8 -> 9
@@ -98,19 +99,21 @@ mod tests {
         // 0 -> 5 -> 6 -  |
         // |         |  \ |
         // 1 -> 2 -> 3 -> 4
-        let mut g = Graph::new();
-        g.add_edge(Edge::new(0, 1, 1.0));
-        g.add_edge(Edge::new(1, 2, 1.0));
-        g.add_edge(Edge::new(2, 3, 1.0));
-        g.add_edge(Edge::new(3, 4, 20.0));
-        g.add_edge(Edge::new(0, 5, 5.0));
-        g.add_edge(Edge::new(5, 6, 1.0));
-        g.add_edge(Edge::new(6, 4, 20.0));
-        g.add_edge(Edge::new(6, 3, 20.0));
-        g.add_edge(Edge::new(5, 7, 5.0));
-        g.add_edge(Edge::new(7, 8, 1.0));
-        g.add_edge(Edge::new(8, 9, 1.0));
-        g.add_edge(Edge::new(9, 4, 1.0));
+        let g = GraphBuilder::new()
+            .add_edge(Edge::new(0, 1, 1.0))
+            .add_edge(Edge::new(1, 2, 1.0))
+            .add_edge(Edge::new(2, 3, 1.0))
+            .add_edge(Edge::new(3, 4, 20.0))
+            .add_edge(Edge::new(0, 5, 5.0))
+            .add_edge(Edge::new(5, 6, 1.0))
+            .add_edge(Edge::new(6, 4, 20.0))
+            .add_edge(Edge::new(6, 3, 20.0))
+            .add_edge(Edge::new(5, 7, 5.0))
+            .add_edge(Edge::new(7, 8, 1.0))
+            .add_edge(Edge::new(8, 9, 1.0))
+            .add_edge(Edge::new(9, 4, 1.0))
+            .add_nodes(create_nodes())
+            .build();
 
         let mut d = Dijkstra::new(&g);
 
@@ -125,11 +128,13 @@ mod tests {
     fn disconnected_graph() {
         // 0 -> 1 -> 2
         // 3 -> 4 -> 5
-        let mut g = Graph::new();
-        g.add_edge(Edge::new(0, 1, 1.0));
-        g.add_edge(Edge::new(1, 2, 1.0));
-        g.add_edge(Edge::new(3, 4, 3.0));
-        g.add_edge(Edge::new(4, 5, 1.0));
+        let g = GraphBuilder::new()
+            .add_edge(Edge::new(0, 1, 1.0))
+            .add_edge(Edge::new(1, 2, 1.0))
+            .add_edge(Edge::new(3, 4, 3.0))
+            .add_edge(Edge::new(4, 5, 1.0))
+            .add_nodes(create_nodes())
+            .build();
 
         let mut d = Dijkstra::new(&g);
 
@@ -144,11 +149,14 @@ mod tests {
         // 0 -> 1
         // |    |
         // 2 -> 3
-        let mut g = Graph::new();
-        g.add_edge(Edge::new(0, 1, 10.0));
-        g.add_edge(Edge::new(0, 2, 1.0));
-        g.add_edge(Edge::new(2, 3, 1.0));
-        g.add_edge(Edge::new(3, 1, 1.0));
+        let g = GraphBuilder::new()
+            .add_edge(Edge::new(0, 1, 10.0))
+            .add_edge(Edge::new(0, 2, 1.0))
+            .add_edge(Edge::new(2, 3, 1.0))
+            .add_edge(Edge::new(3, 1, 1.0))
+            .add_nodes(create_nodes())
+            .build();
+
         let mut d = Dijkstra::new(&g);
 
         assert_path(vec![0, 2, 3, 1], 3.0, d.search(0, 1));

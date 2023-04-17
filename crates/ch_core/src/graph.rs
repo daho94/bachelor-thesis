@@ -2,14 +2,58 @@ use crate::constants::{NodeId, Weight};
 use anyhow::Context;
 use osm_reader::*;
 use serde::Deserialize;
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
-pub struct Graph {
+pub struct GraphBuilder {
     pub edges: Vec<Edge>,
     pub nodes: Vec<Node>,
 }
 
-#[derive(Debug, Deserialize)]
+impl GraphBuilder {
+    pub fn new() -> Self {
+        GraphBuilder {
+            edges: Vec::new(),
+            nodes: Vec::new(),
+        }
+    }
+
+    pub fn add_edge(mut self, edge: Edge) -> Self {
+        self.edges.push(edge);
+        self
+    }
+
+    pub fn add_nodes(mut self, nodes: Vec<Node>) -> Self {
+        self.nodes = nodes;
+        self
+    }
+
+    pub fn build(self) -> Graph {
+        let mut graph = Graph::new();
+
+        graph.nodes = self.nodes;
+        graph.edges = self.edges;
+
+        graph.create_node_index();
+        graph.create_adj_list();
+
+        graph
+    }
+}
+
+impl Default for GraphBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+pub struct Graph {
+    pub edges: Vec<Edge>,
+    pub nodes: Vec<Node>,
+    pub adj_list: Vec<Vec<Edge>>,
+    node_index: HashMap<NodeId, usize>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct Node {
     pub id: NodeId,
     pub lat: f64,
@@ -40,15 +84,13 @@ impl Graph {
         Graph {
             edges: Vec::new(),
             nodes: Vec::new(),
+            node_index: Default::default(),
+            adj_list: Default::default(),
         }
     }
 
-    pub fn connected_edges(&self, node: NodeId) -> Vec<Edge> {
-        self.edges
-            .iter()
-            .filter(|edge| edge.from == node)
-            .cloned()
-            .collect()
+    pub fn connected_edges(&self, node: NodeId) -> &[Edge] {
+        self.adj_list[self.node_index[&node]].as_slice()
     }
 
     pub fn add_edge(&mut self, edge: Edge) {
@@ -77,19 +119,41 @@ impl Graph {
         Ok(graph)
     }
 
+    fn create_node_index(&mut self) {
+        for (i, node) in self.nodes.iter().enumerate() {
+            self.node_index.insert(node.id, i);
+        }
+    }
+
+    fn create_adj_list(&mut self) {
+        self.adj_list = vec![Vec::new(); self.nodes.len()];
+
+        for edge in self.edges.iter() {
+            let from = self.node_index[&edge.from];
+            self.adj_list[from].push(edge.clone());
+        }
+    }
+
     pub fn from_pbf(path_to_pbf: &Path) -> anyhow::Result<Self> {
         let road_graph = RoadGraph::from_pbf(path_to_pbf).context("Could not parse pbf file")?;
         let mut graph = Graph::new();
 
+        let mut edges = Vec::with_capacity(road_graph.get_arcs().len());
         for (from, to, weight) in road_graph.get_arcs() {
             let edge = Edge::new(*from as usize, *to as usize, *weight);
-            graph.add_edge(edge);
+            edges.push(edge);
         }
+        graph.edges = edges;
 
+        let mut nodes = Vec::with_capacity(road_graph.get_nodes().len());
         for (id, [lat, lon]) in road_graph.get_nodes() {
             let node = Node::new(*id as usize, *lat, *lon);
-            graph.add_node(node);
+            nodes.push(node);
         }
+        graph.nodes = nodes;
+
+        graph.create_node_index();
+        graph.create_adj_list();
 
         Ok(graph)
     }
@@ -122,6 +186,6 @@ mod tests {
         let graph = Graph::from_pbf(Path::new("test_data/minimal.osm.pbf")).unwrap();
 
         assert_eq!(graph.nodes.len(), 2);
-        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.edges.len(), 2);
     }
 }

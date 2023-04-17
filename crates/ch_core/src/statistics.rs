@@ -28,7 +28,7 @@ impl Stats {
 mod tests {
     use crate::{
         dijkstra::Dijkstra,
-        graph::{Edge, Graph},
+        graph::{Edge, GraphBuilder, Node},
     };
 
     #[test]
@@ -38,19 +38,22 @@ mod tests {
         // 0 -> 5 -> 6 -  |
         // |         |  \ |
         // 1 -> 2 -> 3 -> 4
-        let mut g = Graph::new();
-        g.add_edge(Edge::new(0, 1, 1.0));
-        g.add_edge(Edge::new(1, 2, 1.0));
-        g.add_edge(Edge::new(2, 3, 1.0));
-        g.add_edge(Edge::new(3, 4, 20.0));
-        g.add_edge(Edge::new(0, 5, 5.0));
-        g.add_edge(Edge::new(5, 6, 1.0));
-        g.add_edge(Edge::new(6, 4, 20.0));
-        g.add_edge(Edge::new(6, 3, 20.0));
-        g.add_edge(Edge::new(5, 7, 5.0));
-        g.add_edge(Edge::new(7, 8, 1.0));
-        g.add_edge(Edge::new(8, 9, 1.0));
-        g.add_edge(Edge::new(9, 4, 1.0));
+        let nodes = (0..10).map(|i| Node::new(i, 0.0, 0.0)).collect();
+        let g = GraphBuilder::new()
+            .add_edge(Edge::new(0, 1, 1.0))
+            .add_edge(Edge::new(1, 2, 1.0))
+            .add_edge(Edge::new(2, 3, 1.0))
+            .add_edge(Edge::new(3, 4, 20.0))
+            .add_edge(Edge::new(0, 5, 5.0))
+            .add_edge(Edge::new(5, 6, 1.0))
+            .add_edge(Edge::new(6, 4, 20.0))
+            .add_edge(Edge::new(6, 3, 20.0))
+            .add_edge(Edge::new(5, 7, 5.0))
+            .add_edge(Edge::new(7, 8, 1.0))
+            .add_edge(Edge::new(8, 9, 1.0))
+            .add_edge(Edge::new(9, 4, 1.0))
+            .add_nodes(nodes)
+            .build();
 
         let mut d = Dijkstra::new(&g);
         d.search(0, 4);
