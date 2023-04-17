@@ -58,8 +58,11 @@ fn measure_dijkstra(args: ArgMatches, context: &mut Context) -> Result<Option<St
             continue;
         }
         res.push_str(&format!(
-            "{} -> {}: {:?}\n",
-            src, dst, dijkstra.stats.duration
+            "{} -> {}: {:?} / {} nodes settled\n",
+            src,
+            dst,
+            dijkstra.stats.duration.unwrap(),
+            dijkstra.stats.nodes_settled
         ));
     }
 
