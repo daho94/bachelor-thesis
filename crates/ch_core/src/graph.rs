@@ -116,6 +116,9 @@ impl Graph {
             graph.add_edge(edge);
         }
 
+        graph.create_node_index();
+        graph.create_adj_list();
+
         Ok(graph)
     }
 
