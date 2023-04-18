@@ -27,6 +27,11 @@ impl GraphBuilder {
         self
     }
 
+    pub fn add_edges(mut self, edges: Vec<Edge>) -> Self {
+        self.edges = edges;
+        self
+    }
+
     pub fn build(self) -> Graph {
         let mut graph = Graph::new();
 
