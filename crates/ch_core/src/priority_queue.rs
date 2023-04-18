@@ -25,6 +25,12 @@ impl PriorityQueue {
     }
 }
 
+impl Default for PriorityQueue {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct HeapItem {
     pub distance: Weight,

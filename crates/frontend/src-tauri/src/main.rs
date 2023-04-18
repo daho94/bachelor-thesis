@@ -3,8 +3,8 @@
     windows_subsystem = "windows"
 )]
 
-use ch_core::{constants::NodeId, dijkstra::Dijkstra, statistics::Stats};
-use serde::{Deserialize, Serialize};
+use ch_core::dijkstra::Dijkstra;
+use serde::Serialize;
 use std::time::Instant;
 use std::{path::Path, sync::Mutex};
 use tauri::{Manager, State};
