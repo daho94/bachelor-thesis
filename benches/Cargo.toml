@@ -1,0 +1,20 @@
+[package]
+name = "benches"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+
+[dev-dependencies]
+criterion = { version = "0.4.0", features = ["html_reports"] }
+ch_core = { path = "../crates/ch_core" }
+
+[[bench]]
+name = "dijkstra_on_input_graph"
+path = "search/dijkstra_on_input_graph.rs"
+harness = false
+
+[profile.release]
+opt-level = 3
+lto = true
