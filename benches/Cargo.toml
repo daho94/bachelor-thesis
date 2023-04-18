@@ -9,6 +9,7 @@ edition = "2021"
 [dev-dependencies]
 criterion = { version = "0.4.0", features = ["html_reports"] }
 ch_core = { path = "../crates/ch_core" }
+rand = "0.8"
 
 [[bench]]
 name = "dijkstra_on_input_graph"

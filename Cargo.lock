@@ -183,6 +183,7 @@ version = "0.1.0"
 dependencies = [
  "ch_core",
  "criterion",
+ "rand 0.8.5",
 ]
 
 [[package]]
