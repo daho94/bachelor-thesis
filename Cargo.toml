@@ -6,3 +6,7 @@ members = [
     "crates/ch_core",
     "crates/repl",
 ]
+
+[profile.release]
+lto = "fat"
+panic = "abort"
