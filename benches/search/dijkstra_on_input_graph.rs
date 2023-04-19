@@ -1,10 +1,8 @@
-use std::path::Path;
-
 use ch_core::{
     dijkstra::Dijkstra,
     graph::{Edge, Graph, GraphBuilder, Node},
 };
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use rand::prelude::*;
 
 criterion_group!(benches, dijkstra);
@@ -32,27 +30,12 @@ fn gen_rand_graph(number_nodes: usize) -> Graph {
         .build()
 }
 
-// fn from_elem(c: &mut Criterion) {
-//     static KB: usize = 1024;
-
-//     let mut group = c.benchmark_group("from_elem");
-//     for size in [KB, 2 * KB, 4 * KB, 8 * KB, 16 * KB].iter() {
-//         group.throughput(criterion::Throughput::Bytes(*size as u64));
-//         group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, size| {
-//             b.iter(|| std::iter::repeat(0u8).take(size).collect::<Vec<_>>());
-//         });
-//     }
-//     group.finish();
-// }
-
 fn dijkstra(c: &mut Criterion) {
     let mut graphs: Vec<Graph> = (15..16).map(|i| gen_rand_graph(2usize.pow(i))).collect();
-    graphs.push(
-        Graph::from_pbf(Path::new(
-            r"F:\Dev\uni\BA\bachelor_thesis\crates\osm_reader\data\saarland_pp2.osm.pbf",
-        ))
-        .unwrap(),
-    );
+
+    let mut path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.push("../crates/osm_reader/data/saarland_pp2.osm.pbf");
+    graphs.push(Graph::from_pbf(&path).unwrap());
 
     let mut group = c.benchmark_group("dijkstra");
     let mut rng = rand::thread_rng();
