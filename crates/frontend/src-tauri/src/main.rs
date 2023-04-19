@@ -4,21 +4,22 @@
 )]
 
 use ch_core::dijkstra::Dijkstra;
+use log::info;
 use serde::Serialize;
 use std::time::Instant;
 use std::{path::Path, sync::Mutex};
 use tauri::{Manager, State};
+use tauri_plugin_log::{fern::colors::ColoredLevelConfig, LogTarget};
 
 type Graph = Mutex<ch_core::graph::Graph>;
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
 fn create_graph_from_pbf(graph: State<'_, Graph>, path: &str) -> Result<(), String> {
-    println!("Creating graph from file '{}'...", path);
     let start = Instant::now();
     if let Ok(g) = ch_core::graph::Graph::from_pbf(Path::new(path)) {
         let duration = start.elapsed();
-        println!(
+        info!(
             "Created Graph with {} nodes and {} edges in {:?}!",
             g.nodes.len(),
             g.edges.len(),
@@ -96,8 +97,7 @@ fn calc_path(graph: State<'_, Graph>, src_coords: [f64; 2], dst_coords: [f64; 2]
     let src_id = dbg!(p2p_matching(&graph.nodes, src_coords));
     let dst_id = dbg!(p2p_matching(&graph.nodes, dst_coords));
 
-    if let Some(sp) = dbg!(d.search(src_id, dst_id)) {
-        println!("Found path in: {:?}", d.stats.duration);
+    if let Some(sp) = d.search(src_id, dst_id) {
         // Lookup coordinates
         let path = sp
             .nodes
@@ -120,7 +120,6 @@ fn calc_path(graph: State<'_, Graph>, src_coords: [f64; 2], dst_coords: [f64; 2]
 }
 
 fn p2p_matching(nodes: &[ch_core::graph::Node], coords: [f64; 2]) -> ch_core::constants::NodeId {
-    println!("test");
     nodes
         .iter()
         .min_by(|a, b| {
@@ -134,6 +133,22 @@ fn p2p_matching(nodes: &[ch_core::graph::Node], coords: [f64; 2]) -> ch_core::co
 
 fn main() {
     tauri::Builder::default()
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .targets([
+                    // write to the OS logs folder
+                    // LogTarget::LogDir,
+                    // write to stdout
+                    LogTarget::Stdout,
+                    // forward logs to the webview
+                    LogTarget::Webview,
+                ])
+                .level(log::LevelFilter::Info)
+                .with_colors(
+                    ColoredLevelConfig::new().info(tauri_plugin_log::fern::colors::Color::Green),
+                )
+                .build(),
+        )
         // .manage(Mutex::new(Dijkstra::default()))
         .manage(Graph::default())
         .invoke_handler(tauri::generate_handler![

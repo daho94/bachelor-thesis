@@ -1,5 +1,6 @@
 use crate::constants::{NodeId, Weight};
 use anyhow::Context;
+use log::info;
 use osm_reader::*;
 use serde::Deserialize;
 use std::{collections::HashMap, path::Path};
@@ -143,6 +144,8 @@ impl Graph {
     }
 
     pub fn from_pbf(path_to_pbf: &Path) -> anyhow::Result<Self> {
+        info!("Parsing pbf file: {:?}", path_to_pbf);
+
         let road_graph = RoadGraph::from_pbf(path_to_pbf).context("Could not parse pbf file")?;
         let mut graph = Graph::new();
 
@@ -163,6 +166,7 @@ impl Graph {
         graph.create_node_index();
         graph.create_adj_list();
 
+        info!("Finished parsing pbf file");
         Ok(graph)
     }
 }

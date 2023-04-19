@@ -4,6 +4,7 @@ use crate::constants::{NodeId, Weight};
 use crate::graph::*;
 use crate::priority_queue::*;
 use crate::statistics::Stats;
+use log::{debug, info};
 
 #[derive(Debug, PartialEq)]
 pub struct ShortestPath {
@@ -65,6 +66,12 @@ impl<'a> Dijkstra<'a> {
                 path.reverse();
 
                 self.stats.finish();
+                debug!("Path found: {:?}", path);
+                info!(
+                    "Path found: {:?}/{} nodes settled",
+                    self.stats.duration.unwrap(),
+                    self.stats.nodes_settled
+                );
                 return Some(ShortestPath::new(path, distance));
             }
 
@@ -79,6 +86,11 @@ impl<'a> Dijkstra<'a> {
         }
 
         self.stats.finish();
+        info!(
+            "No path found: {:?}/{} nodes settled",
+            self.stats.duration.unwrap(),
+            self.stats.nodes_settled
+        );
         None
     }
 }
