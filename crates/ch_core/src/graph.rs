@@ -2,8 +2,9 @@ use crate::constants::{NodeId, Weight};
 use anyhow::Context;
 use log::info;
 use osm_reader::*;
+use rustc_hash::FxHashMap;
 use serde::Deserialize;
-use std::{collections::HashMap, path::Path};
+use std::path::Path;
 
 pub struct GraphBuilder {
     pub edges: Vec<Edge>,
@@ -56,7 +57,7 @@ pub struct Graph {
     pub edges: Vec<Edge>,
     pub nodes: Vec<Node>,
     pub adj_list: Vec<Vec<Edge>>,
-    node_index: HashMap<NodeId, usize>,
+    node_index: FxHashMap<NodeId, usize>,
 }
 
 #[derive(Debug, Deserialize, Clone)]

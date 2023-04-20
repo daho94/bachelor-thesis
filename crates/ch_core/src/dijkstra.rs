@@ -1,10 +1,9 @@
-use std::collections::HashMap;
-
 use crate::constants::{NodeId, Weight};
 use crate::graph::*;
 use crate::priority_queue::*;
 use crate::statistics::Stats;
 use log::{debug, info};
+use rustc_hash::FxHashMap;
 
 #[derive(Debug, PartialEq)]
 pub struct ShortestPath {
@@ -40,9 +39,9 @@ impl<'a> Dijkstra<'a> {
             return Some(ShortestPath::new(vec![src], 0.0));
         }
 
-        let mut distances = HashMap::new();
         let mut visited = std::collections::HashSet::new();
-        let mut previous = HashMap::new();
+        let mut distances = FxHashMap::default();
+        let mut previous = FxHashMap::default();
         let mut queue = PriorityQueue::new();
 
         distances.insert(src, 0.0);

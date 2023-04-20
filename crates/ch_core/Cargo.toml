@@ -11,3 +11,4 @@ anyhow = "1.0.70"
 csv = "1.2.1"
 osm_reader = { path = "../osm_reader" }
 log = "0.4.17"
+rustc-hash = "1.1"
