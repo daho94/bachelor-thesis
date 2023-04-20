@@ -39,20 +39,21 @@ impl<'a> Dijkstra<'a> {
             return Some(ShortestPath::new(vec![src], 0.0));
         }
 
-        let mut distances = FxHashMap::default();
-        let mut previous = FxHashMap::default();
+        let mut node_data: FxHashMap<NodeId, (Weight, Option<NodeId>)> = FxHashMap::default();
+        node_data.insert(src, (0.0, None));
+
         let mut queue = PriorityQueue::new();
 
-        distances.insert(src, 0.0);
         queue.push(HeapItem::new(0.0, src));
 
         while let Some(HeapItem { distance, node }) = queue.pop() {
             self.stats.nodes_settled += 1;
+
             if node == dst {
                 let mut path = vec![node];
-                let mut previous_node = previous.get(&node)?;
-                while let Some(prev_node) = previous.get(previous_node) {
-                    path.push(*previous_node);
+                let mut previous_node = node_data.get(&node)?.1?;
+                while let Some(prev_node) = node_data.get(&previous_node)?.1 {
+                    path.push(previous_node);
                     previous_node = prev_node;
                 }
                 path.push(src);
@@ -70,9 +71,13 @@ impl<'a> Dijkstra<'a> {
 
             for edge in self.graph.connected_edges(node) {
                 let new_distance = distance + edge.weight;
-                if new_distance < *distances.get(&edge.to).unwrap_or(&std::f64::INFINITY) {
-                    distances.insert(edge.to, new_distance);
-                    previous.insert(edge.to, node);
+                if new_distance
+                    < node_data
+                        .get(&edge.to)
+                        .unwrap_or(&(std::f64::INFINITY, None))
+                        .0
+                {
+                    node_data.insert(edge.to, (new_distance, Some(node)));
                     queue.push(HeapItem::new(new_distance, edge.to));
                 }
             }
