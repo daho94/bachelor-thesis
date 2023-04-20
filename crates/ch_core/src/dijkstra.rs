@@ -39,7 +39,6 @@ impl<'a> Dijkstra<'a> {
             return Some(ShortestPath::new(vec![src], 0.0));
         }
 
-        let mut visited = std::collections::HashSet::new();
         let mut distances = FxHashMap::default();
         let mut previous = FxHashMap::default();
         let mut queue = PriorityQueue::new();
@@ -48,11 +47,6 @@ impl<'a> Dijkstra<'a> {
         queue.push(HeapItem::new(0.0, src));
 
         while let Some(HeapItem { distance, node }) = queue.pop() {
-            // Already settled
-            if !visited.insert(node) {
-                continue;
-            }
-
             self.stats.nodes_settled += 1;
             if node == dst {
                 let mut path = vec![node];
