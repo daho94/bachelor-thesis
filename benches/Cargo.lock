@@ -561,6 +561,7 @@ dependencies = [
  "anyhow",
  "osm4routing",
  "osmpbf",
+ "rustc-hash",
 ]
 
 [[package]]
