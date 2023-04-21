@@ -42,6 +42,13 @@ impl RoadType {
             RoadType::Service => 5.0,
         }
     }
+
+    pub fn is_oneway(&self) -> bool {
+        matches!(
+            self,
+            RoadType::Motorway | RoadType::MotorwayLink | RoadType::TrunkLink
+        )
+    }
 }
 
 impl FromStr for RoadType {
