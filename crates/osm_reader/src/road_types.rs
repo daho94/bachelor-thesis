@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 // Only this road types are inclued in the graph
+#[derive(Debug, Clone, Copy)]
 pub enum RoadType {
     Motorway,
     Trunk,
@@ -40,6 +41,13 @@ impl RoadType {
             RoadType::LivingStreet => 10.0,
             RoadType::Service => 5.0,
         }
+    }
+
+    pub fn is_oneway(&self) -> bool {
+        matches!(
+            self,
+            RoadType::Motorway | RoadType::MotorwayLink | RoadType::TrunkLink
+        )
     }
 }
 

@@ -1,18 +1,19 @@
 use osmpbf::{Element, IndexedReader};
-use std::{collections::HashMap, fs::File, path::Path, str::FromStr};
+use rustc_hash::FxHashMap;
+use std::{fs::File, path::Path, str::FromStr};
 
 mod road_types;
 use road_types::RoadType;
 
 pub struct RoadGraph {
-    nodes: HashMap<i64, [f64; 2]>,
+    nodes: FxHashMap<i64, [f64; 2]>,
     arcs: Vec<(i64, i64, f64)>,
 }
 
 impl RoadGraph {
     pub fn new() -> Self {
         RoadGraph {
-            nodes: HashMap::new(),
+            nodes: FxHashMap::default(),
             arcs: Vec::new(),
         }
     }
@@ -25,7 +26,7 @@ impl RoadGraph {
         self.arcs.push((from, to, weight));
     }
 
-    pub fn get_nodes(&self) -> &HashMap<i64, [f64; 2]> {
+    pub fn get_nodes(&self) -> &FxHashMap<i64, [f64; 2]> {
         &self.nodes
     }
 
@@ -43,21 +44,11 @@ impl RoadGraph {
                 .any(|(key, value)| key == "highway" && value.parse::<RoadType>().is_ok())
         };
 
+        let mut edges = Vec::new();
+
         // First iteration: Only add nodes
         reader.read_ways_and_deps(road_filter, |element| match element {
-            Element::Way(_) => {}
-            Element::Node(node) => {
-                graph.add_node(node.id(), node.lat(), node.lon());
-            }
-            Element::DenseNode(dense_node) => {
-                graph.add_node(dense_node.id(), dense_node.lat(), dense_node.lon());
-            }
-            Element::Relation(_) => {}
-        })?;
-
-        // Second iteration: Add edges
-        reader.read_ways_and_deps(road_filter, |element| {
-            if let Element::Way(way) = element {
+            Element::Way(way) => {
                 let node_ids = way.refs().collect::<Vec<_>>();
                 let tags = way.tags().collect::<Vec<_>>();
 
@@ -69,21 +60,51 @@ impl RoadGraph {
                     .1;
                 let road_type = RoadType::from_str(road_type).unwrap();
 
+                let is_oneway = {
+                    if let Some((_, value)) = tags.iter().find(|(key, _)| *key == "oneway") {
+                        match *value {
+                            // Tag always has prio if explicitly set
+                            "yes" => true,
+                            "no" => false,
+                            // If no tag is found check the road type
+                            _ => road_type.is_oneway(),
+                        }
+                    } else {
+                        false
+                    }
+                };
+
                 for i in 0..node_ids.len() - 1 {
                     let from = node_ids[i];
                     let to = node_ids[i + 1];
 
-                    let [from_lat, from_lon] = graph.nodes.get(&from).unwrap();
-                    let [to_lat, to_lon] = graph.nodes.get(&to).unwrap();
+                    edges.push((from, to, road_type));
 
-                    let distance = haversine_distance(*from_lat, *from_lon, *to_lat, *to_lon);
-
-                    // For now all arcs are bidirectional
-                    graph.add_arc(from, to, weight(distance, &road_type));
-                    graph.add_arc(to, from, weight(distance, &road_type));
+                    // If bidirectional add reverse edge
+                    if !is_oneway {
+                        edges.push((to, from, road_type));
+                    }
                 }
             }
+            Element::Node(node) => {
+                graph.add_node(node.id(), node.lat(), node.lon());
+            }
+            Element::DenseNode(dense_node) => {
+                graph.add_node(dense_node.id(), dense_node.lat(), dense_node.lon());
+            }
+            Element::Relation(_) => {}
         })?;
+
+        // Calculate weights and add arcs to graph
+        graph.arcs = Vec::new();
+        for (from, to, road_type) in edges {
+            let [from_lat, from_lon] = graph.nodes.get(&from).unwrap();
+            let [to_lat, to_lon] = graph.nodes.get(&to).unwrap();
+
+            let distance = haversine_distance(*from_lat, *from_lon, *to_lat, *to_lon);
+
+            graph.add_arc(from, to, weight(distance, &road_type));
+        }
 
         Ok(graph)
     }

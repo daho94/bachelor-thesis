@@ -52,6 +52,7 @@ version = "0.1.0"
 dependencies = [
  "ch_core",
  "criterion",
+ "osm_reader",
  "rand",
 ]
 
@@ -560,6 +561,7 @@ dependencies = [
  "anyhow",
  "osm4routing",
  "osmpbf",
+ "rustc-hash",
 ]
 
 [[package]]
