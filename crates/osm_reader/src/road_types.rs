@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 // Only this road types are inclued in the graph
+#[derive(Debug, Clone, Copy)]
 pub enum RoadType {
     Motorway,
     Trunk,
