@@ -46,7 +46,6 @@ impl RoadGraph {
 
         let mut edges = Vec::new();
 
-        // First iteration: Only add nodes
         reader.read_ways_and_deps(road_filter, |element| match element {
             Element::Way(way) => {
                 let node_ids = way.refs().collect::<Vec<_>>();
