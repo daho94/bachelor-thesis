@@ -52,6 +52,7 @@ version = "0.1.0"
 dependencies = [
  "ch_core",
  "criterion",
+ "osm_reader",
  "rand",
 ]
 
