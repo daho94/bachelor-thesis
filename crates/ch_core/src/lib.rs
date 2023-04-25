@@ -1,3 +1,4 @@
+pub mod astar;
 pub mod constants;
 pub mod dijkstra;
 pub mod graph;
