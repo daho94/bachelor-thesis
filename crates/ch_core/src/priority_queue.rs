@@ -33,28 +33,28 @@ impl Default for PriorityQueue {
 
 #[derive(Copy, Clone, Debug)]
 pub struct HeapItem {
-    pub distance: Weight,
+    pub weight: Weight,
     pub node: NodeId,
 }
 
 impl HeapItem {
-    pub fn new(distance: Weight, node: NodeId) -> Self {
-        HeapItem { distance, node }
+    pub fn new(weight: Weight, node: NodeId) -> Self {
+        HeapItem { weight, node }
     }
 }
 
 impl PartialOrd for HeapItem {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         // Reverse the ordering so that the smallest element is at the top of the heap.
-        self.distance
-            .partial_cmp(&other.distance)
+        self.weight
+            .partial_cmp(&other.weight)
             .map(|order| order.reverse())
     }
 }
 
 impl PartialEq for HeapItem {
     fn eq(&self, other: &Self) -> bool {
-        self.distance == other.distance
+        self.weight == other.weight
     }
 }
 
@@ -63,8 +63,8 @@ impl Eq for HeapItem {}
 impl Ord for HeapItem {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         other
-            .distance
-            .partial_cmp(&self.distance)
+            .weight
+            .partial_cmp(&self.weight)
             .unwrap_or(std::cmp::Ordering::Equal)
     }
 }
