@@ -12,7 +12,7 @@ pub struct ShortestPath {
 }
 
 impl ShortestPath {
-    fn new(nodes: Vec<NodeId>, weight: Weight) -> Self {
+    pub fn new(nodes: Vec<NodeId>, weight: Weight) -> Self {
         ShortestPath { nodes, weight }
     }
 }
@@ -46,7 +46,7 @@ impl<'a> Dijkstra<'a> {
 
         queue.push(HeapItem::new(0.0, src));
 
-        while let Some(HeapItem { distance, node }) = queue.pop() {
+        while let Some(HeapItem { weight, node }) = queue.pop() {
             self.stats.nodes_settled += 1;
 
             if node == dst {
@@ -66,11 +66,11 @@ impl<'a> Dijkstra<'a> {
                     self.stats.duration.unwrap(),
                     self.stats.nodes_settled
                 );
-                return Some(ShortestPath::new(path, distance));
+                return Some(ShortestPath::new(path, weight));
             }
 
             for edge in self.graph.connected_edges(node) {
-                let new_distance = distance + edge.weight;
+                let new_distance = weight + edge.weight;
                 if new_distance
                     < node_data
                         .get(&edge.to)
