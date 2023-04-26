@@ -27,8 +27,8 @@ impl Stats {
 #[cfg(test)]
 mod tests {
     use crate::{
-        dijkstra::Dijkstra,
         graph::{Edge, GraphBuilder, Node},
+        search::dijkstra::Dijkstra,
     };
 
     #[test]

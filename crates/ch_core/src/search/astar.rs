@@ -5,10 +5,11 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     constants::{NodeId, Weight},
-    dijkstra::ShortestPath,
     graph::{Graph, Node},
     statistics::Stats,
 };
+
+use super::shortest_path::ShortestPath;
 
 pub struct AStar<'a> {
     pub stats: Stats,
@@ -19,17 +20,27 @@ pub struct AStar<'a> {
 struct Candidate {
     node: NodeId,
     real_weight: Weight,
-    estimated_weight: Weight,
+    tentative_weight: Weight,
+}
+
+impl Candidate {
+    fn new(node: NodeId, real_weight: Weight, estimated_weight: Weight) -> Self {
+        Self {
+            node,
+            real_weight,
+            tentative_weight: estimated_weight,
+        }
+    }
 }
 impl PartialOrd for Candidate {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        other.estimated_weight.partial_cmp(&self.estimated_weight)
+        other.tentative_weight.partial_cmp(&self.tentative_weight)
     }
 }
 
 impl PartialEq for Candidate {
     fn eq(&self, other: &Self) -> bool {
-        other.estimated_weight == self.estimated_weight
+        other.tentative_weight == self.tentative_weight
     }
 }
 
@@ -38,8 +49,8 @@ impl Eq for Candidate {}
 impl Ord for Candidate {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         other
-            .estimated_weight
-            .partial_cmp(&self.estimated_weight)
+            .tentative_weight
+            .partial_cmp(&self.tentative_weight)
             .unwrap_or(std::cmp::Ordering::Equal)
     }
 }
@@ -71,17 +82,14 @@ impl<'a> AStar<'a> {
 
         let mut queue = BinaryHeap::new();
 
-        queue.push(Candidate {
-            node: src,
-            real_weight: 0.0,
-            estimated_weight: heuristic(
-                self.graph.node(src).unwrap(),
-                self.graph.node(dst).unwrap(),
-            ),
-        });
+        queue.push(Candidate::new(
+            src,
+            0.0,
+            heuristic(self.graph.node(src).unwrap(), self.graph.node(dst).unwrap()),
+        ));
 
         while let Some(Candidate {
-            estimated_weight,
+            tentative_weight: _,
             real_weight,
             node,
         }) = queue.pop()
@@ -89,23 +97,7 @@ impl<'a> AStar<'a> {
             self.stats.nodes_settled += 1;
 
             if node == dst {
-                let mut path = vec![node];
-                let mut previous_node = node_data.get(&node)?.1?;
-                while let Some(prev_node) = node_data.get(&previous_node)?.1 {
-                    path.push(previous_node);
-                    previous_node = prev_node;
-                }
-                path.push(src);
-                path.reverse();
-
-                self.stats.finish();
-                debug!("Path found: {:?}", path);
-                info!(
-                    "Path found: {:?}/{} nodes settled",
-                    self.stats.duration.unwrap(),
-                    self.stats.nodes_settled
-                );
-                return Some(ShortestPath::new(path, estimated_weight));
+                break;
             }
 
             for edge in self.graph.connected_edges(node) {
@@ -124,22 +116,30 @@ impl<'a> AStar<'a> {
                         );
 
                     node_data.insert(edge.to, (real_weight, Some(node)));
-                    queue.push(Candidate {
-                        node: edge.to,
-                        real_weight,
-                        estimated_weight,
-                    })
+                    queue.push(Candidate::new(edge.to, real_weight, estimated_weight));
                 }
             }
         }
 
         self.stats.finish();
-        info!(
-            "No path found: {:?}/{} nodes settled",
-            self.stats.duration.unwrap(),
-            self.stats.nodes_settled
-        );
-        None
+
+        let sp = super::reconstruct_path(dst, src, &node_data);
+        if sp.is_some() {
+            debug!("Path found: {:?}", sp);
+            info!(
+                "Path found: {:?}/{} nodes settled",
+                self.stats.duration.unwrap(),
+                self.stats.nodes_settled
+            );
+        } else {
+            info!(
+                "No path found: {:?}/{} nodes settled",
+                self.stats.duration.unwrap(),
+                self.stats.nodes_settled
+            );
+        }
+
+        sp
     }
 }
 

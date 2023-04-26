@@ -2,10 +2,10 @@
 use std::path::{Path, PathBuf};
 
 use ch_core::{
-    astar::AStar,
     constants::NodeId,
-    dijkstra::{Dijkstra, ShortestPath},
     graph::Graph,
+    search::dijkstra::Dijkstra,
+    search::{astar::AStar, shortest_path::ShortestPath},
 };
 use reedline_repl_rs::clap::{value_parser, Arg, ArgMatches, Command};
 use reedline_repl_rs::{Repl, Result};
