@@ -108,6 +108,10 @@ impl Graph {
         self.nodes.push(node);
     }
 
+    pub fn node(&self, id: NodeId) -> Option<&Node> {
+        self.node_index.get(&id).map(|index| &self.nodes[*index])
+    }
+
     pub fn from_csv(path_to_nodes: &Path, path_to_edges: &Path) -> anyhow::Result<Self> {
         let mut graph = Graph::new();
 

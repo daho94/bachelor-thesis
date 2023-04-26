@@ -23,16 +23,13 @@ struct Candidate {
 }
 impl PartialOrd for Candidate {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        // Reverse the ordering so that the smallest element is at the top of the heap.
-        self.estimated_weight
-            .partial_cmp(&other.estimated_weight)
-            .map(|order| order.reverse())
+        other.estimated_weight.partial_cmp(&self.estimated_weight)
     }
 }
 
 impl PartialEq for Candidate {
     fn eq(&self, other: &Self) -> bool {
-        self.estimated_weight == other.estimated_weight
+        other.estimated_weight == self.estimated_weight
     }
 }
 
@@ -70,16 +67,7 @@ impl<'a> AStar<'a> {
         }
 
         let mut node_data: FxHashMap<NodeId, (Weight, Option<NodeId>)> = FxHashMap::default();
-        node_data.insert(
-            src,
-            (
-                heuristic(
-                    self.graph.nodes.get(src).unwrap(),
-                    self.graph.nodes.get(dst).unwrap(),
-                ),
-                None,
-            ),
-        );
+        node_data.insert(src, (0.0, None));
 
         let mut queue = BinaryHeap::new();
 
@@ -87,8 +75,8 @@ impl<'a> AStar<'a> {
             node: src,
             real_weight: 0.0,
             estimated_weight: heuristic(
-                self.graph.nodes.get(src).unwrap(),
-                self.graph.nodes.get(dst).unwrap(),
+                self.graph.node(src).unwrap(),
+                self.graph.node(dst).unwrap(),
             ),
         });
 
@@ -121,7 +109,6 @@ impl<'a> AStar<'a> {
             }
 
             for edge in self.graph.connected_edges(node) {
-                //let new_distance = estimated_weight + edge.weight;
                 let real_weight = real_weight + edge.weight;
 
                 if real_weight
@@ -132,8 +119,8 @@ impl<'a> AStar<'a> {
                 {
                     let estimated_weight = real_weight
                         + heuristic(
-                            self.graph.nodes.get(edge.to).unwrap(),
-                            self.graph.nodes.get(dst).unwrap(),
+                            self.graph.node(edge.to).unwrap(),
+                            self.graph.node(dst).unwrap(),
                         );
 
                     node_data.insert(edge.to, (real_weight, Some(node)));
@@ -181,7 +168,7 @@ mod tests {
         let b = (lon2 - lon1) / 2.0;
         let c = a.sin().powi(2) + lat1.cos() * lat2.cos() * b.sin().powi(2);
         let d = 2.0 * c.sqrt().asin();
-        6371.0 * d
+        6371.0 * d / 110.0 / 3.6
     }
 
     #[test]
