@@ -1,7 +1,13 @@
 //! Minimal example
 use std::path::{Path, PathBuf};
 
-use ch_core::{constants::NodeId, dijkstra::Dijkstra, graph::Graph};
+use ch_core::{
+    constants::NodeId,
+    graph::Graph,
+    search::dijkstra::Dijkstra,
+    search::{astar::AStar, shortest_path::ShortestPath},
+    util::math::straight_line,
+};
 use reedline_repl_rs::clap::{value_parser, Arg, ArgMatches, Command};
 use reedline_repl_rs::{Repl, Result};
 
@@ -29,6 +35,37 @@ fn run_dijkstra(args: ArgMatches, context: &mut Context) -> Result<Option<String
             path.push_str(&format!("{}\n", node));
         }
         path.push_str(&format!("Took: {:?}", dijkstra.stats.duration));
+        Ok(Some(path))
+    } else {
+        Ok(Some("No path found".to_string()))
+    }
+}
+
+fn run_algorithm(args: ArgMatches, context: &mut Context) -> Result<Option<String>> {
+    let src = *args.get_one::<usize>("src").unwrap();
+    let dst = *args.get_one::<usize>("dst").unwrap();
+
+    let (sp, stats) = match args.get_one::<String>("algo").unwrap().as_str() {
+        "dijk" => {
+            let mut d = Dijkstra::new(&context.graph);
+            (d.run(src, dst), d.stats)
+        }
+        "astar" => {
+            let mut a = AStar::new(&context.graph);
+            (a.run(src, dst), a.stats)
+        }
+        _ => panic!("Unknown algorithm"),
+    };
+
+    if let Some(sp) = sp {
+        let mut path = String::new();
+        for node in sp.nodes {
+            path.push_str(&format!("{}\n", node));
+        }
+        path.push_str(&format!(
+            "Took: {:?} / {} nodes settled",
+            stats.duration, stats.nodes_settled
+        ));
         Ok(Some(path))
     } else {
         Ok(Some("No path found".to_string()))
@@ -80,6 +117,31 @@ impl Context {
     }
 }
 
+trait Runnable {
+    fn run(&mut self, src: NodeId, dst: NodeId) -> Option<ShortestPath>;
+    fn stats(&self) -> &ch_core::statistics::Stats;
+}
+
+impl Runnable for Dijkstra<'_> {
+    fn run(&mut self, src: NodeId, dst: NodeId) -> Option<ShortestPath> {
+        self.search(src, dst)
+    }
+
+    fn stats(&self) -> &ch_core::statistics::Stats {
+        &self.stats
+    }
+}
+
+impl Runnable for AStar<'_> {
+    fn run(&mut self, src: NodeId, dst: NodeId) -> Option<ShortestPath> {
+        self.search(src, dst, straight_line)
+    }
+
+    fn stats(&self) -> &ch_core::statistics::Stats {
+        &self.stats
+    }
+}
+
 fn main() -> Result<()> {
     // Init Graph
     let path_to_pbf = std::env::args().nth(1).expect("No path to PBF file given");
@@ -120,6 +182,30 @@ fn main() -> Result<()> {
                 )
                 .about("Measure `n` random shortest paths calculations"),
             measure_dijkstra,
+        )
+        .with_command(
+            Command::new("run")
+                .arg(
+                    Arg::new("algo")
+                        .value_parser(["dijk", "astar"])
+                        .default_value("dijk")
+                        .required(true)
+                        .help("Name of algorithm"),
+                )
+                .arg(
+                    Arg::new("src")
+                        .value_parser(value_parser!(usize))
+                        .required(true)
+                        .help("ID of source node"),
+                )
+                .arg(
+                    Arg::new("dst")
+                        .value_parser(value_parser!(usize))
+                        .required(true)
+                        .help("ID of destination node"),
+                )
+                .about("Runs the selected algorithm"),
+            run_algorithm,
         );
 
     repl.run()

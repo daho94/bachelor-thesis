@@ -3,6 +3,8 @@ import * as maptalks from "maptalks";
 import { MapOptions } from "maptalks";
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
+import markerS from "../assets/marker_s.png";
+import markerZ from "../assets/marker_z.png";
 
 const baseOptions: MapOptions = {
   attribution: false,
@@ -10,7 +12,6 @@ const baseOptions: MapOptions = {
   minZoom: 3,
   maxZoom: 26,
   center: [11.772802012995772, 48.10616515447348],
-  zoomControl: true,
 };
 
 export function MapTalks(props: { edges: any[][]; nodes: any[] }) {
@@ -29,12 +30,18 @@ export function MapTalks(props: { edges: any[][]; nodes: any[] }) {
     editable: true,
     cursor: "pointer",
     draggable: true,
+    symbol: {
+      markerFile: markerS,
+      markerWidth: 30,
+      markerHeight: 30,
+    },
+    zIndex: 100,
     dragShadow: false, // display a shadow during dragging
     drawOnAxis: null, // force dragging stick on a axis, can be: x, y
   }).on("dragend", async () => {
     let pathResult = await invoke("calc_path", {
-      srcCoords: [target.getCenter().y, target.getCenter().x],
-      dstCoords: [start.getCenter().y, start.getCenter().x],
+      srcCoords: [start.getCenter().y, start.getCenter().x],
+      dstCoords: [target.getCenter().y, target.getCenter().x],
     });
     setPathResult(pathResult);
   });
@@ -43,13 +50,19 @@ export function MapTalks(props: { edges: any[][]; nodes: any[] }) {
     visible: true,
     editable: false,
     cursor: "pointer",
+    symbol: {
+      markerFile: markerZ,
+      markerWidth: 30,
+      markerHeight: 30,
+    },
+    zIndex: 100,
     draggable: true,
     dragShadow: false, // display a shadow during dragging
     drawOnAxis: null, // force dragging stick on a axis, can be: x, y
   }).on("dragend", async () => {
     let pathResult = await invoke("calc_path", {
-      srcCoords: [target.getCenter().y, target.getCenter().x],
-      dstCoords: [start.getCenter().y, start.getCenter().x],
+      srcCoords: [start.getCenter().y, start.getCenter().x],
+      dstCoords: [target.getCenter().y, target.getCenter().x],
     });
     setPathResult(pathResult);
   });
@@ -135,7 +148,7 @@ export function MapTalks(props: { edges: any[][]; nodes: any[] }) {
 
     // Skip every second edge because they are duplicates (bidirectional)
     let polylines = props.edges
-      .filter((_, i) => i % 2 === 0)
+      // .filter((_, i) => i % 2 === 0)
       .map((edge) => {
         return new maptalks.LineString(
           [

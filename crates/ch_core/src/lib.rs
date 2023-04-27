@@ -1,5 +1,5 @@
 pub mod constants;
-pub mod dijkstra;
 pub mod graph;
-pub mod priority_queue;
+pub mod search;
 pub mod statistics;
+pub mod util;

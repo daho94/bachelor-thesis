@@ -1,19 +1,44 @@
+use std::collections::BinaryHeap;
+
 use crate::constants::{NodeId, Weight};
 use crate::graph::*;
-use crate::priority_queue::*;
+use crate::search::shortest_path::ShortestPath;
 use crate::statistics::Stats;
 use log::{debug, info};
 use rustc_hash::FxHashMap;
 
-#[derive(Debug, PartialEq)]
-pub struct ShortestPath {
-    pub nodes: Vec<NodeId>,
-    pub weight: Weight,
+#[derive(Debug)]
+struct Candidate {
+    node: NodeId,
+    weight: Weight,
 }
 
-impl ShortestPath {
-    fn new(nodes: Vec<NodeId>, weight: Weight) -> Self {
-        ShortestPath { nodes, weight }
+impl Candidate {
+    fn new(node: NodeId, weight: Weight) -> Self {
+        Self { node, weight }
+    }
+}
+
+impl PartialOrd for Candidate {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        other.weight.partial_cmp(&self.weight)
+    }
+}
+
+impl PartialEq for Candidate {
+    fn eq(&self, other: &Self) -> bool {
+        other.weight == self.weight
+    }
+}
+
+impl Eq for Candidate {}
+
+impl Ord for Candidate {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        other
+            .weight
+            .partial_cmp(&self.weight)
+            .unwrap_or(std::cmp::Ordering::Equal)
     }
 }
 
@@ -42,35 +67,19 @@ impl<'a> Dijkstra<'a> {
         let mut node_data: FxHashMap<NodeId, (Weight, Option<NodeId>)> = FxHashMap::default();
         node_data.insert(src, (0.0, None));
 
-        let mut queue = PriorityQueue::new();
+        let mut queue = BinaryHeap::new();
 
-        queue.push(HeapItem::new(0.0, src));
+        queue.push(Candidate::new(src, 0.0));
 
-        while let Some(HeapItem { distance, node }) = queue.pop() {
+        while let Some(Candidate { weight, node }) = queue.pop() {
             self.stats.nodes_settled += 1;
 
             if node == dst {
-                let mut path = vec![node];
-                let mut previous_node = node_data.get(&node)?.1?;
-                while let Some(prev_node) = node_data.get(&previous_node)?.1 {
-                    path.push(previous_node);
-                    previous_node = prev_node;
-                }
-                path.push(src);
-                path.reverse();
-
-                self.stats.finish();
-                debug!("Path found: {:?}", path);
-                info!(
-                    "Path found: {:?}/{} nodes settled",
-                    self.stats.duration.unwrap(),
-                    self.stats.nodes_settled
-                );
-                return Some(ShortestPath::new(path, distance));
+                break;
             }
 
             for edge in self.graph.connected_edges(node) {
-                let new_distance = distance + edge.weight;
+                let new_distance = weight + edge.weight;
                 if new_distance
                     < node_data
                         .get(&edge.to)
@@ -78,18 +87,29 @@ impl<'a> Dijkstra<'a> {
                         .0
                 {
                     node_data.insert(edge.to, (new_distance, Some(node)));
-                    queue.push(HeapItem::new(new_distance, edge.to));
+                    queue.push(Candidate::new(edge.to, new_distance));
                 }
             }
         }
-
         self.stats.finish();
-        info!(
-            "No path found: {:?}/{} nodes settled",
-            self.stats.duration.unwrap(),
-            self.stats.nodes_settled
-        );
-        None
+
+        let sp = super::reconstruct_path(dst, src, &node_data);
+        if sp.is_some() {
+            debug!("Path found: {:?}", sp);
+            info!(
+                "Path found: {:?}/{} nodes settled",
+                self.stats.duration.unwrap(),
+                self.stats.nodes_settled
+            );
+        } else {
+            info!(
+                "No path found: {:?}/{} nodes settled",
+                self.stats.duration.unwrap(),
+                self.stats.nodes_settled
+            );
+        }
+
+        sp
     }
 }
 

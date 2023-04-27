@@ -3,7 +3,7 @@
     windows_subsystem = "windows"
 )]
 
-use ch_core::dijkstra::Dijkstra;
+use ch_core::search::dijkstra::Dijkstra;
 use log::info;
 use serde::Serialize;
 use std::time::Instant;

@@ -9,11 +9,18 @@ edition = "2021"
 [dev-dependencies]
 criterion = { version = "0.4.0", features = ["html_reports"] }
 ch_core = { path = "../crates/ch_core" }
+osm_reader = { path = "../crates/osm_reader" }
 rand = "0.8"
 
 [[bench]]
-name = "dijkstra_on_input_graph"
-path = "search/dijkstra_on_input_graph.rs"
+name = "astar_vs_dijkstra"
+path = "search/astar_vs_dijkstra.rs"
+harness = false
+
+
+[[bench]]
+name = "osm_reader"
+path = "osm_reader/parse_pbf.rs"
 harness = false
 
 [profile.release]
