@@ -1,11 +1,13 @@
 use ch_core::{
-    dijkstra::Dijkstra,
     graph::{Edge, Graph, GraphBuilder, Node},
+    search::astar::AStar,
+    search::dijkstra::Dijkstra,
+    util::math::straight_line,
 };
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use rand::prelude::*;
 
-criterion_group!(benches, dijkstra);
+criterion_group!(benches, criterion_benchmark);
 criterion_main!(benches);
 
 fn gen_rand_graph(number_nodes: usize) -> Graph {
@@ -30,19 +32,21 @@ fn gen_rand_graph(number_nodes: usize) -> Graph {
         .build()
 }
 
-fn dijkstra(c: &mut Criterion) {
-    let mut graphs: Vec<Graph> = (15..16).map(|i| gen_rand_graph(2usize.pow(i))).collect();
+fn criterion_benchmark(c: &mut Criterion) {
+    let mut graphs: Vec<Graph> = [1000, 50_000, 100_000]
+        .iter()
+        .map(|i| gen_rand_graph(*i))
+        .collect();
 
     let mut path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.push("../crates/osm_reader/data/saarland_pp2.osm.pbf");
     graphs.push(Graph::from_pbf(&path).unwrap());
 
-    let mut group = c.benchmark_group("dijkstra");
+    let mut group = c.benchmark_group("astar_vs_dijkstra");
     let mut rng = rand::thread_rng();
     for graph in graphs {
-        group.throughput(criterion::Throughput::Elements(graph.nodes.len() as u64));
         group.bench_with_input(
-            BenchmarkId::from_parameter(graph.nodes.len()),
+            BenchmarkId::new("Dijkstra", graph.nodes.len()),
             &graph,
             |b, g| {
                 let src = g.nodes[rng.gen_range(0..g.nodes.len())].id;
@@ -50,6 +54,18 @@ fn dijkstra(c: &mut Criterion) {
                 let mut dijkstra = Dijkstra::new(g);
                 b.iter(|| {
                     dijkstra.search(src, dst);
+                });
+            },
+        );
+        group.bench_with_input(
+            BenchmarkId::new("AStar", graph.nodes.len()),
+            &graph,
+            |b, g| {
+                let src = g.nodes[rng.gen_range(0..g.nodes.len())].id;
+                let dst = g.nodes[rng.gen_range(0..g.nodes.len())].id;
+                let mut astar = AStar::new(g);
+                b.iter(|| {
+                    astar.search(src, dst, straight_line);
                 });
             },
         );

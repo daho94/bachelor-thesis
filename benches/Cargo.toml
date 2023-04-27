@@ -13,9 +13,10 @@ osm_reader = { path = "../crates/osm_reader" }
 rand = "0.8"
 
 [[bench]]
-name = "dijkstra_on_input_graph"
-path = "search/dijkstra_on_input_graph.rs"
+name = "astar_vs_dijkstra"
+path = "search/astar_vs_dijkstra.rs"
 harness = false
+
 
 [[bench]]
 name = "osm_reader"
