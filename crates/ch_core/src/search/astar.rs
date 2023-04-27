@@ -109,14 +109,14 @@ impl<'a> AStar<'a> {
                         .unwrap_or(&(std::f64::INFINITY, None))
                         .0
                 {
-                    let estimated_weight = real_weight
+                    let tentative_weight = real_weight
                         + heuristic(
                             self.graph.node(edge.to).unwrap(),
                             self.graph.node(dst).unwrap(),
                         );
 
                     node_data.insert(edge.to, (real_weight, Some(node)));
-                    queue.push(Candidate::new(edge.to, real_weight, estimated_weight));
+                    queue.push(Candidate::new(edge.to, real_weight, tentative_weight));
                 }
             }
         }
