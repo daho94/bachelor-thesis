@@ -6,6 +6,7 @@ use ch_core::{
     graph::Graph,
     search::dijkstra::Dijkstra,
     search::{astar::AStar, shortest_path::ShortestPath},
+    util::math::straight_line,
 };
 use reedline_repl_rs::clap::{value_parser, Arg, ArgMatches, Command};
 use reedline_repl_rs::{Repl, Result};
@@ -133,22 +134,6 @@ impl Runnable for Dijkstra<'_> {
 
 impl Runnable for AStar<'_> {
     fn run(&mut self, src: NodeId, dst: NodeId) -> Option<ShortestPath> {
-        fn straight_line(
-            src: &ch_core::graph::Node,
-            dst: &ch_core::graph::Node,
-        ) -> ch_core::constants::Weight {
-            // Calculate the distance between two nodes using the Haversine formula
-            let lat1 = src.lat.to_radians();
-            let lat2 = dst.lat.to_radians();
-            let lon1 = src.lon.to_radians();
-            let lon2 = dst.lon.to_radians();
-            let a = (lat2 - lat1) / 2.0;
-            let b = (lon2 - lon1) / 2.0;
-            let c = a.sin().powi(2) + lat1.cos() * lat2.cos() * b.sin().powi(2);
-            let d = 2.0 * c.sqrt().asin();
-
-            6371.0 * d / 110.0 * 3600.0 // Umrechnung in Sekunden
-        }
         self.search(src, dst, straight_line)
     }
 
