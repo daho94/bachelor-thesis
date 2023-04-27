@@ -146,6 +146,7 @@ impl<'a> AStar<'a> {
 #[cfg(test)]
 mod tests {
     use crate::graph::{Edge, GraphBuilder};
+    use crate::util::math::straight_line;
 
     use super::*;
 
@@ -156,19 +157,6 @@ mod tests {
 
     fn null_heuristic(_: &Node, _: &Node) -> Weight {
         0.0
-    }
-
-    fn airline(src: &Node, dst: &Node) -> Weight {
-        // Calculate the distance between two nodes using the Haversine formula
-        let lat1 = src.lat.to_radians();
-        let lat2 = dst.lat.to_radians();
-        let lon1 = src.lon.to_radians();
-        let lon2 = dst.lon.to_radians();
-        let a = (lat2 - lat1) / 2.0;
-        let b = (lon2 - lon1) / 2.0;
-        let c = a.sin().powi(2) + lat1.cos() * lat2.cos() * b.sin().powi(2);
-        let d = 2.0 * c.sqrt().asin();
-        6371.0 * d / 110.0 / 3.6
     }
 
     #[test]
@@ -202,9 +190,9 @@ mod tests {
             13.0,
             astar.search(0, 4, null_heuristic),
         );
-        assert_path(vec![6, 3], 20.0, astar.search(6, 3, airline));
-        assert_path(vec![4], 0.0, astar.search(4, 4, airline));
-        assert_path(vec![1, 2, 3, 4], 22.0, astar.search(1, 4, airline));
+        assert_path(vec![6, 3], 20.0, astar.search(6, 3, straight_line));
+        assert_path(vec![4], 0.0, astar.search(4, 4, straight_line));
+        assert_path(vec![1, 2, 3, 4], 22.0, astar.search(1, 4, straight_line));
     }
 
     #[test]
