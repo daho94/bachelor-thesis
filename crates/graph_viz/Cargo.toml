@@ -10,3 +10,7 @@ egui_graphs = "*"
 egui = "*"
 eframe = "0.21.3"
 ch_core = { path = "../ch_core" }
+
+[profile.release]
+lto = true
+panic = "abort"
