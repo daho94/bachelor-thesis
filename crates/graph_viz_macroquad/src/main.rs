@@ -1,3 +1,5 @@
+use std::f32::MAX;
+
 use ch_core::graph::Graph;
 use macroquad::prelude::*;
 
@@ -7,7 +9,7 @@ fn window_conf() -> Conf {
     Conf {
         window_title: "Graph View".to_string(),
         fullscreen: false,
-        window_resizable: false,
+        window_resizable: true,
         window_width: 1280,
         window_height: 720,
         ..Default::default()
@@ -20,7 +22,7 @@ fn draw_graph(lines: &[(Vec2, Vec2)], bbox: &(Vec2, Vec2)) {
     let Vec2 { x: x_max, y: y_max } = bbox.1;
 
     // Draw all edges and scale according to screen size
-    for (from, to) in lines {
+    for (from, to) in lines.iter() {
         let from = vec2(
             screen_size * (from.x - x_min) / (x_max - x_min),
             screen_size * (from.y - y_min) / (y_max - y_min),
@@ -29,7 +31,21 @@ fn draw_graph(lines: &[(Vec2, Vec2)], bbox: &(Vec2, Vec2)) {
             screen_size * (to.x - x_min) / (x_max - x_min),
             screen_size * (to.y - y_min) / (y_max - y_min),
         );
-        draw_line(from.x, from.y, to.x, to.y, 1.0, BLACK);
+
+        // Only render lines which are visible on screen
+        if from.x < 0.0
+            || from.x > screen_width()
+            || from.y < 0.0
+            || from.y > screen_height()
+            || to.x < 0.0
+            || to.x > screen_width()
+            || to.y < 0.0
+            || to.y > screen_height()
+        {
+            continue;
+        }
+
+        draw_line(from.x, from.y, to.x, to.y, 1.0, GRAY);
     }
 }
 
@@ -41,10 +57,31 @@ fn spherical_to_cartesian(lat: f32, lon: f32) -> (f32, f32) {
     (y, x)
 }
 
+fn calc_bbox(graph_bbox: &(Vec2, Vec2), target: (f32, f32), zoom: f32) -> (Vec2, Vec2) {
+    // visible_bbox shrinks when zooming
+    let old_width = graph_bbox.1.x - graph_bbox.0.x;
+    let old_height = graph_bbox.1.y - graph_bbox.0.y;
+
+    let new_width = old_width / zoom;
+    let new_height = old_height / zoom;
+    (
+        vec2(
+            graph_bbox.0.x + target.0 + (old_width - new_width) / 2.0,
+            graph_bbox.0.y + target.1 + (old_height - new_height) / 2.0,
+        ),
+        vec2(
+            graph_bbox.1.x + target.0 - (old_width - new_width) / 2.0,
+            graph_bbox.1.y + target.1 - (old_height - new_height) / 2.0,
+        ),
+    )
+}
+
 #[macroquad::main(window_conf)]
 async fn main() {
-    // let pbf_path = std::env::args().nth(1).expect("No path to PBF file given");
-    let pbf_path = r"F:\Dev\uni\BA\bachelor_thesis\crates\osm_reader\data\vaterstetten_pp.osm.pbf";
+    let pbf_path = std::env::args().nth(1).unwrap_or(
+        r"F:\Dev\uni\BA\bachelor_thesis\crates\osm_reader\data\vaterstetten_pp.osm.pbf".into(),
+    );
+
     let g = Graph::from_pbf(std::path::Path::new(&pbf_path)).unwrap();
 
     let mut lines = Vec::with_capacity(g.edges.len());
@@ -89,8 +126,41 @@ async fn main() {
         ),
     );
 
+    // Camera settings
+    let mut zoom = 1.0;
+    let mut target = (0., 0.);
+    let mut visible_bbox = calc_bbox(&graph_bbox, target, zoom);
+
     loop {
-        clear_background(WHITE);
+        clear_background(DARKGRAY);
+
+        let mut move_factor = 0.00001;
+        if is_key_down(KeyCode::W) {
+            target.1 -= move_factor;
+        }
+        if is_key_down(KeyCode::S) {
+            target.1 += move_factor;
+        }
+        if is_key_down(KeyCode::A) {
+            target.0 -= move_factor;
+        }
+        if is_key_down(KeyCode::D) {
+            target.0 += move_factor;
+        }
+        // Zoom in and out with mouse wheel
+        match mouse_wheel() {
+            (_x, y) if y != 0.0 => {
+                if is_key_down(KeyCode::LeftControl) {
+                    // zoom *= 1.1f32.powf(y);
+                    let new_zoom: f32 = zoom + (y / 360.0) * 0.3;
+                    zoom = new_zoom.clamp(1.0, MAX);
+                }
+            }
+            _ => (),
+        }
+
+        // Recalculate visible bbox
+        visible_bbox = calc_bbox(&graph_bbox, target, zoom);
 
         egui_macroquad::ui(|egui_ctx| {
             egui::Window::new("egui ❤ macroquad").show(egui_ctx, |ui| {
@@ -99,7 +169,7 @@ async fn main() {
         });
 
         // Draw things before egui
-        draw_graph(&lines, &graph_bbox);
+        draw_graph(&lines, &visible_bbox);
 
         egui_macroquad::draw();
 

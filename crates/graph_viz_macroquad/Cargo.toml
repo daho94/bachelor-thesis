@@ -10,3 +10,7 @@ egui = "0.21.0"
 egui-macroquad = "0.15.0"
 macroquad = "0.3.25"
 ch_core = { path = "../ch_core" }
+
+[profile.release]
+lto = true
+panic = "abort"
