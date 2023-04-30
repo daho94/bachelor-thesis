@@ -1,6 +1,7 @@
 use std::f32::MAX;
 
 use ch_core::graph::Graph;
+use egui::gui_zoom::zoom_in;
 use macroquad::prelude::*;
 
 const EARTH_RADIUS: f32 = 6378137.0;
@@ -61,9 +62,13 @@ fn calc_bbox(graph_bbox: &(Vec2, Vec2), target: (f32, f32), zoom: f32) -> (Vec2,
     // visible_bbox shrinks when zooming
     let old_width = graph_bbox.1.x - graph_bbox.0.x;
     let old_height = graph_bbox.1.y - graph_bbox.0.y;
+    dbg!(old_width * EARTH_RADIUS);
+    dbg!(old_height * EARTH_RADIUS);
 
     let new_width = old_width / zoom;
     let new_height = old_height / zoom;
+    dbg!(new_width * EARTH_RADIUS);
+    dbg!(new_height * EARTH_RADIUS);
     (
         vec2(
             graph_bbox.0.x + target.0 + (old_width - new_width) / 2.0,
@@ -74,6 +79,48 @@ fn calc_bbox(graph_bbox: &(Vec2, Vec2), target: (f32, f32), zoom: f32) -> (Vec2,
             graph_bbox.1.y + target.1 - (old_height - new_height) / 2.0,
         ),
     )
+}
+#[derive(Debug)]
+struct Draggable {
+    position: Vec2,
+    is_dragging: bool,
+    last_mouse_position: Vec2,
+}
+
+impl Draggable {
+    fn new(position: Vec2) -> Self {
+        Self {
+            position,
+            is_dragging: false,
+            last_mouse_position: Vec2::default(),
+        }
+    }
+
+    fn update(&mut self, target: &mut (f32, f32)) {
+        let (x, y) = mouse_position();
+        let mouse_position = vec2(x, y);
+
+        if is_mouse_button_down(MouseButton::Right) {
+            if !self.is_dragging {
+                self.is_dragging = true;
+                self.last_mouse_position = mouse_position;
+            } else {
+                let displacement = mouse_position - self.last_mouse_position;
+                target.0 += displacement.x * -0.000001;
+                target.1 += displacement.y * -0.000001;
+                self.position += displacement;
+                self.last_mouse_position = mouse_position;
+            }
+        } else {
+            self.is_dragging = false;
+        }
+    }
+}
+fn is_mouse_over(position: Vec2) -> bool {
+    let (x, y) = mouse_position();
+    let mouse_position = vec2(x, y);
+    let distance_squared = (position - mouse_position).length_squared();
+    distance_squared <= 400.0
 }
 
 #[macroquad::main(window_conf)]
@@ -131,8 +178,11 @@ async fn main() {
     let mut target = (0., 0.);
     let mut visible_bbox = calc_bbox(&graph_bbox, target, zoom);
 
+    let mut draggable = Draggable::new(vec2(0.0, 0.0));
     loop {
         clear_background(DARKGRAY);
+
+        draggable.update(&mut target);
 
         let mut move_factor = 0.00001;
         if is_key_down(KeyCode::W) {
@@ -147,6 +197,7 @@ async fn main() {
         if is_key_down(KeyCode::D) {
             target.0 += move_factor;
         }
+
         // Zoom in and out with mouse wheel
         match mouse_wheel() {
             (_x, y) if y != 0.0 => {
