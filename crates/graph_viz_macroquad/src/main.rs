@@ -22,26 +22,39 @@ fn draw_graph(lines: &[(Vec2, Vec2)], bbox: &(Vec2, Vec2)) {
     let Vec2 { x: x_min, y: y_min } = bbox.0;
     let Vec2 { x: x_max, y: y_max } = bbox.1;
 
+    let width = x_max - x_min;
+    let height = y_max - y_min;
+
+    let scale_x = screen_width() / width;
+    let scale_y = screen_height() / height;
+
+    let scale = scale_x.min(scale_y);
+
+    let graph_center = vec2((x_max + x_min) / 2.0, (y_max + y_min) / 2.0);
+
+    let offset_x = (screen_width() - width * scale_x) / 2.0;
+    let offset_y = (screen_height() - height * scale_y) / 2.0;
+
     // Draw all edges and scale according to screen size
     for (from, to) in lines.iter() {
         let from = vec2(
-            screen_size * (from.x - x_min) / (x_max - x_min),
-            screen_size * (from.y - y_min) / (y_max - y_min),
+            (from.x - x_min) * scale_x + offset_x,
+            (from.y - y_min) * scale_y + offset_y,
         );
         let to = vec2(
-            screen_size * (to.x - x_min) / (x_max - x_min),
-            screen_size * (to.y - y_min) / (y_max - y_min),
+            (to.x - x_min) * scale_x + offset_x,
+            (to.y - y_min) * scale_y + offset_y,
         );
 
-        // Only render lines which are visible on screen
+        // Only render lines where at least one point is visible on screen
         if from.x < 0.0
-            || from.x > screen_width()
-            || from.y < 0.0
-            || from.y > screen_height()
-            || to.x < 0.0
-            || to.x > screen_width()
-            || to.y < 0.0
-            || to.y > screen_height()
+            && from.x > screen_width()
+            && from.y < 0.0
+            && from.y > screen_height()
+            && to.x < 0.0
+            && to.x > screen_width()
+            && to.y < 0.0
+            && to.y > screen_height()
         {
             continue;
         }
@@ -62,13 +75,9 @@ fn calc_bbox(graph_bbox: &(Vec2, Vec2), target: (f32, f32), zoom: f32) -> (Vec2,
     // visible_bbox shrinks when zooming
     let old_width = graph_bbox.1.x - graph_bbox.0.x;
     let old_height = graph_bbox.1.y - graph_bbox.0.y;
-    dbg!(old_width * EARTH_RADIUS);
-    dbg!(old_height * EARTH_RADIUS);
 
-    let new_width = old_width / zoom;
-    let new_height = old_height / zoom;
-    dbg!(new_width * EARTH_RADIUS);
-    dbg!(new_height * EARTH_RADIUS);
+    let new_width = old_width * zoom;
+    let new_height = old_height * zoom;
     (
         vec2(
             graph_bbox.0.x + target.0 + (old_width - new_width) / 2.0,
@@ -96,7 +105,7 @@ impl Draggable {
         }
     }
 
-    fn update(&mut self, target: &mut (f32, f32)) {
+    fn update(&mut self, bbox: &(Vec2, Vec2), target: &mut (f32, f32), zoom: f32) {
         let (x, y) = mouse_position();
         let mouse_position = vec2(x, y);
 
@@ -105,9 +114,38 @@ impl Draggable {
                 self.is_dragging = true;
                 self.last_mouse_position = mouse_position;
             } else {
-                let displacement = mouse_position - self.last_mouse_position;
-                target.0 += displacement.x * -0.000001;
-                target.1 += displacement.y * -0.000001;
+                let displacement = (mouse_position - self.last_mouse_position);
+                dbg!(&displacement);
+
+                let w = bbox.1.x - bbox.0.x;
+                let h = bbox.1.y - bbox.0.y;
+                let move_factor = 0.01;
+
+                match displacement {
+                    Vec2 { x: 0.0, y: 0.0 } => {}
+                    Vec2 { x: 0.0, y } => {
+                        target.1 += y.signum() * -move_factor * h;
+                    }
+                    Vec2 { x, y: 0.0 } => {
+                        target.0 += x.signum() * -move_factor * w;
+                    }
+                    Vec2 { x, y } => {
+                        // let angle = y.atan2(x);
+                        // target.0 += x.signum() * -move_factor * w;
+                        // target.1 += angle.tan() * x.signum() * -move_factor * w;
+                        // target.0 += x.signum() * -move_factor * w;
+                        // target.1 += y.signum() * -move_factor * h;
+                        if x.abs() > y.abs() {
+                            target.0 += x.signum() * -move_factor * w;
+                        } else if x.abs() == y.abs() {
+                            target.0 += x.signum() * -move_factor * w;
+                            target.1 += y.signum() * -move_factor * h;
+                        } else {
+                            target.1 += y.signum() * -move_factor * h;
+                        }
+                    }
+                }
+
                 self.position += displacement;
                 self.last_mouse_position = mouse_position;
             }
@@ -115,12 +153,6 @@ impl Draggable {
             self.is_dragging = false;
         }
     }
-}
-fn is_mouse_over(position: Vec2) -> bool {
-    let (x, y) = mouse_position();
-    let mouse_position = vec2(x, y);
-    let distance_squared = (position - mouse_position).length_squared();
-    distance_squared <= 400.0
 }
 
 #[macroquad::main(window_conf)]
@@ -182,7 +214,7 @@ async fn main() {
     loop {
         clear_background(DARKGRAY);
 
-        draggable.update(&mut target);
+        draggable.update(&visible_bbox, &mut target, zoom);
 
         let mut move_factor = 0.00001;
         if is_key_down(KeyCode::W) {
@@ -198,13 +230,19 @@ async fn main() {
             target.0 += move_factor;
         }
 
+        if is_key_down(KeyCode::R) {
+            zoom = 1.0;
+            target = (0.0, 0.0);
+        }
+
         // Zoom in and out with mouse wheel
         match mouse_wheel() {
             (_x, y) if y != 0.0 => {
                 if is_key_down(KeyCode::LeftControl) {
-                    // zoom *= 1.1f32.powf(y);
-                    let new_zoom: f32 = zoom + (y / 360.0) * 0.3;
-                    zoom = new_zoom.clamp(1.0, MAX);
+                    // Increase zoom speed linearly
+                    let zoom_factor = 0.05 * zoom;
+                    let new_zoom: f32 = zoom - y.signum() * zoom_factor;
+                    zoom = new_zoom.clamp(0.0, 1.0);
                 }
             }
             _ => (),
