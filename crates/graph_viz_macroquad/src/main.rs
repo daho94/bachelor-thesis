@@ -67,16 +67,16 @@ async fn main() {
         r"F:\Dev\uni\BA\bachelor_thesis\crates\osm_reader\data\vaterstetten_pp.osm.pbf".into(),
     );
 
-    let g = Graph::from_pbf(std::path::Path::new(&pbf_path)).unwrap();
+    let g = Graph::<u32>::from_pbf(std::path::Path::new(&pbf_path)).unwrap();
 
-    let mut lines = Vec::with_capacity(g.edges.len());
+    let mut lines = Vec::with_capacity(g.edges_out.len());
 
     let (mut x_min, mut y_min, mut x_max, mut y_max) = (MAX, MAX, MIN, MIN);
     // Transform all coordinates from spherical to cartesian
     // Also find the bounding box of the graph
-    for edge in &g.edges {
-        let from = edge.from;
-        let to = edge.to;
+    for edge in g.edges() {
+        let from = edge.source;
+        let to = edge.target;
         let (x_from, y_from) = spherical_to_cartesian(
             g.node(from).unwrap().lat as f32,
             g.node(from).unwrap().lon as f32,

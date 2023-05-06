@@ -2,8 +2,8 @@
 use std::path::{Path, PathBuf};
 
 use ch_core::{
-    constants::NodeId,
-    graph::Graph,
+    constants::OsmId,
+    graph::{node_index, DefaultIdx, Graph},
     search::dijkstra::Dijkstra,
     search::{astar::AStar, shortest_path::ShortestPath},
     util::math::straight_line,
@@ -18,7 +18,7 @@ fn info(_args: ArgMatches, context: &mut Context) -> Result<Option<String>> {
     Ok(Some(format!(
         "Graph has {} nodes and {} edges",
         context.graph.nodes.len(),
-        context.graph.edges.len()
+        context.graph.edges_out.iter().flatten().count()
     )))
 }
 
@@ -27,12 +27,12 @@ fn run_dijkstra(args: ArgMatches, context: &mut Context) -> Result<Option<String
     let dst = *args.get_one::<usize>("dst").unwrap();
 
     let mut dijkstra = Dijkstra::new(&context.graph);
-    let sp = dijkstra.search(src, dst);
+    let sp = dijkstra.search(node_index(src), node_index(dst));
 
     if let Some(sp) = sp {
         let mut path = String::new();
         for node in sp.nodes {
-            path.push_str(&format!("{}\n", node));
+            path.push_str(&format!("{:?}\n", node));
         }
         path.push_str(&format!("Took: {:?}", dijkstra.stats.duration));
         Ok(Some(path))
@@ -60,7 +60,7 @@ fn run_algorithm(args: ArgMatches, context: &mut Context) -> Result<Option<Strin
     if let Some(sp) = sp {
         let mut path = String::new();
         for node in sp.nodes {
-            path.push_str(&format!("{}\n", node));
+            path.push_str(&format!("{:?}\n", node));
         }
         path.push_str(&format!(
             "Took: {:?} / {} nodes settled",
@@ -79,18 +79,18 @@ fn measure_dijkstra(args: ArgMatches, context: &mut Context) -> Result<Option<St
 
     // Select n random start and end nodes
     let mut rng = rand::thread_rng();
-    let src_nodes: Vec<NodeId> = (0..n)
-        .map(|_| context.graph.nodes[rng.gen_range(0..context.graph.nodes.len())].id)
+    let src_nodes: Vec<OsmId> = (0..n)
+        .map(|_| rng.gen_range(0..context.graph.nodes.len()))
         .collect();
-    let dst_nodes: Vec<NodeId> = (0..n)
-        .map(|_| context.graph.nodes[rng.gen_range(0..context.graph.nodes.len())].id)
+    let dst_nodes: Vec<OsmId> = (0..n)
+        .map(|_| rng.gen_range(0..context.graph.nodes.len()))
         .collect();
 
     let mut res = String::new();
     // Run Dijkstra for each pair of nodes
     for (src, dst) in src_nodes.iter().zip(dst_nodes.iter()) {
         let mut dijkstra = Dijkstra::new(&context.graph);
-        let sp = dijkstra.search(*src, *dst);
+        let sp = dijkstra.search(node_index(*src), node_index(*dst));
         if sp.is_none() {
             continue;
         }
@@ -118,13 +118,13 @@ impl Context {
 }
 
 trait Runnable {
-    fn run(&mut self, src: NodeId, dst: NodeId) -> Option<ShortestPath>;
+    fn run(&mut self, src: OsmId, dst: OsmId) -> Option<ShortestPath<DefaultIdx>>;
     fn stats(&self) -> &ch_core::statistics::Stats;
 }
 
 impl Runnable for Dijkstra<'_> {
-    fn run(&mut self, src: NodeId, dst: NodeId) -> Option<ShortestPath> {
-        self.search(src, dst)
+    fn run(&mut self, src: OsmId, dst: OsmId) -> Option<ShortestPath<DefaultIdx>> {
+        self.search(node_index(src), node_index(dst))
     }
 
     fn stats(&self) -> &ch_core::statistics::Stats {
@@ -133,8 +133,8 @@ impl Runnable for Dijkstra<'_> {
 }
 
 impl Runnable for AStar<'_> {
-    fn run(&mut self, src: NodeId, dst: NodeId) -> Option<ShortestPath> {
-        self.search(src, dst, straight_line)
+    fn run(&mut self, src: OsmId, dst: OsmId) -> Option<ShortestPath<DefaultIdx>> {
+        self.search(node_index(src), node_index(dst), straight_line)
     }
 
     fn stats(&self) -> &ch_core::statistics::Stats {
@@ -145,7 +145,7 @@ impl Runnable for AStar<'_> {
 fn main() -> Result<()> {
     // Init Graph
     let path_to_pbf = std::env::args().nth(1).expect("No path to PBF file given");
-    let graph = Graph::from_pbf(Path::new(&path_to_pbf)).unwrap();
+    let graph = Graph::<DefaultIdx>::from_pbf(Path::new(&path_to_pbf)).unwrap();
     let context = Context::new(graph);
 
     let mut repl = Repl::new(context)

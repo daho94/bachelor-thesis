@@ -6,8 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-egui_graphs = "*"
-egui = "*"
+egui_graphs = "0.1"
+egui = "0.21.0"
 eframe = "0.21.3"
 ch_core = { path = "../ch_core" }
 

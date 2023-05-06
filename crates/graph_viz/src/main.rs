@@ -138,7 +138,7 @@ fn into_elements(graph: Graph) -> Elements {
     let mut nodes = HashMap::new();
     let mut edges = HashMap::new();
 
-    for node in graph.nodes {
+    for (i, node) in graph.nodes().enumerate() {
         let lat = node.lat as f32;
         let lon = node.lon as f32;
 
@@ -149,22 +149,26 @@ fn into_elements(graph: Graph) -> Elements {
         let mut node = Node::new(node.id, egui::Vec2::new(x, y));
         node.radius = NODE_RADIUS;
 
-        nodes.insert(node.id, node);
+        nodes.insert(i, node);
     }
 
-    for graph_edge in graph.edges {
-        let key = (graph_edge.from, graph_edge.to);
+    for graph_edge in graph.edges() {
+        let key = (graph_edge.source.index(), graph_edge.target.index());
         edges.entry(key).or_insert_with(Vec::new);
 
         let edge_list = edges.get_mut(&key).unwrap();
         let list_idx = edge_list.len();
 
-        let mut edge = Edge::new(graph_edge.from, graph_edge.to, list_idx);
+        let mut edge = Edge::new(
+            graph_edge.source.index(),
+            graph_edge.target.index(),
+            list_idx,
+        );
         edge.tip_size = EDGE_TIP_SIZE;
         edge_list.push(edge);
 
-        nodes.get_mut(&graph_edge.from).unwrap().radius += EDGE_SCALE_WEIGHT;
-        nodes.get_mut(&graph_edge.to).unwrap().radius += EDGE_SCALE_WEIGHT;
+        nodes.get_mut(&graph_edge.source.index()).unwrap().radius += EDGE_SCALE_WEIGHT;
+        nodes.get_mut(&graph_edge.target.index()).unwrap().radius += EDGE_SCALE_WEIGHT;
     }
 
     Elements::new(nodes, edges)
