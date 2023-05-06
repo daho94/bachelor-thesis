@@ -123,6 +123,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use crate::search::{assert_no_path, assert_path};
+
     use super::*;
 
     #[test]
@@ -132,28 +134,28 @@ mod tests {
         // 0 -> 5 -> 6 -  |
         // |         |  \ |
         // 1 -> 2 -> 3 -> 4
-        let mut g = Graph::<u32>::new();
+        let mut g = Graph::<DefaultIdx>::new();
 
         for i in 0..10 {
             g.add_node(Node::new(i, 0.0, 0.0));
         }
 
-        g.add_edge(Edge::new(NodeIndex::new(0), NodeIndex::new(1), 1.0));
-        g.add_edge(Edge::new(NodeIndex::new(1), NodeIndex::new(2), 1.0));
-        g.add_edge(Edge::new(NodeIndex::new(2), NodeIndex::new(3), 1.0));
-        g.add_edge(Edge::new(NodeIndex::new(3), NodeIndex::new(4), 20.0));
-        g.add_edge(Edge::new(NodeIndex::new(0), NodeIndex::new(5), 5.0));
-        g.add_edge(Edge::new(NodeIndex::new(5), NodeIndex::new(6), 1.0));
-        g.add_edge(Edge::new(NodeIndex::new(6), NodeIndex::new(4), 20.0));
-        g.add_edge(Edge::new(NodeIndex::new(6), NodeIndex::new(3), 20.0));
-        g.add_edge(Edge::new(NodeIndex::new(5), NodeIndex::new(7), 5.0));
-        g.add_edge(Edge::new(NodeIndex::new(7), NodeIndex::new(8), 1.0));
-        g.add_edge(Edge::new(NodeIndex::new(8), NodeIndex::new(9), 1.0));
-        g.add_edge(Edge::new(NodeIndex::new(9), NodeIndex::new(4), 1.0));
+        g.add_edge(Edge::new(node_index(0), node_index(1), 1.0));
+        g.add_edge(Edge::new(node_index(1), node_index(2), 1.0));
+        g.add_edge(Edge::new(node_index(2), node_index(3), 1.0));
+        g.add_edge(Edge::new(node_index(3), node_index(4), 20.0));
+        g.add_edge(Edge::new(node_index(0), node_index(5), 5.0));
+        g.add_edge(Edge::new(node_index(5), node_index(6), 1.0));
+        g.add_edge(Edge::new(node_index(6), node_index(4), 20.0));
+        g.add_edge(Edge::new(node_index(6), node_index(3), 20.0));
+        g.add_edge(Edge::new(node_index(5), node_index(7), 5.0));
+        g.add_edge(Edge::new(node_index(7), node_index(8), 1.0));
+        g.add_edge(Edge::new(node_index(8), node_index(9), 1.0));
+        g.add_edge(Edge::new(node_index(9), node_index(4), 1.0));
 
         let mut d = Dijkstra::new(&g);
 
-        assert_no_path(d.search(NodeIndex::new(4), NodeIndex::new(0))); // Cannot be reached
+        assert_no_path(d.search(node_index(4), node_index(0))); // Cannot be reached
         assert_path(vec![0, 5, 7, 8, 9, 4], 13.0, d.search(0.into(), 4.into()));
         assert_path(vec![6, 3], 20.0, d.search(6.into(), 3.into()));
         assert_path(vec![4], 0.0, d.search(4.into(), 4.into()));
@@ -164,15 +166,15 @@ mod tests {
     fn disconnected_graph() {
         // 0 -> 1 -> 2
         // 3 -> 4 -> 5
-        let mut g = Graph::<u32>::new();
+        let mut g = Graph::<DefaultIdx>::new();
         for i in 0..6 {
             g.add_node(Node::new(i, 0.0, 0.0));
         }
 
-        g.add_edge(Edge::new(NodeIndex::new(0), NodeIndex::new(1), 1.0));
-        g.add_edge(Edge::new(NodeIndex::new(1), NodeIndex::new(2), 1.0));
-        g.add_edge(Edge::new(NodeIndex::new(3), NodeIndex::new(4), 3.0));
-        g.add_edge(Edge::new(NodeIndex::new(4), NodeIndex::new(5), 1.0));
+        g.add_edge(Edge::new(node_index(0), node_index(1), 1.0));
+        g.add_edge(Edge::new(node_index(1), node_index(2), 1.0));
+        g.add_edge(Edge::new(node_index(3), node_index(4), 3.0));
+        g.add_edge(Edge::new(node_index(4), node_index(5), 1.0));
 
         let mut d = Dijkstra::new(&g);
 
@@ -187,7 +189,7 @@ mod tests {
         // 0 -> 1
         // |    |
         // 2 -> 3
-        let mut g = Graph::<u32>::new();
+        let mut g = Graph::<DefaultIdx>::new();
         let a = g.add_node(Node::new(0, 0.0, 0.0));
         let b = g.add_node(Node::new(1, 0.0, 0.0));
         let c = g.add_node(Node::new(2, 0.0, 0.0));
@@ -201,23 +203,5 @@ mod tests {
         let mut d = Dijkstra::new(&g);
 
         assert_path(vec![0, 2, 3, 1], 3.0, d.search(a, b));
-    }
-
-    fn assert_no_path(path: Option<ShortestPath<DefaultIdx>>) {
-        assert_eq!(None, path);
-    }
-
-    fn assert_path(
-        expected_path: Vec<usize>,
-        expected_weight: Weight,
-        path: Option<ShortestPath<DefaultIdx>>,
-    ) {
-        assert_eq!(
-            Some(ShortestPath::new(
-                expected_path.iter().map(|i| NodeIndex::new(*i)).collect(),
-                expected_weight
-            )),
-            path
-        );
     }
 }

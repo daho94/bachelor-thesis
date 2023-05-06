@@ -1,10 +1,10 @@
 use rustc_hash::FxHashMap;
 
-use crate::graph::{DefaultIdx, IndexType, NodeIndex};
+use crate::graph::{IndexType, NodeIndex};
 
 use self::shortest_path::ShortestPath;
 
-// pub mod astar;
+pub mod astar;
 pub mod dijkstra;
 pub mod shortest_path;
 
@@ -25,4 +25,27 @@ pub fn reconstruct_path<Idx: IndexType>(
     path.push(source);
     path.reverse();
     Some(ShortestPath::new(path, weight))
+}
+
+#[cfg(test)]
+fn assert_no_path(path: Option<ShortestPath<crate::graph::DefaultIdx>>) {
+    assert_eq!(None, path);
+}
+
+#[cfg(test)]
+fn assert_path(
+    expected_path: Vec<usize>,
+    expected_weight: crate::constants::Weight,
+    path: Option<ShortestPath<crate::graph::DefaultIdx>>,
+) {
+    assert_eq!(
+        Some(ShortestPath::new(
+            expected_path
+                .iter()
+                .map(|i| crate::graph::node_index(*i))
+                .collect(),
+            expected_weight
+        )),
+        path
+    );
 }

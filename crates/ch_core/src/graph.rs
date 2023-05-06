@@ -103,6 +103,11 @@ impl<Idx: IndexType> From<Idx> for NodeIndex<Idx> {
     }
 }
 
+/// Short version of `NodeIndex::new`
+pub fn node_index<Idx: IndexType>(index: usize) -> NodeIndex<Idx> {
+    NodeIndex::new(index)
+}
+
 /// Edge identifier.
 #[derive(Debug, Copy, Clone, Default, PartialEq, PartialOrd, Eq, Ord, Hash, Deserialize)]
 pub struct EdgeIndex<Idx = DefaultIdx>(Idx);
@@ -266,16 +271,24 @@ impl<Idx: IndexType> Graph<Idx> {
         self.nodes.get(node_idx.index())
     }
 
-    pub fn nodes(&self) -> &[Node] {
-        &self.nodes
+    /// Returns an iterator over all nodes of the graph
+    pub fn nodes(&self) -> impl Iterator<Item = &Node> {
+        self.nodes.iter()
     }
 
-    pub fn edges(&self) -> &[Edge<Idx>] {
-        &self.edges
+    /// Returns an iterator over all edges of the graph
+    pub fn edges(&self) -> impl Iterator<Item = &Edge<Idx>> {
+        self.edges.iter()
     }
 
     pub fn neighbors_outgoing(&self, node_idx: NodeIndex<Idx>) -> impl Iterator<Item = &Edge<Idx>> {
         self.edges_out[node_idx.index()]
+            .iter()
+            .map(|edge_idx| &self.edges[edge_idx.index()])
+    }
+
+    pub fn neighbors_incoming(&self, node_idx: NodeIndex<Idx>) -> impl Iterator<Item = &Edge<Idx>> {
+        self.edges_in[node_idx.index()]
             .iter()
             .map(|edge_idx| &self.edges[edge_idx.index()])
     }
