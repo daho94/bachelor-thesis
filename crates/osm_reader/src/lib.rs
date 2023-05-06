@@ -1,6 +1,6 @@
 use osmpbf::{Element, IndexedReader};
 use rustc_hash::FxHashMap;
-use std::{fs::File, path::Path, str::FromStr};
+use std::{fs::File, io::BufWriter, path::Path, str::FromStr};
 
 mod road_types;
 use road_types::RoadType;
@@ -111,18 +111,22 @@ impl RoadGraph {
     pub fn write_csv(&self) -> anyhow::Result<()> {
         use std::io::Write;
 
-        let mut nodes_file = File::create("nodes.csv")?;
-        let mut edges_file = File::create("edges.csv")?;
+        let nodes_file = File::create("nodes.csv")?;
+        let edges_file = File::create("edges.csv")?;
 
-        writeln!(nodes_file, "id,lat,lon")?;
+        let mut nodes_writer = BufWriter::new(nodes_file);
+        let _ = nodes_writer.write("id,lat,lon\n".as_bytes())?;
         for (id, [lat, lon]) in self.nodes.iter() {
-            writeln!(nodes_file, "{},{},{}", id, lat, lon)?;
+            let _ = nodes_writer.write(format!("{},{},{}\n", id, lat, lon).as_bytes())?;
         }
+        nodes_writer.flush()?;
 
-        writeln!(edges_file, "from,to,weight")?;
+        let mut edges_writer = BufWriter::new(edges_file);
+        let _ = edges_writer.write("source,target,weight\n".as_bytes())?;
         for (from, to, weight) in self.arcs.iter() {
-            writeln!(edges_file, "{},{},{}", from, to, weight)?;
+            let _ = edges_writer.write(format!("{},{},{}\n", from, to, weight).as_bytes())?;
         }
+        edges_writer.flush()?;
 
         Ok(())
     }
