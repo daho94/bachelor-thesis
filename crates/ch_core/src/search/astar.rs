@@ -4,7 +4,7 @@ use log::{debug, info};
 use rustc_hash::FxHashMap;
 
 use crate::{
-    constants::{NodeId, Weight},
+    constants::{OsmId, Weight},
     graph::{Graph, Node},
     statistics::Stats,
 };
@@ -18,13 +18,13 @@ pub struct AStar<'a> {
 
 #[derive(Debug)]
 struct Candidate {
-    node: NodeId,
+    node: OsmId,
     real_weight: Weight,
     tentative_weight: Weight,
 }
 
 impl Candidate {
-    fn new(node: NodeId, real_weight: Weight, estimated_weight: Weight) -> Self {
+    fn new(node: OsmId, real_weight: Weight, estimated_weight: Weight) -> Self {
         Self {
             node,
             real_weight,
@@ -65,8 +65,8 @@ impl<'a> AStar<'a> {
 
     pub fn search(
         &mut self,
-        src: NodeId,
-        dst: NodeId,
+        src: OsmId,
+        dst: OsmId,
         heuristic: impl Fn(&Node, &Node) -> Weight,
     ) -> Option<ShortestPath> {
         self.stats.init();
@@ -77,7 +77,7 @@ impl<'a> AStar<'a> {
             return Some(ShortestPath::new(vec![src], 0.0));
         }
 
-        let mut node_data: FxHashMap<NodeId, (Weight, Option<NodeId>)> = FxHashMap::default();
+        let mut node_data: FxHashMap<OsmId, (Weight, Option<OsmId>)> = FxHashMap::default();
         node_data.insert(src, (0.0, None));
 
         let mut queue = BinaryHeap::new();
@@ -105,18 +105,18 @@ impl<'a> AStar<'a> {
 
                 if real_weight
                     < node_data
-                        .get(&edge.to)
+                        .get(&edge.target)
                         .unwrap_or(&(std::f64::INFINITY, None))
                         .0
                 {
                     let tentative_weight = real_weight
                         + heuristic(
-                            self.graph.node(edge.to).unwrap(),
+                            self.graph.node(edge.target).unwrap(),
                             self.graph.node(dst).unwrap(),
                         );
 
-                    node_data.insert(edge.to, (real_weight, Some(node)));
-                    queue.push(Candidate::new(edge.to, real_weight, tentative_weight));
+                    node_data.insert(edge.target, (real_weight, Some(node)));
+                    queue.push(Candidate::new(edge.target, real_weight, tentative_weight));
                 }
             }
         }
@@ -237,11 +237,7 @@ mod tests {
         assert_eq!(None, path);
     }
 
-    fn assert_path(
-        expected_path: Vec<NodeId>,
-        expected_weight: Weight,
-        path: Option<ShortestPath>,
-    ) {
+    fn assert_path(expected_path: Vec<OsmId>, expected_weight: Weight, path: Option<ShortestPath>) {
         assert_eq!(
             Some(ShortestPath::new(expected_path, expected_weight)),
             path

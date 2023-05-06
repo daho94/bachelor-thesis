@@ -27,7 +27,7 @@ impl Stats {
 #[cfg(test)]
 mod tests {
     use crate::{
-        graph::{Edge, GraphBuilder, Node},
+        graph::{Edge, Graph, Node, NodeIndex},
         search::dijkstra::Dijkstra,
     };
 
@@ -38,25 +38,27 @@ mod tests {
         // 0 -> 5 -> 6 -  |
         // |         |  \ |
         // 1 -> 2 -> 3 -> 4
-        let nodes = (0..10).map(|i| Node::new(i, 0.0, 0.0)).collect();
-        let g = GraphBuilder::new()
-            .add_edge(Edge::new(0, 1, 1.0))
-            .add_edge(Edge::new(1, 2, 1.0))
-            .add_edge(Edge::new(2, 3, 1.0))
-            .add_edge(Edge::new(3, 4, 20.0))
-            .add_edge(Edge::new(0, 5, 5.0))
-            .add_edge(Edge::new(5, 6, 1.0))
-            .add_edge(Edge::new(6, 4, 20.0))
-            .add_edge(Edge::new(6, 3, 20.0))
-            .add_edge(Edge::new(5, 7, 5.0))
-            .add_edge(Edge::new(7, 8, 1.0))
-            .add_edge(Edge::new(8, 9, 1.0))
-            .add_edge(Edge::new(9, 4, 1.0))
-            .add_nodes(nodes)
-            .build();
+        let mut g = Graph::<u32>::new();
+
+        for i in 0..10 {
+            g.add_node(Node::new(i, 0.0, 0.0));
+        }
+
+        g.add_edge(Edge::new(NodeIndex::new(0), NodeIndex::new(1), 1.0));
+        g.add_edge(Edge::new(NodeIndex::new(1), NodeIndex::new(2), 1.0));
+        g.add_edge(Edge::new(NodeIndex::new(2), NodeIndex::new(3), 1.0));
+        g.add_edge(Edge::new(NodeIndex::new(3), NodeIndex::new(4), 20.0));
+        g.add_edge(Edge::new(NodeIndex::new(0), NodeIndex::new(5), 5.0));
+        g.add_edge(Edge::new(NodeIndex::new(5), NodeIndex::new(6), 1.0));
+        g.add_edge(Edge::new(NodeIndex::new(6), NodeIndex::new(4), 20.0));
+        g.add_edge(Edge::new(NodeIndex::new(6), NodeIndex::new(3), 20.0));
+        g.add_edge(Edge::new(NodeIndex::new(5), NodeIndex::new(7), 5.0));
+        g.add_edge(Edge::new(NodeIndex::new(7), NodeIndex::new(8), 1.0));
+        g.add_edge(Edge::new(NodeIndex::new(8), NodeIndex::new(9), 1.0));
+        g.add_edge(Edge::new(NodeIndex::new(9), NodeIndex::new(4), 1.0));
 
         let mut d = Dijkstra::new(&g);
-        d.search(0, 4);
+        d.search(0.into(), 4.into());
 
         assert!(d.stats.duration.is_some());
 
