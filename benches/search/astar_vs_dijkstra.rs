@@ -1,5 +1,5 @@
 use ch_core::{
-    graph::{Edge, Graph, GraphBuilder, Node},
+    graph::{node_index, Edge, Graph, Node},
     search::astar::AStar,
     search::dijkstra::Dijkstra,
     util::math::straight_line,
@@ -11,25 +11,25 @@ criterion_group!(benches, criterion_benchmark);
 criterion_main!(benches);
 
 fn gen_rand_graph(number_nodes: usize) -> Graph {
-    let nodes = (0..number_nodes).map(|i| Node::new(i, 0.0, 0.0)).collect();
-
     let mut rng = rand::thread_rng();
 
     // 2.5 edges per node on average
     let number_edges: usize = (number_nodes as f32 * 2.5) as usize;
 
-    let mut edges = Vec::with_capacity(number_edges);
-    for _ in 0..number_edges {
-        let src = rng.gen_range(0..number_nodes);
-        let dst = rng.gen_range(0..number_nodes);
-        let weight = rng.gen_range(1..100) as f64;
-        edges.push(Edge::new(src, dst, weight));
+    let mut g = Graph::with_capacity(number_nodes, number_edges);
+
+    for i in 0..number_nodes {
+        g.add_node(Node::new(i, 0.0, 0.0));
     }
 
-    GraphBuilder::new()
-        .add_nodes(nodes)
-        .add_edges(edges)
-        .build()
+    for _ in 0..number_edges {
+        let source = rng.gen_range(0..number_nodes);
+        let target = rng.gen_range(0..number_nodes);
+        let weight = rng.gen_range(1..100) as f64;
+        g.add_edge(Edge::new(node_index(source), node_index(target), weight));
+    }
+
+    g
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
@@ -49,11 +49,11 @@ fn criterion_benchmark(c: &mut Criterion) {
             BenchmarkId::new("Dijkstra", graph.nodes.len()),
             &graph,
             |b, g| {
-                let src = g.nodes[rng.gen_range(0..g.nodes.len())].id;
-                let dst = g.nodes[rng.gen_range(0..g.nodes.len())].id;
+                let src = rng.gen_range(0..g.nodes.len());
+                let dst = rng.gen_range(0..g.nodes.len());
                 let mut dijkstra = Dijkstra::new(g);
                 b.iter(|| {
-                    dijkstra.search(src, dst);
+                    dijkstra.search(node_index(src), node_index(dst));
                 });
             },
         );
@@ -61,11 +61,11 @@ fn criterion_benchmark(c: &mut Criterion) {
             BenchmarkId::new("AStar", graph.nodes.len()),
             &graph,
             |b, g| {
-                let src = g.nodes[rng.gen_range(0..g.nodes.len())].id;
-                let dst = g.nodes[rng.gen_range(0..g.nodes.len())].id;
+                let src = rng.gen_range(0..g.nodes.len());
+                let dst = rng.gen_range(0..g.nodes.len());
                 let mut astar = AStar::new(g);
                 b.iter(|| {
-                    astar.search(src, dst, straight_line);
+                    astar.search(node_index(src), node_index(dst), straight_line);
                 });
             },
         );
