@@ -203,7 +203,7 @@ impl<Idx: IndexType> Graph<Idx> {
         }
     }
 
-    fn with_capacity(num_nodes: usize, num_edges: usize) -> Self {
+    pub fn with_capacity(num_nodes: usize, num_edges: usize) -> Self {
         Self {
             edges_in: Vec::with_capacity(num_nodes),
             edges_out: Vec::with_capacity(num_nodes),
