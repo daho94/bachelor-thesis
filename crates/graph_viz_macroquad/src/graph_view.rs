@@ -26,8 +26,10 @@ impl<'a> GraphView<'a> {
         self.handle_zoom(zoom);
         self.handle_pan(pan);
 
+        // let start = std::time::Instant::now();
         self.draw_edges();
         self.draw_nodes();
+        // dbg!(start.elapsed());
     }
 
     pub(crate) fn reset(&mut self) {
@@ -83,7 +85,8 @@ impl<'a> GraphView<'a> {
                 continue;
             }
 
-            draw_circle(pos.x, pos.y, 1.0, RED);
+            draw_circle(pos.x, pos.y, 1.0, WHITE);
+            // draw_rectangle(pos.x - 0.5, pos.y - 0.5, 1.0, 1.0, WHITE);
         }
     }
 
