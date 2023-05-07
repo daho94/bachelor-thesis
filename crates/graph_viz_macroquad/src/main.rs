@@ -3,13 +3,15 @@ use std::f32::{MAX, MIN};
 use ch_core::graph::Graph;
 use macroquad::prelude::*;
 
+mod widgets;
+
 fn window_conf() -> Conf {
     Conf {
         window_title: "Graph View".to_string(),
         fullscreen: false,
         window_resizable: true,
-        window_width: 600,
-        window_height: 520,
+        window_width: 1280,
+        window_height: 720,
         ..Default::default()
     }
 }
@@ -101,6 +103,10 @@ async fn main() {
     let mut current_rect = graph_rect;
 
     let mut draggable = Draggable::new(vec2(0.0, 0.0));
+
+    // Init egui widgets
+    let mut debug_widget = widgets::debug::DebugWidget::new();
+
     loop {
         // 1b1b1b
         clear_background(Color::from_rgba(27, 27, 27, 255));
@@ -144,9 +150,7 @@ async fn main() {
         // visible_bbox = calc_bbox(&graph_bbox, target, zoom);
 
         egui_macroquad::ui(|egui_ctx| {
-            egui::Window::new("egui ❤ macroquad").show(egui_ctx, |ui| {
-                ui.label("Test");
-            });
+            debug_widget.update(egui_ctx);
         });
 
         // Draw things before egui
@@ -197,7 +201,6 @@ fn draw_graph(lines: &[(Vec2, Vec2)], rect: &Rect) {
 
         rendered_lines += 1;
     }
-    draw_circle(screen_width() / 2., screen_height() / 2., 5., RED);
 }
 
 fn handle_zoom(rect: &mut Rect, zoom: f32) {
