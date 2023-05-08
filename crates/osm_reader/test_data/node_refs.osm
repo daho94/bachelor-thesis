@@ -1,0 +1,34 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' upload='true' generator='JOSM'>
+  <node id='1' timestamp='1970-01-01T00:00:01Z' visible='true' version='1' changeset='1' lon='-1.0' lat='0.0' />
+  <node id='2' timestamp='1970-01-01T00:00:01Z' visible='true' version='1' changeset='1' lon='0.0' lat='0.0' />
+  <node id='3' timestamp='1970-01-01T00:00:01Z' visible='true' version='1' changeset='1' lon='1.0' lat='0.0' />
+  <node id='4' timestamp='1970-01-01T00:00:01Z' visible='true' version='1' changeset='1' lon='2.0' lat='0.0' />
+  <node id='5' timestamp='1970-01-01T00:00:01Z' visible='true' version='1' changeset='1' lon='3.0' lat='0.0' />
+  <node id='6' timestamp='1970-01-01T00:00:01Z' visible='true' version='1' changeset='1' lon='4.0' lat='0.0' />
+  <node id='7' timestamp='1970-01-01T00:00:01Z' visible='true' version='1' changeset='1' lon='0.0' lat='-1.0' />
+  <node id='8' timestamp='1970-01-01T00:00:01Z' visible='true' version='1' changeset='1' lon='0.0' lat='1.0' />
+  <node id='9' timestamp='1970-01-01T00:00:01Z' visible='true' version='1' changeset='1' lon='3.0' lat='-1.0' />
+  <node id='10' timestamp='1970-01-01T00:00:01Z' visible='true' version='1' changeset='1' lon='3.0' lat='1.0' />
+  <way id='12' action='modify' timestamp='1970-01-01T00:00:01Z' visible='true' version='1' changeset='1'>
+    <nd ref='1' />
+    <nd ref='2' />
+    <nd ref='3' />
+    <nd ref='4' />
+    <nd ref='5' />
+    <nd ref='6' />
+    <tag k='highway' v='secondary' />
+  </way>
+  <way id='13' action='modify' timestamp='1970-01-01T00:00:01Z' visible='true' version='1' changeset='1'>
+    <nd ref='7' />
+    <nd ref='2' />
+    <nd ref='8' />
+    <tag k='highway' v='secondary' />
+  </way>
+  <way id='14' action='modify' timestamp='1970-01-01T00:00:01Z' visible='true' version='1' changeset='1'>
+    <nd ref='9' />
+    <nd ref='5' />
+    <nd ref='10' />
+    <tag k='highway' v='secondary' />
+  </way>
+</osm>
