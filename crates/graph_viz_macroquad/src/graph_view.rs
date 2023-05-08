@@ -133,6 +133,6 @@ fn spherical_to_cartesian(lat: f64, lon: f64) -> (f32, f32) {
 
 fn node_to_vec(node: &Node) -> Vec2 {
     // let (x, y) = spherical_to_cartesian(node.lat, node.lon);
-    let (y, x) = (node.lat, node.lon);
+    let (y, x) = (-node.lat, node.lon);
     vec2(x as f32, y as f32)
 }
