@@ -1,4 +1,4 @@
-use osmpbf::{Element, IndexedReader, Node};
+use osmpbf::{Element, IndexedReader};
 use rustc_hash::FxHashMap;
 use std::{collections::HashMap, fs::File, io::BufWriter, path::Path, str::FromStr};
 
@@ -77,7 +77,7 @@ impl RoadGraph {
                     }
                 };
 
-                for i in 0..node_ids.len() {
+                (0..node_ids.len()).for_each(|i| {
                     let from = node_ids[i];
                     // let to = node_ids[i + 1];
 
@@ -90,7 +90,7 @@ impl RoadGraph {
                     // if !is_oneway {
                     //     edges.push((to, from, road_type));
                     // }
-                }
+                });
 
                 ways.push((node_ids, road_type, is_oneway));
             }
@@ -114,12 +114,12 @@ impl RoadGraph {
                 } else {
                     // Only keep nodes in between start and end node if they are referenced more than once by another way
                     let mut nodes_to_keep = vec![0];
-                    for i in 1..node_ids.len() - 1 {
+                    (1..node_ids.len() - 1).for_each(|i| {
                         let node_id = node_ids[i];
                         if refs_count.get(&node_id).unwrap() > &1 {
                             nodes_to_keep.push(i);
                         }
-                    }
+                    });
                     nodes_to_keep.push(node_ids.len() - 1);
                     nodes_to_keep
                 }
