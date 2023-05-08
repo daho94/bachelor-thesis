@@ -6,8 +6,11 @@ members = [
     "crates/frontend/src-tauri",
     "crates/ch_core",
     "crates/repl",
+    "crates/graph_viz",
+    "crates/graph_viz_macroquad",
 ]
 
 [profile.release]
 lto = "fat"
 panic = "abort"
+codegen-units = 1

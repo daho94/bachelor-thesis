@@ -1,13 +1,16 @@
-use crate::constants::{NodeId, Weight};
+use crate::{
+    constants::Weight,
+    graph::{DefaultIdx, IndexType, NodeIndex},
+};
 
 #[derive(Debug, PartialEq)]
-pub struct ShortestPath {
-    pub nodes: Vec<NodeId>,
+pub struct ShortestPath<Idx: IndexType> {
+    pub nodes: Vec<NodeIndex<Idx>>,
     pub weight: Weight,
 }
 
-impl ShortestPath {
-    pub fn new(nodes: Vec<NodeId>, weight: Weight) -> Self {
+impl<Idx: IndexType> ShortestPath<Idx> {
+    pub fn new(nodes: Vec<NodeIndex<Idx>>, weight: Weight) -> Self {
         ShortestPath { nodes, weight }
     }
 }

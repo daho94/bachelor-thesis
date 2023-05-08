@@ -3,7 +3,7 @@
     windows_subsystem = "windows"
 )]
 
-use ch_core::search::dijkstra::Dijkstra;
+use ch_core::{graph::node_index, search::dijkstra::Dijkstra};
 use log::info;
 use serde::Serialize;
 use std::time::Instant;
@@ -22,7 +22,7 @@ fn create_graph_from_pbf(graph: State<'_, Graph>, path: &str) -> Result<(), Stri
         info!(
             "Created Graph with {} nodes and {} edges in {:?}!",
             g.nodes.len(),
-            g.edges.len(),
+            g.edges_out.iter().flatten().count(),
             duration
         );
         let mut graph = graph.lock().unwrap();
@@ -38,21 +38,11 @@ fn create_graph_from_pbf(graph: State<'_, Graph>, path: &str) -> Result<(), Stri
 fn get_edges(graph: State<'_, Graph>) -> Vec<[[f64; 2]; 2]> {
     let graph = &graph.lock().unwrap();
     graph
-        .edges
-        .iter()
+        .edges()
         .map(|edge| {
-            let from = &graph
-                .nodes
-                .iter()
-                .find(|n| n.id == edge.from)
-                .map(|n| [n.lat, n.lon])
-                .unwrap();
-            let to = &graph
-                .nodes
-                .iter()
-                .find(|n| n.id == edge.to)
-                .map(|n| [n.lat, n.lon])
-                .unwrap();
+            let from = &graph.node(edge.source).map(|n| [n.lat, n.lon]).unwrap();
+
+            let to = &graph.node(edge.target).map(|n| [n.lat, n.lon]).unwrap();
             [*from, *to]
         })
         .collect()
@@ -62,8 +52,7 @@ fn get_edges(graph: State<'_, Graph>) -> Vec<[[f64; 2]; 2]> {
 fn get_nodes(graph: State<'_, Graph>) -> Vec<[f64; 3]> {
     let graph = &graph.lock().unwrap();
     graph
-        .nodes
-        .iter()
+        .nodes()
         .map(|node| [node.id as f64, node.lon, node.lat])
         .collect()
 }
@@ -94,16 +83,16 @@ fn calc_path(graph: State<'_, Graph>, src_coords: [f64; 2], dst_coords: [f64; 2]
 
     let mut d = Dijkstra::new(&graph);
 
-    let src_id = dbg!(p2p_matching(&graph.nodes, src_coords));
-    let dst_id = dbg!(p2p_matching(&graph.nodes, dst_coords));
+    let src_id = dbg!(p2p_matching(graph.nodes(), src_coords));
+    let dst_id = dbg!(p2p_matching(graph.nodes(), dst_coords));
 
-    if let Some(sp) = d.search(src_id, dst_id) {
+    if let Some(sp) = d.search(node_index(src_id), node_index(dst_id)) {
         // Lookup coordinates
         let path = sp
             .nodes
             .iter()
-            .map(|node_id| {
-                let node = graph.nodes.iter().find(|n| n.id == *node_id).unwrap();
+            .map(|node_idx| {
+                let node = graph.node(*node_idx).unwrap();
                 [node.lon, node.lat]
             })
             .collect();
@@ -119,16 +108,19 @@ fn calc_path(graph: State<'_, Graph>, src_coords: [f64; 2], dst_coords: [f64; 2]
     }
 }
 
-fn p2p_matching(nodes: &[ch_core::graph::Node], coords: [f64; 2]) -> ch_core::constants::NodeId {
+fn p2p_matching<'a>(
+    nodes: impl Iterator<Item = &'a ch_core::graph::Node>,
+    coords: [f64; 2],
+) -> ch_core::constants::OsmId {
     nodes
-        .iter()
+        .enumerate()
         .min_by(|a, b| {
-            let a_dist = (a.lat - coords[0]).powi(2) + (a.lon - coords[1]).powi(2);
-            let b_dist = (b.lat - coords[0]).powi(2) + (b.lon - coords[1]).powi(2);
+            let a_dist = (a.1.lat - coords[0]).powi(2) + (a.1.lon - coords[1]).powi(2);
+            let b_dist = (b.1.lat - coords[0]).powi(2) + (b.1.lon - coords[1]).powi(2);
             a_dist.partial_cmp(&b_dist).unwrap()
         })
         .unwrap()
-        .id
+        .0
 }
 
 fn main() {

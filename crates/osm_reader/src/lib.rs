@@ -1,6 +1,6 @@
 use osmpbf::{Element, IndexedReader};
 use rustc_hash::FxHashMap;
-use std::{fs::File, path::Path, str::FromStr};
+use std::{collections::HashMap, fs::File, io::BufWriter, path::Path, str::FromStr};
 
 mod road_types;
 use road_types::RoadType;
@@ -32,6 +32,128 @@ impl RoadGraph {
 
     pub fn get_arcs(&self) -> &Vec<(i64, i64, f64)> {
         &self.arcs
+    }
+
+    pub fn from_pbf_without_geometry(pbf_path: &Path) -> anyhow::Result<RoadGraph> {
+        let mut graph = RoadGraph::new();
+
+        let mut reader = IndexedReader::from_path(pbf_path)?;
+
+        let road_filter = |way: &osmpbf::Way| {
+            way.tags()
+                .any(|(key, value)| key == "highway" && value.parse::<RoadType>().is_ok())
+        };
+
+        // let mut edges = Vec::new();
+        let mut refs_count = HashMap::new();
+        let mut ways = Vec::new();
+
+        let mut nodes: FxHashMap<i64, [f64; 2]> = Default::default();
+
+        reader.read_ways_and_deps(road_filter, |element| match element {
+            Element::Way(way) => {
+                let node_ids = way.refs().collect::<Vec<_>>();
+                let tags = way.tags().collect::<Vec<_>>();
+
+                // Find tag "highway" and extract value
+                let road_type = tags
+                    .iter()
+                    .find(|key_value| key_value.0 == "highway")
+                    .unwrap()
+                    .1;
+                let road_type = RoadType::from_str(road_type).unwrap();
+
+                let is_oneway = {
+                    if let Some((_, value)) = tags.iter().find(|(key, _)| *key == "oneway") {
+                        match *value {
+                            // Tag always has prio if explicitly set
+                            "yes" => true,
+                            "no" => false,
+                            // If no tag is found check the road type
+                            _ => road_type.is_oneway(),
+                        }
+                    } else {
+                        false
+                    }
+                };
+
+                (0..node_ids.len()).for_each(|i| {
+                    let from = node_ids[i];
+                    // let to = node_ids[i + 1];
+
+                    // Increase ref count for from node
+                    *refs_count.entry(from).or_insert(0) += 1;
+
+                    // edges.push((from, to, road_type));
+
+                    // If bidirectional add reverse edge
+                    // if !is_oneway {
+                    //     edges.push((to, from, road_type));
+                    // }
+                });
+
+                ways.push((node_ids, road_type, is_oneway));
+            }
+            Element::Node(node) => {
+                // graph.add_node(node.id(), node.lat(), node.lon());
+                nodes.insert(node.id(), [node.lat(), node.lon()]);
+            }
+            Element::DenseNode(dense_node) => {
+                // graph.add_node(dense_node.id(), dense_node.lat(), dense_node.lon());
+                nodes.insert(dense_node.id(), [dense_node.lat(), dense_node.lon()]);
+            }
+            Element::Relation(_) => {}
+        })?;
+
+        graph.arcs = Vec::with_capacity(ways.len() * 2);
+        for (node_ids, road_type, is_oneway) in ways {
+            let nodes_to_keep: Vec<usize> = {
+                if node_ids.len() == 2 {
+                    // Always keeep start and end node of a way
+                    vec![0, 1]
+                } else {
+                    // Only keep nodes in between start and end node if they are referenced more than once by another way
+                    let mut nodes_to_keep = vec![0];
+                    (1..node_ids.len() - 1).for_each(|i| {
+                        let node_id = node_ids[i];
+                        if refs_count.get(&node_id).unwrap() > &1 {
+                            nodes_to_keep.push(i);
+                        }
+                    });
+                    nodes_to_keep.push(node_ids.len() - 1);
+                    nodes_to_keep
+                }
+            };
+
+            // Add nodes to graph
+            for i in nodes_to_keep.iter() {
+                let node_id = node_ids[*i];
+                let [lat, lon] = nodes.get(&node_id).unwrap();
+                graph.add_node(node_id, *lat, *lon);
+            }
+
+            for i in 0..nodes_to_keep.len() - 1 {
+                let from = nodes_to_keep[i];
+                let to = nodes_to_keep[i + 1];
+
+                let mut total_weight = 0.0;
+                for j in from..to {
+                    let [from_lat, from_lon] = nodes.get(&node_ids[j]).unwrap();
+                    let [to_lat, to_lon] = nodes.get(&node_ids[j + 1]).unwrap();
+                    let distance = haversine_distance(*from_lat, *from_lon, *to_lat, *to_lon);
+
+                    total_weight += weight(distance, &road_type);
+                }
+
+                graph.add_arc(node_ids[from], node_ids[to], total_weight);
+                // If bidirectional add reverse edge
+                if !is_oneway {
+                    graph.add_arc(node_ids[to], node_ids[from], total_weight);
+                }
+            }
+        }
+
+        Ok(graph)
     }
 
     pub fn from_pbf(pbf_path: &Path) -> anyhow::Result<RoadGraph> {
@@ -111,18 +233,22 @@ impl RoadGraph {
     pub fn write_csv(&self) -> anyhow::Result<()> {
         use std::io::Write;
 
-        let mut nodes_file = File::create("nodes.csv")?;
-        let mut edges_file = File::create("edges.csv")?;
+        let nodes_file = File::create("nodes.csv")?;
+        let edges_file = File::create("edges.csv")?;
 
-        writeln!(nodes_file, "id,lat,lon")?;
+        let mut nodes_writer = BufWriter::new(nodes_file);
+        let _ = nodes_writer.write("id,lat,lon\n".as_bytes())?;
         for (id, [lat, lon]) in self.nodes.iter() {
-            writeln!(nodes_file, "{},{},{}", id, lat, lon)?;
+            let _ = nodes_writer.write(format!("{},{},{}\n", id, lat, lon).as_bytes())?;
         }
+        nodes_writer.flush()?;
 
-        writeln!(edges_file, "from,to,weight")?;
+        let mut edges_writer = BufWriter::new(edges_file);
+        let _ = edges_writer.write("source,target,weight\n".as_bytes())?;
         for (from, to, weight) in self.arcs.iter() {
-            writeln!(edges_file, "{},{},{}", from, to, weight)?;
+            let _ = edges_writer.write(format!("{},{},{}\n", from, to, weight).as_bytes())?;
         }
+        edges_writer.flush()?;
 
         Ok(())
     }
@@ -173,5 +299,23 @@ mod tests {
 
         let graph = RoadGraph::from_pbf(Path::new(filename)).unwrap();
         graph.write_csv().unwrap();
+    }
+
+    #[test]
+    fn graph_from_pbf_without_geometry_works() {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("test_data/node_refs.osm.pbf");
+
+        let graph = RoadGraph::from_pbf_without_geometry(&path).unwrap();
+
+        assert_eq!(graph.nodes.len(), 8);
+        assert_eq!(graph.arcs.len(), 14);
+
+        assert_eq!(
+            weight(
+                haversine_distance(0., 0., 0., 1.) * 3.0,
+                &RoadType::Secondary
+            ),
+            graph.arcs.iter().find(|e| e.0 == 2 && e.1 == 5).unwrap().2
+        );
     }
 }

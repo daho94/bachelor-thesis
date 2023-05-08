@@ -1,6 +1,6 @@
 use std::collections::BinaryHeap;
 
-use crate::constants::{NodeId, Weight};
+use crate::constants::Weight;
 use crate::graph::*;
 use crate::search::shortest_path::ShortestPath;
 use crate::statistics::Stats;
@@ -8,32 +8,32 @@ use log::{debug, info};
 use rustc_hash::FxHashMap;
 
 #[derive(Debug)]
-struct Candidate {
-    node: NodeId,
+struct Candidate<Idx = DefaultIdx> {
+    node_idx: NodeIndex<Idx>,
     weight: Weight,
 }
 
-impl Candidate {
-    fn new(node: NodeId, weight: Weight) -> Self {
-        Self { node, weight }
+impl<Idx: IndexType> Candidate<Idx> {
+    fn new(node_idx: NodeIndex<Idx>, weight: Weight) -> Self {
+        Self { node_idx, weight }
     }
 }
 
-impl PartialOrd for Candidate {
+impl<Idx: IndexType> PartialOrd for Candidate<Idx> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         other.weight.partial_cmp(&self.weight)
     }
 }
 
-impl PartialEq for Candidate {
+impl<Idx: IndexType> PartialEq for Candidate<Idx> {
     fn eq(&self, other: &Self) -> bool {
         other.weight == self.weight
     }
 }
 
-impl Eq for Candidate {}
+impl<Idx: IndexType> Eq for Candidate<Idx> {}
 
-impl Ord for Candidate {
+impl<Idx: IndexType> Ord for Candidate<Idx> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         other
             .weight
@@ -42,58 +42,66 @@ impl Ord for Candidate {
     }
 }
 
-pub struct Dijkstra<'a> {
+pub struct Dijkstra<'a, Idx = DefaultIdx> {
     pub stats: Stats,
-    graph: &'a Graph,
+    g: &'a Graph<Idx>,
 }
 
-impl<'a> Dijkstra<'a> {
-    pub fn new(graph: &'a Graph) -> Self {
+impl<'a, Idx> Dijkstra<'a, Idx>
+where
+    Idx: IndexType,
+{
+    pub fn new(graph: &'a Graph<Idx>) -> Self {
         Dijkstra {
-            graph,
+            g: graph,
             stats: Stats::default(),
         }
     }
 
-    pub fn search(&mut self, src: NodeId, dst: NodeId) -> Option<ShortestPath> {
+    pub fn search(
+        &mut self,
+        source: NodeIndex<Idx>,
+        target: NodeIndex<Idx>,
+    ) -> Option<ShortestPath<Idx>> {
         self.stats.init();
 
-        if src == dst {
+        if source == target {
             self.stats.nodes_settled += 1;
             self.stats.finish();
-            return Some(ShortestPath::new(vec![src], 0.0));
+            return Some(ShortestPath::new(vec![source], 0.0));
         }
 
-        let mut node_data: FxHashMap<NodeId, (Weight, Option<NodeId>)> = FxHashMap::default();
-        node_data.insert(src, (0.0, None));
+        let mut node_data: FxHashMap<NodeIndex<Idx>, (Weight, Option<NodeIndex<Idx>>)> =
+            FxHashMap::default();
+        node_data.insert(source, (0.0, None));
 
         let mut queue = BinaryHeap::new();
 
-        queue.push(Candidate::new(src, 0.0));
+        queue.push(Candidate::new(source, 0.0));
 
-        while let Some(Candidate { weight, node }) = queue.pop() {
+        while let Some(Candidate { weight, node_idx }) = queue.pop() {
             self.stats.nodes_settled += 1;
 
-            if node == dst {
+            if node_idx == target {
                 break;
             }
 
-            for edge in self.graph.connected_edges(node) {
+            for edge in self.g.neighbors_outgoing(node_idx) {
                 let new_distance = weight + edge.weight;
                 if new_distance
                     < node_data
-                        .get(&edge.to)
+                        .get(&edge.target)
                         .unwrap_or(&(std::f64::INFINITY, None))
                         .0
                 {
-                    node_data.insert(edge.to, (new_distance, Some(node)));
-                    queue.push(Candidate::new(edge.to, new_distance));
+                    node_data.insert(edge.target, (new_distance, Some(node_idx)));
+                    queue.push(Candidate::new(edge.target, new_distance));
                 }
             }
         }
         self.stats.finish();
 
-        let sp = super::reconstruct_path(dst, src, &node_data);
+        let sp = super::reconstruct_path(target, source, &node_data);
         if sp.is_some() {
             debug!("Path found: {:?}", sp);
             info!(
@@ -115,12 +123,9 @@ impl<'a> Dijkstra<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::search::{assert_no_path, assert_path};
 
-    // Create test data for nodes
-    fn create_nodes() -> Vec<Node> {
-        (0..10).map(|i| Node::new(i, 0.0, 0.0)).collect()
-    }
+    use super::*;
 
     #[test]
     fn simple_path() {
@@ -129,49 +134,54 @@ mod tests {
         // 0 -> 5 -> 6 -  |
         // |         |  \ |
         // 1 -> 2 -> 3 -> 4
-        let g = GraphBuilder::new()
-            .add_edge(Edge::new(0, 1, 1.0))
-            .add_edge(Edge::new(1, 2, 1.0))
-            .add_edge(Edge::new(2, 3, 1.0))
-            .add_edge(Edge::new(3, 4, 20.0))
-            .add_edge(Edge::new(0, 5, 5.0))
-            .add_edge(Edge::new(5, 6, 1.0))
-            .add_edge(Edge::new(6, 4, 20.0))
-            .add_edge(Edge::new(6, 3, 20.0))
-            .add_edge(Edge::new(5, 7, 5.0))
-            .add_edge(Edge::new(7, 8, 1.0))
-            .add_edge(Edge::new(8, 9, 1.0))
-            .add_edge(Edge::new(9, 4, 1.0))
-            .add_nodes(create_nodes())
-            .build();
+        let mut g = Graph::<DefaultIdx>::new();
+
+        for i in 0..10 {
+            g.add_node(Node::new(i, 0.0, 0.0));
+        }
+
+        g.add_edge(Edge::new(node_index(0), node_index(1), 1.0));
+        g.add_edge(Edge::new(node_index(1), node_index(2), 1.0));
+        g.add_edge(Edge::new(node_index(2), node_index(3), 1.0));
+        g.add_edge(Edge::new(node_index(3), node_index(4), 20.0));
+        g.add_edge(Edge::new(node_index(0), node_index(5), 5.0));
+        g.add_edge(Edge::new(node_index(5), node_index(6), 1.0));
+        g.add_edge(Edge::new(node_index(6), node_index(4), 20.0));
+        g.add_edge(Edge::new(node_index(6), node_index(3), 20.0));
+        g.add_edge(Edge::new(node_index(5), node_index(7), 5.0));
+        g.add_edge(Edge::new(node_index(7), node_index(8), 1.0));
+        g.add_edge(Edge::new(node_index(8), node_index(9), 1.0));
+        g.add_edge(Edge::new(node_index(9), node_index(4), 1.0));
 
         let mut d = Dijkstra::new(&g);
 
-        assert_no_path(d.search(4, 0)); // Cannot be reached
-        assert_path(vec![0, 5, 7, 8, 9, 4], 13.0, d.search(0, 4));
-        assert_path(vec![6, 3], 20.0, d.search(6, 3));
-        assert_path(vec![4], 0.0, d.search(4, 4));
-        assert_path(vec![1, 2, 3, 4], 22.0, d.search(1, 4));
+        assert_no_path(d.search(node_index(4), node_index(0))); // Cannot be reached
+        assert_path(vec![0, 5, 7, 8, 9, 4], 13.0, d.search(0.into(), 4.into()));
+        assert_path(vec![6, 3], 20.0, d.search(6.into(), 3.into()));
+        assert_path(vec![4], 0.0, d.search(4.into(), 4.into()));
+        assert_path(vec![1, 2, 3, 4], 22.0, d.search(1.into(), 4.into()));
     }
 
     #[test]
     fn disconnected_graph() {
         // 0 -> 1 -> 2
         // 3 -> 4 -> 5
-        let g = GraphBuilder::new()
-            .add_edge(Edge::new(0, 1, 1.0))
-            .add_edge(Edge::new(1, 2, 1.0))
-            .add_edge(Edge::new(3, 4, 3.0))
-            .add_edge(Edge::new(4, 5, 1.0))
-            .add_nodes(create_nodes())
-            .build();
+        let mut g = Graph::<DefaultIdx>::new();
+        for i in 0..6 {
+            g.add_node(Node::new(i, 0.0, 0.0));
+        }
+
+        g.add_edge(Edge::new(node_index(0), node_index(1), 1.0));
+        g.add_edge(Edge::new(node_index(1), node_index(2), 1.0));
+        g.add_edge(Edge::new(node_index(3), node_index(4), 3.0));
+        g.add_edge(Edge::new(node_index(4), node_index(5), 1.0));
 
         let mut d = Dijkstra::new(&g);
 
-        assert_no_path(d.search(0, 3));
-        assert_no_path(d.search(3, 0));
-        assert_path(vec![0, 1, 2], 2.0, d.search(0, 2));
-        assert_path(vec![3, 4, 5], 4.0, d.search(3, 5));
+        assert_no_path(d.search(0.into(), 3.into()));
+        assert_no_path(d.search(3.into(), 0.into()));
+        assert_path(vec![0, 1, 2], 2.0, d.search(0.into(), 2.into()));
+        assert_path(vec![3, 4, 5], 4.0, d.search(3.into(), 5.into()));
     }
 
     #[test]
@@ -179,31 +189,19 @@ mod tests {
         // 0 -> 1
         // |    |
         // 2 -> 3
-        let g = GraphBuilder::new()
-            .add_edge(Edge::new(0, 1, 10.0))
-            .add_edge(Edge::new(0, 2, 1.0))
-            .add_edge(Edge::new(2, 3, 1.0))
-            .add_edge(Edge::new(3, 1, 1.0))
-            .add_nodes(create_nodes())
-            .build();
+        let mut g = Graph::<DefaultIdx>::new();
+        let a = g.add_node(Node::new(0, 0.0, 0.0));
+        let b = g.add_node(Node::new(1, 0.0, 0.0));
+        let c = g.add_node(Node::new(2, 0.0, 0.0));
+        let d = g.add_node(Node::new(3, 0.0, 0.0));
+
+        g.add_edge(Edge::new(a, b, 10.0));
+        g.add_edge(Edge::new(a, c, 1.0));
+        g.add_edge(Edge::new(c, d, 1.0));
+        g.add_edge(Edge::new(d, b, 1.0));
 
         let mut d = Dijkstra::new(&g);
 
-        assert_path(vec![0, 2, 3, 1], 3.0, d.search(0, 1));
-    }
-
-    fn assert_no_path(path: Option<ShortestPath>) {
-        assert_eq!(None, path);
-    }
-
-    fn assert_path(
-        expected_path: Vec<NodeId>,
-        expected_weight: Weight,
-        path: Option<ShortestPath>,
-    ) {
-        assert_eq!(
-            Some(ShortestPath::new(expected_path, expected_weight)),
-            path
-        );
+        assert_path(vec![0, 2, 3, 1], 3.0, d.search(a, b));
     }
 }

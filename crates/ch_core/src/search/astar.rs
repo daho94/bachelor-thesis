@@ -4,27 +4,27 @@ use log::{debug, info};
 use rustc_hash::FxHashMap;
 
 use crate::{
-    constants::{NodeId, Weight},
-    graph::{Graph, Node},
+    constants::{OsmId, Weight},
+    graph::{DefaultIdx, Graph, IndexType, Node, NodeIndex},
     statistics::Stats,
 };
 
 use super::shortest_path::ShortestPath;
 
-pub struct AStar<'a> {
+pub struct AStar<'a, Idx = DefaultIdx> {
     pub stats: Stats,
-    graph: &'a Graph,
+    g: &'a Graph<Idx>,
 }
 
 #[derive(Debug)]
-struct Candidate {
-    node: NodeId,
+struct Candidate<Idx = DefaultIdx> {
+    node: NodeIndex<Idx>,
     real_weight: Weight,
     tentative_weight: Weight,
 }
 
-impl Candidate {
-    fn new(node: NodeId, real_weight: Weight, estimated_weight: Weight) -> Self {
+impl<Idx: IndexType> Candidate<Idx> {
+    fn new(node: NodeIndex<Idx>, real_weight: Weight, estimated_weight: Weight) -> Self {
         Self {
             node,
             real_weight,
@@ -32,21 +32,21 @@ impl Candidate {
         }
     }
 }
-impl PartialOrd for Candidate {
+impl<Idx: IndexType> PartialOrd for Candidate<Idx> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         other.tentative_weight.partial_cmp(&self.tentative_weight)
     }
 }
 
-impl PartialEq for Candidate {
+impl<Idx: IndexType> PartialEq for Candidate<Idx> {
     fn eq(&self, other: &Self) -> bool {
         other.tentative_weight == self.tentative_weight
     }
 }
 
-impl Eq for Candidate {}
+impl<Idx: IndexType> Eq for Candidate<Idx> {}
 
-impl Ord for Candidate {
+impl<Idx: IndexType> Ord for Candidate<Idx> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         other
             .tentative_weight
@@ -55,20 +55,23 @@ impl Ord for Candidate {
     }
 }
 
-impl<'a> AStar<'a> {
-    pub fn new(graph: &'a Graph) -> Self {
+impl<'a, Idx> AStar<'a, Idx>
+where
+    Idx: IndexType,
+{
+    pub fn new(g: &'a Graph<Idx>) -> Self {
         AStar {
-            graph,
+            g,
             stats: Stats::default(),
         }
     }
 
     pub fn search(
         &mut self,
-        src: NodeId,
-        dst: NodeId,
+        src: NodeIndex<Idx>,
+        dst: NodeIndex<Idx>,
         heuristic: impl Fn(&Node, &Node) -> Weight,
-    ) -> Option<ShortestPath> {
+    ) -> Option<ShortestPath<Idx>> {
         self.stats.init();
 
         if src == dst {
@@ -77,7 +80,8 @@ impl<'a> AStar<'a> {
             return Some(ShortestPath::new(vec![src], 0.0));
         }
 
-        let mut node_data: FxHashMap<NodeId, (Weight, Option<NodeId>)> = FxHashMap::default();
+        let mut node_data: FxHashMap<NodeIndex<Idx>, (Weight, Option<NodeIndex<Idx>>)> =
+            FxHashMap::default();
         node_data.insert(src, (0.0, None));
 
         let mut queue = BinaryHeap::new();
@@ -85,7 +89,7 @@ impl<'a> AStar<'a> {
         queue.push(Candidate::new(
             src,
             0.0,
-            heuristic(self.graph.node(src).unwrap(), self.graph.node(dst).unwrap()),
+            heuristic(self.g.node(src).unwrap(), self.g.node(dst).unwrap()),
         ));
 
         while let Some(Candidate {
@@ -100,23 +104,20 @@ impl<'a> AStar<'a> {
                 break;
             }
 
-            for edge in self.graph.connected_edges(node) {
+            for edge in self.g.neighbors_outgoing(node) {
                 let real_weight = real_weight + edge.weight;
 
                 if real_weight
                     < node_data
-                        .get(&edge.to)
+                        .get(&edge.target)
                         .unwrap_or(&(std::f64::INFINITY, None))
                         .0
                 {
-                    let estimated_weight = real_weight
-                        + heuristic(
-                            self.graph.node(edge.to).unwrap(),
-                            self.graph.node(dst).unwrap(),
-                        );
+                    let tentative_weight = real_weight
+                        + heuristic(self.g.node(edge.target).unwrap(), self.g.node(dst).unwrap());
 
-                    node_data.insert(edge.to, (real_weight, Some(node)));
-                    queue.push(Candidate::new(edge.to, real_weight, estimated_weight));
+                    node_data.insert(edge.target, (real_weight, Some(node)));
+                    queue.push(Candidate::new(edge.target, real_weight, tentative_weight));
                 }
             }
         }
@@ -145,30 +146,16 @@ impl<'a> AStar<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::graph::{Edge, GraphBuilder};
+    use crate::{
+        graph::{node_index, Edge},
+        search::assert_no_path,
+    };
+    use crate::{search::assert_path, util::math::straight_line};
 
     use super::*;
 
-    // Create test data for nodes
-    fn create_nodes() -> Vec<Node> {
-        (0..10).map(|i| Node::new(i, 0.0, 0.0)).collect()
-    }
-
     fn null_heuristic(_: &Node, _: &Node) -> Weight {
         0.0
-    }
-
-    fn airline(src: &Node, dst: &Node) -> Weight {
-        // Calculate the distance between two nodes using the Haversine formula
-        let lat1 = src.lat.to_radians();
-        let lat2 = dst.lat.to_radians();
-        let lon1 = src.lon.to_radians();
-        let lon2 = dst.lon.to_radians();
-        let a = (lat2 - lat1) / 2.0;
-        let b = (lon2 - lon1) / 2.0;
-        let c = a.sin().powi(2) + lat1.cos() * lat2.cos() * b.sin().powi(2);
-        let d = 2.0 * c.sqrt().asin();
-        6371.0 * d / 110.0 / 3.6
     }
 
     #[test]
@@ -178,53 +165,78 @@ mod tests {
         // 0 -> 5 -> 6 -  |
         // |         |  \ |
         // 1 -> 2 -> 3 -> 4
-        let g = GraphBuilder::new()
-            .add_edge(Edge::new(0, 1, 1.0))
-            .add_edge(Edge::new(1, 2, 1.0))
-            .add_edge(Edge::new(2, 3, 1.0))
-            .add_edge(Edge::new(3, 4, 20.0))
-            .add_edge(Edge::new(0, 5, 5.0))
-            .add_edge(Edge::new(5, 6, 1.0))
-            .add_edge(Edge::new(6, 4, 20.0))
-            .add_edge(Edge::new(6, 3, 20.0))
-            .add_edge(Edge::new(5, 7, 5.0))
-            .add_edge(Edge::new(7, 8, 1.0))
-            .add_edge(Edge::new(8, 9, 1.0))
-            .add_edge(Edge::new(9, 4, 1.0))
-            .add_nodes(create_nodes())
-            .build();
+        let mut g = Graph::<DefaultIdx>::new();
+
+        for i in 0..10 {
+            g.add_node(Node::new(i, 0.0, 0.0));
+        }
+
+        g.add_edge(Edge::new(node_index(0), node_index(1), 1.0));
+        g.add_edge(Edge::new(node_index(1), node_index(2), 1.0));
+        g.add_edge(Edge::new(node_index(2), node_index(3), 1.0));
+        g.add_edge(Edge::new(node_index(3), node_index(4), 20.0));
+        g.add_edge(Edge::new(node_index(0), node_index(5), 5.0));
+        g.add_edge(Edge::new(node_index(5), node_index(6), 1.0));
+        g.add_edge(Edge::new(node_index(6), node_index(4), 20.0));
+        g.add_edge(Edge::new(node_index(6), node_index(3), 20.0));
+        g.add_edge(Edge::new(node_index(5), node_index(7), 5.0));
+        g.add_edge(Edge::new(node_index(7), node_index(8), 1.0));
+        g.add_edge(Edge::new(node_index(8), node_index(9), 1.0));
+        g.add_edge(Edge::new(node_index(9), node_index(4), 1.0));
 
         let mut astar = AStar::new(&g);
 
-        assert_no_path(astar.search(4, 0, null_heuristic)); // Cannot be reached
+        assert_no_path(astar.search(4.into(), 0.into(), null_heuristic)); // Cannot be reached
         assert_path(
             vec![0, 5, 7, 8, 9, 4],
             13.0,
-            astar.search(0, 4, null_heuristic),
+            astar.search(0.into(), 4.into(), null_heuristic),
         );
-        assert_path(vec![6, 3], 20.0, astar.search(6, 3, airline));
-        assert_path(vec![4], 0.0, astar.search(4, 4, airline));
-        assert_path(vec![1, 2, 3, 4], 22.0, astar.search(1, 4, airline));
+        assert_path(
+            vec![6, 3],
+            20.0,
+            astar.search(6.into(), 3.into(), straight_line),
+        );
+        assert_path(
+            vec![4],
+            0.0,
+            astar.search(4.into(), 4.into(), straight_line),
+        );
+        assert_path(
+            vec![1, 2, 3, 4],
+            22.0,
+            astar.search(1.into(), 4.into(), straight_line),
+        );
     }
 
     #[test]
     fn disconnected_graph() {
         // 0 -> 1 -> 2
         // 3 -> 4 -> 5
-        let g = GraphBuilder::new()
-            .add_edge(Edge::new(0, 1, 1.0))
-            .add_edge(Edge::new(1, 2, 1.0))
-            .add_edge(Edge::new(3, 4, 3.0))
-            .add_edge(Edge::new(4, 5, 1.0))
-            .add_nodes(create_nodes())
-            .build();
+        let mut g = Graph::<DefaultIdx>::new();
+        for i in 0..6 {
+            g.add_node(Node::new(i, 0.0, 0.0));
+        }
+
+        g.add_edge(Edge::new(node_index(0), node_index(1), 1.0));
+        g.add_edge(Edge::new(node_index(1), node_index(2), 1.0));
+        g.add_edge(Edge::new(node_index(3), node_index(4), 3.0));
+        g.add_edge(Edge::new(node_index(4), node_index(5), 1.0));
 
         let mut astar = AStar::new(&g);
 
-        assert_no_path(astar.search(0, 3, null_heuristic));
-        assert_no_path(astar.search(3, 0, null_heuristic));
-        assert_path(vec![0, 1, 2], 2.0, astar.search(0, 2, null_heuristic));
-        assert_path(vec![3, 4, 5], 4.0, astar.search(3, 5, null_heuristic));
+        assert_no_path(astar.search(0.into(), 3.into(), null_heuristic));
+        assert_no_path(astar.search(3.into(), 0.into(), null_heuristic));
+        assert_path(
+            vec![0, 1, 2],
+            2.0,
+            astar.search(0.into(), 2.into(), null_heuristic),
+        );
+        assert_path(
+            vec![3, 4, 5],
+            4.0,
+            astar.search(3.into(), 5.into(), null_heuristic),
+        );
     }
 
     #[test]
@@ -232,31 +244,23 @@ mod tests {
         // 0 -> 1
         // |    |
         // 2 -> 3
-        let g = GraphBuilder::new()
-            .add_edge(Edge::new(0, 1, 10.0))
-            .add_edge(Edge::new(0, 2, 1.0))
-            .add_edge(Edge::new(2, 3, 1.0))
-            .add_edge(Edge::new(3, 1, 1.0))
-            .add_nodes(create_nodes())
-            .build();
+        let mut g = Graph::<DefaultIdx>::new();
+        let a = g.add_node(Node::new(0, 0.0, 0.0));
+        let b = g.add_node(Node::new(1, 0.0, 0.0));
+        let c = g.add_node(Node::new(2, 0.0, 0.0));
+        let d = g.add_node(Node::new(3, 0.0, 0.0));
+
+        g.add_edge(Edge::new(a, b, 10.0));
+        g.add_edge(Edge::new(a, c, 1.0));
+        g.add_edge(Edge::new(c, d, 1.0));
+        g.add_edge(Edge::new(d, b, 1.0));
 
         let mut astar = AStar::new(&g);
 
-        assert_path(vec![0, 2, 3, 1], 3.0, astar.search(0, 1, null_heuristic));
-    }
-
-    fn assert_no_path(path: Option<ShortestPath>) {
-        assert_eq!(None, path);
-    }
-
-    fn assert_path(
-        expected_path: Vec<NodeId>,
-        expected_weight: Weight,
-        path: Option<ShortestPath>,
-    ) {
-        assert_eq!(
-            Some(ShortestPath::new(expected_path, expected_weight)),
-            path
+        assert_path(
+            vec![0, 2, 3, 1],
+            3.0,
+            astar.search(0.into(), 1.into(), null_heuristic),
         );
     }
 }
