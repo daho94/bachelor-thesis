@@ -191,6 +191,10 @@ impl<Idx: IndexType> Edge<Idx> {
             shortcut_for: Some(shortcut_for),
         }
     }
+
+    pub fn is_shortcut(&self) -> bool {
+        self.shortcut_for.is_some()
+    }
 }
 
 impl<Idx: IndexType> Graph<Idx> {
@@ -249,6 +253,12 @@ impl<Idx: IndexType> Graph<Idx> {
         edge_idx
     }
 
+    pub fn add_edges(&mut self, edges: Vec<Edge<Idx>>) {
+        for edge in edges {
+            self.add_edge(edge);
+        }
+    }
+
     /// Adds a new node to the graph
     pub fn add_node(&mut self, node: Node) -> NodeIndex<Idx> {
         let node_idx: NodeIndex<Idx> = NodeIndex::new(self.nodes.len());
@@ -276,21 +286,31 @@ impl<Idx: IndexType> Graph<Idx> {
         self.nodes.iter()
     }
 
+    pub fn nodes_mut(&mut self) -> impl Iterator<Item = &mut Node> {
+        self.nodes.iter_mut()
+    }
+
     /// Returns an iterator over all edges of the graph
     pub fn edges(&self) -> impl Iterator<Item = &Edge<Idx>> {
         self.edges.iter()
     }
 
-    pub fn neighbors_outgoing(&self, node_idx: NodeIndex<Idx>) -> impl Iterator<Item = &Edge<Idx>> {
+    pub fn neighbors_outgoing(
+        &self,
+        node_idx: NodeIndex<Idx>,
+    ) -> impl Iterator<Item = (EdgeIndex<Idx>, &Edge<Idx>)> {
         self.edges_out[node_idx.index()]
             .iter()
-            .map(|edge_idx| &self.edges[edge_idx.index()])
+            .map(|edge_idx| (*edge_idx, &self.edges[edge_idx.index()]))
     }
 
-    pub fn neighbors_incoming(&self, node_idx: NodeIndex<Idx>) -> impl Iterator<Item = &Edge<Idx>> {
+    pub fn neighbors_incoming(
+        &self,
+        node_idx: NodeIndex<Idx>,
+    ) -> impl Iterator<Item = (EdgeIndex<Idx>, &Edge<Idx>)> {
         self.edges_in[node_idx.index()]
             .iter()
-            .map(|edge_idx| &self.edges[edge_idx.index()])
+            .map(|edge_idx| (*edge_idx, &self.edges[edge_idx.index()]))
     }
 
     pub fn from_csv(path_to_nodes: &Path, path_to_edges: &Path) -> anyhow::Result<Self> {
@@ -362,6 +382,31 @@ impl<Idx: IndexType> Default for Graph<Idx> {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Macro to create a edge from source to target with a weight
+/// edge!(0 , 1, 3.0) Retruns edge in both directions
+/// edge!(0 ==> 1, 3.0) Returns directed edge
+#[macro_export]
+macro_rules! edge {
+    ($source:expr => $target:expr, $weight:expr) => {
+        $crate::graph::Edge::new($source.into(), $target.into(), $weight)
+    };
+    ($source:expr , $target:expr, $weight:expr) => {
+        vec![
+            $crate::graph::Edge::new($source.into(), $target.into(), $weight),
+            $crate::graph::Edge::new($target.into(), $source.into(), $weight),
+        ]
+    };
+}
+
+/// Macro to create a node with a given id, lat, lon
+/// node!(0, 1.0, 1.0)
+#[macro_export]
+macro_rules! node {
+    ($id:expr, $lat:expr, $lon:expr) => {
+        $crate::graph::Node::new($id.into(), $lat, $lon)
+    };
 }
 
 #[cfg(test)]

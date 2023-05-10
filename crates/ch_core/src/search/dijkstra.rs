@@ -86,7 +86,7 @@ where
                 break;
             }
 
-            for edge in self.g.neighbors_outgoing(node_idx) {
+            for (_, edge) in self.g.neighbors_outgoing(node_idx) {
                 let new_distance = weight + edge.weight;
                 if new_distance
                     < node_data
