@@ -116,8 +116,28 @@ mod tests {
 
         let node_order = (0..10).map(node_index).collect::<Vec<_>>();
         contract_nodes(&mut g, &node_order);
+
         let shortcuts = g.edges().filter(|e| e.is_shortcut()).count();
-        dbg!(shortcuts);
+        assert_eq!(0, shortcuts)
+    }
+
+    #[test]
+    fn contract_straight_line_of_nodes() {
+        let mut g = Graph::<DefaultIdx>::new();
+
+        for i in 0..5 {
+            g.add_node(Node::new(i, 0.0, 0.0));
+        }
+
+        for i in 0..4 {
+            g.add_edge(edge!(i => i + 1, 1.0));
+        }
+
+        let node_order = (1..5).map(node_index).collect::<Vec<_>>();
+        contract_nodes(&mut g, &node_order);
+
+        let shortcuts = g.edges().filter(|e| e.is_shortcut()).count();
+        assert_eq!(3, shortcuts)
     }
 
     #[test]
