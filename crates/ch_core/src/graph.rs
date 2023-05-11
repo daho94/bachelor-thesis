@@ -385,7 +385,9 @@ impl<Idx: IndexType> Default for Graph<Idx> {
 }
 
 /// Macro to create a edge from source to target with a weight
-/// edge!(0 , 1, 3.0) Retruns edge in both directions
+///
+/// edge!(0 , 1, 3.0) Returns edge in both directions
+///
 /// edge!(0 ==> 1, 3.0) Returns directed edge
 #[macro_export]
 macro_rules! edge {
