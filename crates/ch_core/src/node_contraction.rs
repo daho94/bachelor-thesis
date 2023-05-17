@@ -1,34 +1,117 @@
+use std::{cmp::Reverse, collections::BinaryHeap};
+
+use log::info;
+use priority_queue::PriorityQueue;
 use rustc_hash::FxHashSet;
 
 use crate::{
+    constants::Weight,
     graph::{node_index, Edge, EdgeIndex, Graph, NodeIndex},
     witness_search::WitnessSearch,
 };
 
-/// Contract nodes in the graph.
+fn calc_initial_node_order(g: &Graph) -> PriorityQueue<NodeIndex, Reverse<i32>> {
+    let mut pq = PriorityQueue::new();
+    let num_nodes = g.nodes.len();
+
+    for v in 0..num_nodes {
+        let v = node_index(v);
+        let edge_difference = calc_edge_difference(v, g);
+        pq.push(v, Reverse(edge_difference));
+    }
+
+    pq
+}
+
+/// ED = Shortcuts - Removed edges
+fn calc_edge_difference(v: NodeIndex, g: &Graph) -> i32 {
+    let mut removed_edges = 0;
+
+    let edges_in: Vec<(EdgeIndex, Edge)> = g
+        .neighbors_incoming(v)
+        .map(|(i, e)| (i, e.clone()))
+        .collect();
+
+    let edges_out: Vec<(EdgeIndex, Edge)> = g
+        .neighbors_outgoing(v)
+        .map(|(i, e)| (i, e.clone()))
+        .collect();
+
+    removed_edges += edges_in.len() as i32;
+    removed_edges += edges_out.len() as i32;
+
+    let mut added_shortcuts = 0;
+    for (uv_idx, uv) in edges_in.iter() {
+        let mut max_weight = 0.0;
+        let mut target_nodes = Vec::new();
+        // Calculate max_weight <u,v,w>
+        for (_, vw) in edges_out.iter() {
+            if uv.source == vw.target {
+                continue;
+            }
+
+            let weight = uv.weight + vw.weight;
+            if weight > max_weight {
+                max_weight = weight;
+            }
+            target_nodes.push(vw.target);
+        }
+
+        // Start seach from u
+        let ws = WitnessSearch::new(g);
+        let res = ws.search(uv.source, &target_nodes, v, max_weight);
+
+        // Add shortcut if no better path <u,...,w> was found
+        for (vw_idx, vw) in edges_out.iter() {
+            if uv.source == vw.target {
+                continue;
+            }
+
+            let weight = uv.weight + vw.weight;
+            if weight < *res.get(&vw.target).unwrap_or(&std::f64::INFINITY) {
+                added_shortcuts += 1;
+            }
+        }
+    }
+
+    added_shortcuts - removed_edges
+}
+
+/// Contract nodes by using a priority queue.
+/// TODO: Find the best node order
+/// 1. Calculate edge difference for each node and put them in a priority queue. This is the initial node order.
+///     - Edge difference: Removed edges - shortcut edges
+pub fn contract_nodes(g: &mut Graph) {
+    let mut queue = calc_initial_node_order(g);
+
+    while !queue.is_empty() {
+        let node = queue.pop().unwrap().0;
+
+        // Contracte node
+        // contract_node(&mut g, node);
+
+        // Update neighbors of node
+    }
+}
+
+/// Contract nodes in the graph by a given order.
 ///
 ///  u1      w1  
 ///    \    /
 /// u1-->v-->w2
 ///    /    \    
 ///  u2      w3
-pub fn contract_nodes(g: &mut Graph, node_order: &[NodeIndex]) {
-    let mut removed_edges = FxHashSet::default();
+pub fn contract_nodes_with_order(g: &mut Graph, node_order: &[NodeIndex]) {
+    info!("Contracting nodes");
     for v in node_order {
         let v = *v;
         let edges_in: Vec<(EdgeIndex, Edge)> = g
             .neighbors_incoming(v)
-            // Clone edge to avoid borrowing issues
-            // Ignore removed edges
-            .filter(|(i, _)| !removed_edges.contains(i))
             .map(|(i, e)| (i, e.clone()))
             .collect();
 
         let edges_out: Vec<(EdgeIndex, Edge)> = g
             .neighbors_outgoing(v)
-            // Clone edge to avoid borrowing issues
-            // Ignore removed edges
-            .filter(|(i, _)| !removed_edges.contains(i))
             .map(|(i, e)| (i, e.clone()))
             .collect();
 
@@ -50,7 +133,7 @@ pub fn contract_nodes(g: &mut Graph, node_order: &[NodeIndex]) {
 
             // Start seach from u
             let ws = WitnessSearch::new(g);
-            let res = ws.search(uv.source, &target_nodes, v, max_weight, &removed_edges);
+            let res = ws.search(uv.source, &target_nodes, v, max_weight);
 
             // Add shortcut if no better path <u,...,w> was found
             for (vw_idx, vw) in edges_out.iter() {
@@ -68,14 +151,7 @@ pub fn contract_nodes(g: &mut Graph, node_order: &[NodeIndex]) {
             }
         }
 
-        // Remove edges for further usage
-        for (uv_idx, _) in edges_in.iter() {
-            removed_edges.insert(*uv_idx);
-        }
-
-        for (vw_idx, _) in edges_out.iter() {
-            removed_edges.insert(*vw_idx);
-        }
+        g.disconnect_node(v);
     }
 }
 
@@ -115,7 +191,7 @@ mod tests {
         g.add_edge(Edge::new(node_index(9), node_index(4), 1.0));
 
         let node_order = (0..10).map(node_index).collect::<Vec<_>>();
-        contract_nodes(&mut g, &node_order);
+        contract_nodes_with_order(&mut g, &node_order);
 
         let shortcuts = g.edges().filter(|e| e.is_shortcut()).count();
         assert_eq!(0, shortcuts)
@@ -123,6 +199,7 @@ mod tests {
 
     #[test]
     fn contract_straight_line_of_nodes() {
+        // 0 -> 1 -> 2 -> 3 -> 4
         let mut g = Graph::<DefaultIdx>::new();
 
         for i in 0..5 {
@@ -134,7 +211,7 @@ mod tests {
         }
 
         let node_order = (1..5).map(node_index).collect::<Vec<_>>();
-        contract_nodes(&mut g, &node_order);
+        contract_nodes_with_order(&mut g, &node_order);
 
         let shortcuts = g.edges().filter(|e| e.is_shortcut()).count();
         assert_eq!(3, shortcuts)
@@ -143,7 +220,7 @@ mod tests {
     #[test]
     // https://jlazarsfeld.github.io/ch.150.project/sections/8-contraction/
     fn contract_complex_graph() {
-        let mut g = Graph::<DefaultIdx>::new();
+        let mut g = Graph::new();
 
         // 'A'..='K'
         for i in 0..11 {
@@ -180,6 +257,15 @@ mod tests {
 
         g.add_edges(edge!(9, 10, 3.0)); // J <=> K
 
+        let mut order = calc_initial_node_order(&g);
+
+        let mut node_order2 = Vec::new();
+        for _ in 0..11 {
+            let p = order.pop().unwrap();
+            node_order2.push(p.0);
+        }
+        dbg!(&node_order2);
+
         // [B, E, I, K, D, G, C, J, H, F, A]
         let node_order = vec![
             node_index(1),
@@ -195,9 +281,38 @@ mod tests {
             node_index(0),
         ];
 
-        contract_nodes(&mut g, &node_order);
+        contract_nodes_with_order(&mut g, &node_order);
 
         // Display number of shortcuts
+        let shortcuts = g.edges().filter(|e| e.is_shortcut()).count();
+        assert_eq!(3 * 2, shortcuts);
+    }
+
+    #[ignore = "Takes too long"]
+    #[test]
+    fn vaterstetten_works() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../osm_reader/test_data/vaterstetten_pp.osm.pbf");
+
+        let mut g = Graph::<DefaultIdx>::from_pbf(&path).unwrap();
+        dbg!(g.nodes.len());
+        dbg!(g.edges.len());
+
+        // let node_order = (0..g.nodes.len()).map(node_index).collect::<Vec<_>>();
+
+        let mut order = calc_initial_node_order(&g);
+
+        let mut node_order = Vec::new();
+
+        while let Some(p) = order.pop() {
+            node_order.push(p.0);
+        }
+
+        contract_nodes_with_order(&mut g, &node_order);
+
+        // 46198 - Node order 0,1,2...
+        // 11771 - Calculated node order
+
         let shortcuts = g.edges().filter(|e| e.is_shortcut()).count();
         assert_eq!(3 * 2, shortcuts);
     }
