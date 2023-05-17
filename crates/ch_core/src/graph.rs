@@ -295,6 +295,16 @@ impl<Idx: IndexType> Graph<Idx> {
         self.edges.iter()
     }
 
+    /// Disconnects `node` from the graph by updating the adjacency lists
+    pub fn disconnect_node(&mut self, node: NodeIndex<Idx>) {
+        for list in self.edges_in.iter_mut() {
+            list.retain(|edge_idx| self.edges[edge_idx.index()].source != node);
+        }
+        for list in self.edges_out.iter_mut() {
+            list.retain(|edge_idx| self.edges[edge_idx.index()].target != node);
+        }
+    }
+
     pub fn neighbors_outgoing(
         &self,
         node_idx: NodeIndex<Idx>,
@@ -437,5 +447,29 @@ mod tests {
 
         assert_eq!(graph.nodes.len(), 2);
         assert_eq!(graph.edges_out.len(), 2);
+    }
+
+    #[test]
+    fn disconnect_node() {
+        let mut g = Graph::<DefaultIdx>::new();
+        let a = g.add_node(Node::new(0, 0.0, 0.0));
+        let b = g.add_node(Node::new(1, 0.0, 0.0));
+        let c = g.add_node(Node::new(2, 0.0, 0.0));
+        let u = g.add_node(Node::new(3, 0.0, 0.0));
+
+        g.add_edge(edge!(a => u, 1.0));
+        g.add_edge(edge!(u => c, 1.0));
+        g.add_edge(edge!(c => b, 1.0));
+        g.add_edge(edge!(u => b, 1.0));
+
+        g.disconnect_node(u);
+
+        assert_eq!(g.neighbors_outgoing(a).count(), 0);
+        assert_eq!(g.neighbors_outgoing(b).count(), 0);
+        assert_eq!(g.neighbors_outgoing(c).count(), 1);
+
+        assert_eq!(g.neighbors_incoming(a).count(), 0);
+        assert_eq!(g.neighbors_incoming(b).count(), 1);
+        assert_eq!(g.neighbors_incoming(c).count(), 0);
     }
 }
