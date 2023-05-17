@@ -61,7 +61,7 @@ impl<'a> WitnessSearch<'a> {
         targets: &[NodeIndex],
         avoid: NodeIndex,
         max_weight: f64,
-        ignore: &FxHashSet<EdgeIndex>,
+        // ignore: &FxHashSet<EdgeIndex>,
     ) -> FxHashMap<NodeIndex, Weight> {
         let mut nodes_settled = 0;
         let mut node_data = FxHashMap::default();
@@ -74,7 +74,7 @@ impl<'a> WitnessSearch<'a> {
 
         while let Some(Candidate { weight, node_idx }) = queue.pop() {
             if nodes_settled >= self.max_nodes_settled {
-                dbg!("Max nodes settled limit reached");
+                // dbg!("Max nodes settled limit reached");
                 break;
             }
 
@@ -82,10 +82,8 @@ impl<'a> WitnessSearch<'a> {
                 break;
             }
 
-            for (_, edge) in self
-                .g
-                .neighbors_outgoing(node_idx)
-                .filter(|(i, _)| !ignore.contains(i))
+            for (_, edge) in self.g.neighbors_outgoing(node_idx)
+            // .filter(|(i, _)| !ignore.contains(i))
             {
                 // Skip edges where target is avoid node
                 if edge.target == avoid
