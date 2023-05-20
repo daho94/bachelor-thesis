@@ -123,6 +123,7 @@ impl<'a> GraphView<'a> {
     }
 }
 
+#[allow(dead_code)]
 fn spherical_to_cartesian(lat: f64, lon: f64) -> (f32, f32) {
     let lat = lat.to_radians();
     let lon = lon.to_radians();

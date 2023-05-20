@@ -62,8 +62,6 @@ mod tests {
     use crate::node_contraction::contract_nodes_with_order;
     use crate::{edge, graph::*};
 
-    use super::SearchGraph;
-
     #[test]
     fn test_unpacking_edges() {
         //           B

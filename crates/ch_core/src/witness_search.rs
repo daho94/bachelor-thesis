@@ -4,7 +4,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     constants::Weight,
-    graph::{DefaultIdx, EdgeIndex, Graph, IndexType, NodeIndex},
+    graph::{DefaultIdx, Graph, IndexType, NodeIndex},
 };
 
 #[derive(Debug)]

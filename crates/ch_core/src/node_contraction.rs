@@ -1,11 +1,10 @@
-use std::{cmp::Reverse, collections::BinaryHeap, time::Instant};
+use std::{cmp::Reverse, time::Instant};
 
 use log::{debug, info};
 use priority_queue::PriorityQueue;
 use rustc_hash::FxHashSet;
 
 use crate::{
-    constants::Weight,
     graph::{node_index, Edge, EdgeIndex, Graph, NodeIndex},
     search_graph::SearchGraph,
     witness_search::WitnessSearch,
@@ -42,7 +41,7 @@ fn calc_edge_difference(v: NodeIndex, g: &Graph) -> i32 {
     removed_edges += edges_out.len() as i32;
 
     let mut added_shortcuts = 0;
-    for (uv_idx, uv) in edges_in.iter() {
+    for (_, uv) in edges_in.iter() {
         let mut max_weight = 0.0;
         let mut target_nodes = Vec::new();
         // Calculate max_weight <u,v,w>
@@ -63,7 +62,7 @@ fn calc_edge_difference(v: NodeIndex, g: &Graph) -> i32 {
         let res = ws.search(uv.source, &target_nodes, v, max_weight);
 
         // Add shortcut if no better path <u,...,w> was found
-        for (vw_idx, vw) in edges_out.iter() {
+        for (_, vw) in edges_out.iter() {
             if uv.source == vw.target {
                 continue;
             }
@@ -144,11 +143,11 @@ pub fn contract_nodes_with_order(g: &mut Graph, node_order: &[NodeIndex]) -> Sea
 
         contract_node(g, node);
 
-        for (in_idx, in_edge) in g.neighbors_incoming(node) {
+        for (in_idx, _) in g.neighbors_incoming(node) {
             search_graph.edges_bwd[node.index()].push(in_idx);
         }
 
-        for (out_idx, out_edge) in g.neighbors_outgoing(node) {
+        for (out_idx, _) in g.neighbors_outgoing(node) {
             search_graph.edges_fwd[node.index()].push(out_idx);
         }
     }

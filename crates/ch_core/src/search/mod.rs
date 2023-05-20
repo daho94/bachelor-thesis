@@ -5,7 +5,6 @@ use crate::graph::{IndexType, NodeIndex};
 use self::shortest_path::ShortestPath;
 
 pub mod astar;
-pub mod biDirSearch;
 pub mod dijkstra;
 pub mod shortest_path;
 

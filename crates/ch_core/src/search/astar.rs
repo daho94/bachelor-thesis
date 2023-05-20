@@ -4,7 +4,7 @@ use log::{debug, info};
 use rustc_hash::FxHashMap;
 
 use crate::{
-    constants::{OsmId, Weight},
+    constants::Weight,
     graph::{DefaultIdx, Graph, IndexType, Node, NodeIndex},
     statistics::Stats,
 };
