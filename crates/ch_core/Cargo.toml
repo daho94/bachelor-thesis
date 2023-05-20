@@ -13,3 +13,4 @@ osm_reader = { path = "../osm_reader" }
 log = "0.4.17"
 rustc-hash = "1.1"
 priority-queue = "1"
+env_logger = "0.10.0"
