@@ -191,6 +191,10 @@ impl<Idx: IndexType> Edge<Idx> {
             shortcut_for: Some(shortcut_for),
         }
     }
+
+    pub fn is_shortcut(&self) -> bool {
+        self.shortcut_for.is_some()
+    }
 }
 
 impl<Idx: IndexType> Graph<Idx> {
@@ -249,6 +253,12 @@ impl<Idx: IndexType> Graph<Idx> {
         edge_idx
     }
 
+    pub fn add_edges(&mut self, edges: Vec<Edge<Idx>>) {
+        for edge in edges {
+            self.add_edge(edge);
+        }
+    }
+
     /// Adds a new node to the graph
     pub fn add_node(&mut self, node: Node) -> NodeIndex<Idx> {
         let node_idx: NodeIndex<Idx> = NodeIndex::new(self.nodes.len());
@@ -276,21 +286,41 @@ impl<Idx: IndexType> Graph<Idx> {
         self.nodes.iter()
     }
 
+    pub fn nodes_mut(&mut self) -> impl Iterator<Item = &mut Node> {
+        self.nodes.iter_mut()
+    }
+
     /// Returns an iterator over all edges of the graph
     pub fn edges(&self) -> impl Iterator<Item = &Edge<Idx>> {
         self.edges.iter()
     }
 
-    pub fn neighbors_outgoing(&self, node_idx: NodeIndex<Idx>) -> impl Iterator<Item = &Edge<Idx>> {
-        self.edges_out[node_idx.index()]
-            .iter()
-            .map(|edge_idx| &self.edges[edge_idx.index()])
+    /// Disconnects `node` from the graph by updating the adjacency lists
+    pub fn disconnect_node(&mut self, node: NodeIndex<Idx>) {
+        for list in self.edges_in.iter_mut() {
+            list.retain(|edge_idx| self.edges[edge_idx.index()].source != node);
+        }
+        for list in self.edges_out.iter_mut() {
+            list.retain(|edge_idx| self.edges[edge_idx.index()].target != node);
+        }
     }
 
-    pub fn neighbors_incoming(&self, node_idx: NodeIndex<Idx>) -> impl Iterator<Item = &Edge<Idx>> {
+    pub fn neighbors_outgoing(
+        &self,
+        node_idx: NodeIndex<Idx>,
+    ) -> impl Iterator<Item = (EdgeIndex<Idx>, &Edge<Idx>)> {
+        self.edges_out[node_idx.index()]
+            .iter()
+            .map(|edge_idx| (*edge_idx, &self.edges[edge_idx.index()]))
+    }
+
+    pub fn neighbors_incoming(
+        &self,
+        node_idx: NodeIndex<Idx>,
+    ) -> impl Iterator<Item = (EdgeIndex<Idx>, &Edge<Idx>)> {
         self.edges_in[node_idx.index()]
             .iter()
-            .map(|edge_idx| &self.edges[edge_idx.index()])
+            .map(|edge_idx| (*edge_idx, &self.edges[edge_idx.index()]))
     }
 
     pub fn from_csv(path_to_nodes: &Path, path_to_edges: &Path) -> anyhow::Result<Self> {
@@ -364,6 +394,33 @@ impl<Idx: IndexType> Default for Graph<Idx> {
     }
 }
 
+/// Macro to create a edge from source to target with a weight
+///
+/// edge!(0 , 1, 3.0) Returns edge in both directions
+///
+/// edge!(0 ==> 1, 3.0) Returns directed edge
+#[macro_export]
+macro_rules! edge {
+    ($source:expr => $target:expr, $weight:expr) => {
+        $crate::graph::Edge::new($source.into(), $target.into(), $weight)
+    };
+    ($source:expr , $target:expr, $weight:expr) => {
+        vec![
+            $crate::graph::Edge::new($source.into(), $target.into(), $weight),
+            $crate::graph::Edge::new($target.into(), $source.into(), $weight),
+        ]
+    };
+}
+
+/// Macro to create a node with a given id, lat, lon
+/// node!(0, 1.0, 1.0)
+#[macro_export]
+macro_rules! node {
+    ($id:expr, $lat:expr, $lon:expr) => {
+        $crate::graph::Node::new($id.into(), $lat, $lon)
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -390,5 +447,29 @@ mod tests {
 
         assert_eq!(graph.nodes.len(), 2);
         assert_eq!(graph.edges_out.len(), 2);
+    }
+
+    #[test]
+    fn disconnect_node() {
+        let mut g = Graph::<DefaultIdx>::new();
+        let a = g.add_node(Node::new(0, 0.0, 0.0));
+        let b = g.add_node(Node::new(1, 0.0, 0.0));
+        let c = g.add_node(Node::new(2, 0.0, 0.0));
+        let u = g.add_node(Node::new(3, 0.0, 0.0));
+
+        g.add_edge(edge!(a => u, 1.0));
+        g.add_edge(edge!(u => c, 1.0));
+        g.add_edge(edge!(c => b, 1.0));
+        g.add_edge(edge!(u => b, 1.0));
+
+        g.disconnect_node(u);
+
+        assert_eq!(g.neighbors_outgoing(a).count(), 0);
+        assert_eq!(g.neighbors_outgoing(b).count(), 0);
+        assert_eq!(g.neighbors_outgoing(c).count(), 1);
+
+        assert_eq!(g.neighbors_incoming(a).count(), 0);
+        assert_eq!(g.neighbors_incoming(b).count(), 1);
+        assert_eq!(g.neighbors_incoming(c).count(), 0);
     }
 }

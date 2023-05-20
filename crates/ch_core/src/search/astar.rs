@@ -104,7 +104,7 @@ where
                 break;
             }
 
-            for edge in self.g.neighbors_outgoing(node) {
+            for (_, edge) in self.g.neighbors_outgoing(node) {
                 let real_weight = real_weight + edge.weight;
 
                 if real_weight
