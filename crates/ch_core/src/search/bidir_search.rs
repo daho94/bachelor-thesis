@@ -17,8 +17,13 @@ type NodeData = FxHashMap<NodeIndex, (Weight, Option<EdgeIndex>)>;
 pub struct BiDirSearch<'a, Idx = DefaultIdx> {
     pub stats: Stats,
     g: &'a SearchGraph<Idx>,
+
     settled_fwd: FxHashSet<NodeIndex<Idx>>,
     settled_bwd: FxHashSet<NodeIndex<Idx>>,
+
+    data_fwd: NodeData,
+    data_bwd: NodeData,
+
     intersect_node: Option<NodeIndex<Idx>>,
 }
 
@@ -29,6 +34,8 @@ impl<'a> BiDirSearch<'a> {
             stats: Stats::default(),
             settled_fwd: FxHashSet::default(),
             settled_bwd: FxHashSet::default(),
+            data_fwd: FxHashMap::default(),
+            data_bwd: FxHashMap::default(),
             intersect_node: None,
         }
     }
@@ -36,6 +43,8 @@ impl<'a> BiDirSearch<'a> {
     fn init(&mut self) {
         self.settled_fwd.clear();
         self.settled_bwd.clear();
+        self.data_bwd.clear();
+        self.data_fwd.clear();
         self.intersect_node = None;
         self.stats.init();
     }
@@ -55,11 +64,8 @@ impl<'a> BiDirSearch<'a> {
         let mut queue_fwd = BinaryHeap::new();
         let mut queue_bwd = BinaryHeap::new();
 
-        let mut data_fwd: NodeData = FxHashMap::default();
-        let mut data_bwd = FxHashMap::default();
-
-        data_fwd.insert(source, (0.0, None));
-        data_bwd.insert(target, (0.0, None));
+        self.data_fwd.insert(source, (0.0, None));
+        self.data_bwd.insert(target, (0.0, None));
 
         let mut intersect_node = None;
 
@@ -72,12 +78,14 @@ impl<'a> BiDirSearch<'a> {
                 for (edge_idx, edge) in self.g.edges_fwd(cand.node_idx) {
                     let new_distance = cand.weight + edge.weight;
                     if new_distance
-                        < data_fwd
+                        < self
+                            .data_fwd
                             .get(&edge.target)
                             .unwrap_or(&(std::f64::INFINITY, None))
                             .0
                     {
-                        data_fwd.insert(edge.target, (new_distance, Some(edge_idx)));
+                        self.data_fwd
+                            .insert(edge.target, (new_distance, Some(edge_idx)));
                         queue_fwd.push(Candidate::new(edge.target, new_distance));
                     }
                 }
@@ -92,12 +100,14 @@ impl<'a> BiDirSearch<'a> {
                 for (edge_idx, edge) in self.g.edges_bwd(cand.node_idx) {
                     let new_distance = cand.weight + edge.weight;
                     if new_distance
-                        < data_bwd
+                        < self
+                            .data_bwd
                             .get(&edge.source)
                             .unwrap_or(&(std::f64::INFINITY, None))
                             .0
                     {
-                        data_bwd.insert(edge.source, (new_distance, Some(edge_idx)));
+                        self.data_bwd
+                            .insert(edge.source, (new_distance, Some(edge_idx)));
                         queue_bwd.push(Candidate::new(edge.source, new_distance));
                     }
                 }
@@ -114,8 +124,8 @@ impl<'a> BiDirSearch<'a> {
         // and remember intersect node `v`
         let mut min_dist = std::f64::INFINITY;
         for node in intersect {
-            let dist_fwd = data_fwd.get(node).unwrap().0;
-            let dist_bwd = data_bwd.get(node).unwrap().0;
+            let dist_fwd = self.data_fwd.get(node).unwrap().0;
+            let dist_bwd = self.data_bwd.get(node).unwrap().0;
 
             let dist = dist_fwd + dist_bwd;
             if dist < min_dist {
@@ -131,14 +141,14 @@ impl<'a> BiDirSearch<'a> {
 
         if let Some(v) = intersect_node {
             // Reconstruct the path by backtracking and unpacking shortcuts
-            let weight = data_fwd.get(&v)?.0 + data_bwd.get(&v)?.0;
+            let weight = self.data_fwd.get(&v)?.0 + self.data_bwd.get(&v)?.0;
 
             let path_fwd = (|| {
                 let mut path = vec![];
 
-                let mut previous_node = self.g.edges[data_fwd.get(&v)?.1?.index()].source;
+                let mut previous_node = self.g.edges[self.data_fwd.get(&v)?.1?.index()].source;
 
-                while let Some(prev_edge) = data_fwd.get(&previous_node)?.1 {
+                while let Some(prev_edge) = self.data_fwd.get(&previous_node)?.1 {
                     let unpacked = self.g.unpack_edge(prev_edge);
 
                     for edge_idx in unpacked.iter().rev() {
@@ -159,9 +169,9 @@ impl<'a> BiDirSearch<'a> {
             let path_bwd = (|| {
                 let mut path = vec![];
 
-                let mut previous_node = self.g.edges[data_bwd.get(&v)?.1?.index()].source;
+                let mut previous_node = self.g.edges[self.data_bwd.get(&v)?.1?.index()].source;
 
-                while let Some(prev_edge) = data_bwd.get(&previous_node)?.1 {
+                while let Some(prev_edge) = self.data_bwd.get(&previous_node)?.1 {
                     let unpacked = self.g.unpack_edge(prev_edge);
 
                     let mut segment = vec![];
