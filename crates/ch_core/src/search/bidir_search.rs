@@ -56,7 +56,7 @@ impl<'a> BiDirSearch<'a> {
         target: NodeIndex,
     ) -> Option<ShortestPath<DefaultIdx>> {
         self.init();
-        debug!(
+        info!(
             "BEGIN BIDIRECTIONAL SEARCH from {:?} to {:?}",
             source, target
         );
@@ -146,7 +146,7 @@ impl<'a> BiDirSearch<'a> {
             let path_fwd = (|| {
                 let mut path = vec![];
 
-                let mut previous_node = self.g.edges[self.data_fwd.get(&v)?.1?.index()].source;
+                let mut previous_node = v;
 
                 while let Some(prev_edge) = self.data_fwd.get(&previous_node)?.1 {
                     let unpacked = self.g.unpack_edge(prev_edge);
@@ -162,25 +162,21 @@ impl<'a> BiDirSearch<'a> {
 
                 Some(path)
             })()
-            .unwrap_or(vec![]);
+            .unwrap_or(vec![source]);
             debug!("Path fwd: {:?}", &path_fwd);
 
             // Add the backward path and weight
             let path_bwd = (|| {
                 let mut path = vec![];
 
-                let mut previous_node = self.g.edges[self.data_bwd.get(&v)?.1?.index()].source;
+                let mut previous_node = v;
 
                 while let Some(prev_edge) = self.data_bwd.get(&previous_node)?.1 {
                     let unpacked = self.g.unpack_edge(prev_edge);
 
-                    let mut segment = vec![];
-                    for edge_idx in unpacked.iter().rev() {
-                        segment.push(self.g.edges[edge_idx.index()].target);
+                    for edge_idx in unpacked.iter() {
+                        path.push(self.g.edges[edge_idx.index()].target);
                     }
-                    segment.reverse();
-
-                    path.append(&mut segment);
 
                     previous_node = self.g.edges[prev_edge.index()].target;
                 }
@@ -190,15 +186,13 @@ impl<'a> BiDirSearch<'a> {
             .unwrap_or(Vec::<NodeIndex>::new());
 
             debug!("Path bwd: {:?}", &path_bwd);
-            let path = [path_fwd, vec![v], path_bwd].concat();
-
-            debug!("Path combined: {:?}", &path);
+            let path = [path_fwd, path_bwd].concat();
 
             info!("{}", self.stats);
 
             Some(ShortestPath::new(path, weight))
         } else {
-            debug!("No path found");
+            info!("No path found");
             None
         }
     }
@@ -289,24 +283,26 @@ mod tests {
         assert_path(vec![0, 10, 9, 7, 6], 11.0, sp);
     }
 
-    #[ignore = "Takes too long"]
     #[test]
     fn search_on_vaterstetten() {
         init_log();
         let mut g = graph_vaterstetten();
-        let a = node_index(1701);
-        let b = node_index(278);
+        let a = node_index(1);
+        let b = node_index(2);
 
         let mut dijkstra = super::super::dijkstra::Dijkstra::new(&g);
-        let sp = dijkstra.search(a, b);
+        let sp_ab = dijkstra.search(a, b);
+        let sp_ba = dijkstra.search(b, a);
         // 4264 nodes settled
 
         let search_graph = contract_nodes(&mut g);
         let mut bidir = BiDirSearch::new(&search_graph);
-        let sp_bidir = bidir.search(a, b);
+        let sp_bidir_ab = bidir.search(a, b);
+        let sp_bidir_ba = bidir.search(b, a);
 
         // 137 nodes settled
 
-        assert_eq!(sp.unwrap().nodes, sp_bidir.unwrap().nodes);
+        assert_eq!(sp_ab.unwrap().nodes, sp_bidir_ab.unwrap().nodes);
+        assert_eq!(sp_ba.unwrap().nodes, sp_bidir_ba.unwrap().nodes);
     }
 }
