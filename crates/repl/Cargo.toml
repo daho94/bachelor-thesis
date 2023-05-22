@@ -10,3 +10,4 @@ ch_core = { path = "../ch_core" }
 osm_reader = { path = "../osm_reader" }
 rand = "0.8.5"
 reedline-repl-rs = "1.0.4"
+env_logger = "0.10.0"

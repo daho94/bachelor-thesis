@@ -3290,6 +3290,7 @@ name = "repl"
 version = "0.1.0"
 dependencies = [
  "ch_core",
+ "env_logger",
  "osm_reader",
  "rand 0.8.5",
  "reedline-repl-rs",
