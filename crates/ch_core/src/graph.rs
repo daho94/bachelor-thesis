@@ -160,14 +160,6 @@ pub struct Edge<Idx = DefaultIdx> {
     // Used to recursively unpack shortcuts
     pub shortcut_for: Option<[EdgeIndex<Idx>; 2]>,
 }
-#[derive(Clone)]
-pub struct Graph<Idx = DefaultIdx> {
-    pub edges_in: Vec<Vec<EdgeIndex<Idx>>>,
-    pub edges_out: Vec<Vec<EdgeIndex<Idx>>>,
-    pub nodes: Vec<Node>,
-    pub edges: Vec<Edge<Idx>>,
-    // node_index: FxHashMap<NodeId, usize>,
-}
 
 impl<Idx: IndexType> Edge<Idx> {
     pub fn new(source: NodeIndex<Idx>, target: NodeIndex<Idx>, weight: Weight) -> Self {
@@ -198,6 +190,15 @@ impl<Idx: IndexType> Edge<Idx> {
     }
 }
 
+#[derive(Clone)]
+pub struct Graph<Idx = DefaultIdx> {
+    pub edges_in: Vec<Vec<EdgeIndex<Idx>>>,
+    pub edges_out: Vec<Vec<EdgeIndex<Idx>>>,
+    pub nodes: Vec<Node>,
+    pub edges: Vec<Edge<Idx>>,
+    contracted_nodes: Vec<bool>,
+}
+
 impl<Idx: IndexType> Graph<Idx> {
     pub fn new() -> Self {
         Self {
@@ -205,6 +206,7 @@ impl<Idx: IndexType> Graph<Idx> {
             edges_out: Vec::new(),
             nodes: Vec::new(),
             edges: Vec::new(),
+            contracted_nodes: Vec::new(),
         }
     }
 
@@ -214,6 +216,7 @@ impl<Idx: IndexType> Graph<Idx> {
             edges_out: Vec::with_capacity(num_nodes),
             nodes: Vec::with_capacity(num_nodes),
             edges: Vec::with_capacity(num_edges),
+            contracted_nodes: vec![false; num_nodes],
         }
     }
 
@@ -275,6 +278,7 @@ impl<Idx: IndexType> Graph<Idx> {
         self.edges_out.push(Vec::new());
 
         self.nodes.push(node);
+        self.contracted_nodes.push(false);
         node_idx
     }
 
@@ -299,30 +303,58 @@ impl<Idx: IndexType> Graph<Idx> {
     /// Disconnects `node` from the graph by updating the adjacency lists
     pub fn disconnect_node(&mut self, node: NodeIndex<Idx>) {
         // FIXME: This is not very efficient on large graphs
-        for list in self.edges_in.iter_mut() {
-            list.retain(|edge_idx| self.edges[edge_idx.index()].source != node);
-        }
-        for list in self.edges_out.iter_mut() {
-            list.retain(|edge_idx| self.edges[edge_idx.index()].target != node);
-        }
+        // for list in self.edges_in.iter_mut() {
+        //     list.retain(|edge_idx| self.edges[edge_idx.index()].source != node);
+        // }
+        // for list in self.edges_out.iter_mut() {
+        //     list.retain(|edge_idx| self.edges[edge_idx.index()].target != node);
+        // }
+        self.contracted_nodes[node.index()] = true;
     }
 
     pub fn neighbors_outgoing(
         &self,
         node_idx: NodeIndex<Idx>,
     ) -> impl Iterator<Item = (EdgeIndex<Idx>, &Edge<Idx>)> {
+        // Ignore outgoing edges to contracted nodes
         self.edges_out[node_idx.index()]
             .iter()
+            .filter(move |edge_idx| {
+                !self.contracted_nodes[self.edges[edge_idx.index()].target.index()]
+            })
             .map(|edge_idx| (*edge_idx, &self.edges[edge_idx.index()]))
+
+        // self.edges_out[node_idx.index()]
+        //     .iter()
+        //     .map(|edge_idx| (*edge_idx, &self.edges[edge_idx.index()]))
     }
 
     pub fn neighbors_incoming(
         &self,
         node_idx: NodeIndex<Idx>,
     ) -> impl Iterator<Item = (EdgeIndex<Idx>, &Edge<Idx>)> {
+        // Ignore incoming edges from contracted nodes
         self.edges_in[node_idx.index()]
             .iter()
+            .filter(move |edge_idx| {
+                !self.contracted_nodes[self.edges[edge_idx.index()].source.index()]
+            })
             .map(|edge_idx| (*edge_idx, &self.edges[edge_idx.index()]))
+
+        // self.edges_in[node_idx.index()]
+        //     .iter()
+        //     .map(|edge_idx| (*edge_idx, &self.edges[edge_idx.index()]))
+    }
+
+    pub fn print_info(&self) {
+        let num_shortcuts = self.edges.iter().filter(|e| e.is_shortcut()).count();
+
+        println!(
+            "InputGraph:\t#Nodes: {}, #Edges: {}, #Shortcuts: {}",
+            self.nodes.len(),
+            self.edges.len() - num_shortcuts,
+            num_shortcuts
+        );
     }
 
     pub fn from_csv(path_to_nodes: &Path, path_to_edges: &Path) -> anyhow::Result<Self> {

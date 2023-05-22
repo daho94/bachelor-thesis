@@ -91,7 +91,9 @@ pub fn contract_nodes(g: &mut Graph) -> SearchGraph {
     info!("Done.");
 
     let num_nodes = g.nodes.len();
-    let mut next_goal = 1.0;
+
+    let step = 5.0;
+    let mut next_goal = step;
 
     while !queue.is_empty() {
         let node = queue.pop().unwrap().0;
@@ -133,7 +135,7 @@ pub fn contract_nodes(g: &mut Graph) -> SearchGraph {
         let progress = (num_nodes - queue.len()) as f64 / num_nodes as f64;
         if progress * 100.0 >= next_goal {
             info!("Progress: {:.2}%", progress * 100.0);
-            next_goal += 1.0;
+            next_goal += step;
         }
     }
 
@@ -200,7 +202,7 @@ fn contract_node(g: &mut Graph, v: NodeIndex) {
         }
 
         // Start seach from u
-        let ws = WitnessSearch::with_params(g, 10);
+        let ws = WitnessSearch::with_params(g, 50);
         let res = ws.search(uv.source, &target_nodes, v, max_weight);
 
         // Add shortcut if no better path <u,...,w> was found
