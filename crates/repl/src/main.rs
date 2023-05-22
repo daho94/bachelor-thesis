@@ -17,11 +17,10 @@ use reedline_repl_rs::{Repl, Result};
 
 /// Print graph info
 fn info(_args: ArgMatches, context: &mut Context) -> Result<Option<String>> {
-    Ok(Some(format!(
-        "Graph has {} nodes and {} edges",
-        context.graph.nodes.len(),
-        context.graph.edges_out.iter().flatten().count()
-    )))
+    context.graph.print_info();
+    context.search_graph.print_info();
+
+    Ok(None)
 }
 
 fn run_dijkstra(args: ArgMatches, context: &mut Context) -> Result<Option<String>> {
@@ -65,9 +64,13 @@ fn run_algorithm(args: ArgMatches, context: &mut Context) -> Result<Option<Strin
 
     if let Some(sp) = sp {
         let mut path = String::new();
-        for node in sp.nodes {
-            path.push_str(&format!("{:?}\n", node));
-        }
+        // for node in sp.nodes {
+        //     path.push_str(&format!("{:?}\n", node.index()));
+        // }
+        path.push_str(&format!(
+            "{:?}\n",
+            sp.nodes.iter().map(|n| n.index()).collect::<Vec<_>>()
+        ));
         path.push_str(&format!(
             "Took: {:?} / {} nodes settled",
             stats.duration, stats.nodes_settled
