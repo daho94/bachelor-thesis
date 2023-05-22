@@ -55,6 +55,13 @@ impl<'a> WitnessSearch<'a> {
         }
     }
 
+    pub fn with_params(g: &'a Graph, max_nodes_settled: usize) -> Self {
+        Self {
+            g,
+            max_nodes_settled,
+        }
+    }
+
     pub(crate) fn search(
         &self,
         start: NodeIndex,

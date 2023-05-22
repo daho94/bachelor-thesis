@@ -160,6 +160,7 @@ pub struct Edge<Idx = DefaultIdx> {
     // Used to recursively unpack shortcuts
     pub shortcut_for: Option<[EdgeIndex<Idx>; 2]>,
 }
+#[derive(Clone)]
 pub struct Graph<Idx = DefaultIdx> {
     pub edges_in: Vec<Vec<EdgeIndex<Idx>>>,
     pub edges_out: Vec<Vec<EdgeIndex<Idx>>>,
@@ -297,6 +298,7 @@ impl<Idx: IndexType> Graph<Idx> {
 
     /// Disconnects `node` from the graph by updating the adjacency lists
     pub fn disconnect_node(&mut self, node: NodeIndex<Idx>) {
+        // FIXME: This is not very efficient on large graphs
         for list in self.edges_in.iter_mut() {
             list.retain(|edge_idx| self.edges[edge_idx.index()].source != node);
         }

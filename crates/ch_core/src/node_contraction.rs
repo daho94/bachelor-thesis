@@ -1,3 +1,4 @@
+use core::num;
 use std::{cmp::Reverse, time::Instant};
 
 use log::{debug, info};
@@ -16,7 +17,7 @@ fn calc_initial_node_order(g: &Graph) -> PriorityQueue<NodeIndex, Reverse<i32>> 
 
     for v in 0..num_nodes {
         let v = node_index(v);
-        let edge_difference = calc_edge_difference(v, g);
+        let edge_difference = calc_edge_difference(v, g, WitnessSearch::with_params(g, 50));
         pq.push(v, Reverse(edge_difference));
     }
 
@@ -24,7 +25,7 @@ fn calc_initial_node_order(g: &Graph) -> PriorityQueue<NodeIndex, Reverse<i32>> 
 }
 
 /// ED = Shortcuts - Removed edges
-fn calc_edge_difference(v: NodeIndex, g: &Graph) -> i32 {
+fn calc_edge_difference(v: NodeIndex, g: &Graph, ws: WitnessSearch) -> i32 {
     let mut removed_edges = 0;
 
     let edges_in: Vec<(EdgeIndex, Edge)> = g
@@ -58,7 +59,7 @@ fn calc_edge_difference(v: NodeIndex, g: &Graph) -> i32 {
         }
 
         // Start seach from u
-        let ws = WitnessSearch::new(g);
+        // let ws = WitnessSearch::new(g);
         let res = ws.search(uv.source, &target_nodes, v, max_weight);
 
         // Add shortcut if no better path <u,...,w> was found
@@ -82,9 +83,15 @@ fn calc_edge_difference(v: NodeIndex, g: &Graph) -> i32 {
 /// 1. Calculate edge difference for each node and put them in a priority queue. This is the initial node order.
 ///     - Edge difference: Removed edges - shortcut edges
 pub fn contract_nodes(g: &mut Graph) -> SearchGraph {
+    info!("BEGIN Node contraction");
     let mut search_graph = SearchGraph::with_capacity(g.nodes.len(), g.edges.len());
 
+    info!("Start calculating initial node order");
     let mut queue = calc_initial_node_order(g);
+    info!("Done.");
+
+    let num_nodes = g.nodes.len();
+    let mut next_goal = 1.0;
 
     while !queue.is_empty() {
         let node = queue.pop().unwrap().0;
@@ -107,7 +114,8 @@ pub fn contract_nodes(g: &mut Graph) -> SearchGraph {
 
         // Update priority of neighbors
         for neighbor in neighbors {
-            let edge_difference = calc_edge_difference(neighbor, g);
+            let edge_difference =
+                calc_edge_difference(neighbor, g, WitnessSearch::with_params(g, 10));
             if let Some(Reverse(old_value)) =
                 queue.change_priority(&neighbor, Reverse(edge_difference))
             {
@@ -120,6 +128,12 @@ pub fn contract_nodes(g: &mut Graph) -> SearchGraph {
                     );
                 }
             }
+        }
+
+        let progress = (num_nodes - queue.len()) as f64 / num_nodes as f64;
+        if progress * 100.0 >= next_goal {
+            info!("Progress: {:.2}%", progress * 100.0);
+            next_goal += 1.0;
         }
     }
 
@@ -157,6 +171,7 @@ pub fn contract_nodes_with_order(g: &mut Graph, node_order: &[NodeIndex]) -> Sea
     search_graph
 }
 
+#[inline(always)]
 fn contract_node(g: &mut Graph, v: NodeIndex) {
     let edges_in: Vec<(EdgeIndex, Edge)> = g
         .neighbors_incoming(v)
@@ -185,7 +200,7 @@ fn contract_node(g: &mut Graph, v: NodeIndex) {
         }
 
         // Start seach from u
-        let ws = WitnessSearch::new(g);
+        let ws = WitnessSearch::with_params(g, 10);
         let res = ws.search(uv.source, &target_nodes, v, max_weight);
 
         // Add shortcut if no better path <u,...,w> was found
