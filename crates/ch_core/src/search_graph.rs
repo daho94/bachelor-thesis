@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::graph::{DefaultIdx, Edge, EdgeIndex, NodeIndex};
 
 pub struct SearchGraph<Idx = DefaultIdx> {
@@ -45,6 +47,14 @@ impl SearchGraph {
         unpacked
     }
 
+    pub fn print_info(&self) {
+        println!(
+            "SearchGraph:\t#Nodes: {}, #Edges: {}",
+            self.edges_fwd.len(),
+            self.edges_fwd.iter().flatten().count()
+        );
+    }
+
     pub fn with_capacity(num_nodes: usize, num_edges: usize) -> Self {
         let edges_fwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); num_nodes];
         let edges_bwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); num_nodes];
@@ -57,10 +67,37 @@ impl SearchGraph {
     }
 }
 
+impl Display for SearchGraph {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(
+            f,
+            "SearchGraph: #Edges: {}, #Nodes: {}",
+            self.edges_fwd.iter().flatten().count(),
+            self.edges_fwd.len()
+        )?;
+        for (node, edges) in self.edges_fwd.iter().enumerate() {
+            write!(f, "  {}:", node)?;
+            for edge_idx in edges {
+                write!(
+                    f,
+                    " {}->{} ",
+                    self.edges[edge_idx.index()].source.index(),
+                    self.edges[edge_idx.index()].target.index()
+                )?;
+            }
+            writeln!(f)?;
+        }
+
+        writeln!(f)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::node_contraction::contract_nodes_with_order;
     use crate::{edge, graph::*};
+    use crate::{
+        node_contraction::contract_nodes_with_order, util::test_graphs::generate_simple_graph,
+    };
 
     #[test]
     fn test_unpacking_edges() {
@@ -96,5 +133,27 @@ mod tests {
 
         let unpacked_edges = search_graph.unpack_edge(7.into());
         assert_eq!(vec![ea, ac], unpacked_edges);
+    }
+
+    #[test]
+    fn test_print_graph() {
+        //           B
+        //           |
+        // E -> A -> C
+        //      |  /
+        //      D
+        let mut g = generate_simple_graph();
+
+        // A,E,D,C,B
+        let node_order = vec![
+            node_index(0),
+            node_index(4),
+            node_index(3),
+            node_index(2),
+            node_index(1),
+        ];
+
+        let search_graph = contract_nodes_with_order(&mut g, &node_order);
+        println!("{}", search_graph);
     }
 }
