@@ -196,7 +196,6 @@ pub struct Graph<Idx = DefaultIdx> {
     pub edges_out: Vec<Vec<EdgeIndex<Idx>>>,
     pub nodes: Vec<Node>,
     pub edges: Vec<Edge<Idx>>,
-    contracted_nodes: Vec<bool>,
 }
 
 impl<Idx: IndexType> Graph<Idx> {
@@ -206,7 +205,6 @@ impl<Idx: IndexType> Graph<Idx> {
             edges_out: Vec::new(),
             nodes: Vec::new(),
             edges: Vec::new(),
-            contracted_nodes: Vec::new(),
         }
     }
 
@@ -216,7 +214,6 @@ impl<Idx: IndexType> Graph<Idx> {
             edges_out: Vec::with_capacity(num_nodes),
             nodes: Vec::with_capacity(num_nodes),
             edges: Vec::with_capacity(num_edges),
-            contracted_nodes: vec![false; num_nodes],
         }
     }
 
@@ -278,7 +275,7 @@ impl<Idx: IndexType> Graph<Idx> {
         self.edges_out.push(Vec::new());
 
         self.nodes.push(node);
-        self.contracted_nodes.push(false);
+
         node_idx
     }
 
@@ -300,21 +297,14 @@ impl<Idx: IndexType> Graph<Idx> {
         self.edges.iter()
     }
 
-    /// Disconnects `node` from the graph by updating the adjacency lists
-    pub fn disconnect_node(&mut self, node: NodeIndex<Idx>) {
-        self.contracted_nodes[node.index()] = true;
-    }
-
     pub fn neighbors_outgoing(
         &self,
         node_idx: NodeIndex<Idx>,
     ) -> impl Iterator<Item = (EdgeIndex<Idx>, &Edge<Idx>)> {
-        // Ignore outgoing edges to contracted nodes
+        // Ignore shortcuts
         self.edges_out[node_idx.index()]
             .iter()
-            .filter(move |edge_idx| {
-                !self.contracted_nodes[self.edges[edge_idx.index()].target.index()]
-            })
+            .filter(|edge_idx| !self.edges[edge_idx.index()].is_shortcut())
             .map(|edge_idx| (*edge_idx, &self.edges[edge_idx.index()]))
     }
 
@@ -322,12 +312,10 @@ impl<Idx: IndexType> Graph<Idx> {
         &self,
         node_idx: NodeIndex<Idx>,
     ) -> impl Iterator<Item = (EdgeIndex<Idx>, &Edge<Idx>)> {
-        // Ignore incoming edges from contracted nodes
+        // Ignore shortcuts
         self.edges_in[node_idx.index()]
             .iter()
-            .filter(move |edge_idx| {
-                !self.contracted_nodes[self.edges[edge_idx.index()].source.index()]
-            })
+            .filter(|edge_idx| !self.edges[edge_idx.index()].is_shortcut())
             .map(|edge_idx| (*edge_idx, &self.edges[edge_idx.index()]))
     }
 
@@ -393,10 +381,15 @@ impl<Idx: IndexType> Graph<Idx> {
             g.add_node(node);
         }
 
-        for (from, to, weight) in road_graph.get_arcs() {
+        for Arc {
+            source,
+            target,
+            weight,
+        } in road_graph.get_arcs()
+        {
             let edge: Edge<Idx> = Edge::new(
-                NodeIndex::new(node_index[from]),
-                NodeIndex::new(node_index[to]),
+                NodeIndex::new(node_index[source]),
+                NodeIndex::new(node_index[target]),
                 *weight,
             );
             g.add_edge(edge);
@@ -466,29 +459,5 @@ mod tests {
 
         assert_eq!(graph.nodes.len(), 2);
         assert_eq!(graph.edges_out.len(), 2);
-    }
-
-    #[test]
-    fn disconnect_node() {
-        let mut g = Graph::<DefaultIdx>::new();
-        let a = g.add_node(Node::new(0, 0.0, 0.0));
-        let b = g.add_node(Node::new(1, 0.0, 0.0));
-        let c = g.add_node(Node::new(2, 0.0, 0.0));
-        let u = g.add_node(Node::new(3, 0.0, 0.0));
-
-        g.add_edge(edge!(a => u, 1.0));
-        g.add_edge(edge!(u => c, 1.0));
-        g.add_edge(edge!(c => b, 1.0));
-        g.add_edge(edge!(u => b, 1.0));
-
-        g.disconnect_node(u);
-
-        assert_eq!(g.neighbors_outgoing(a).count(), 0);
-        assert_eq!(g.neighbors_outgoing(b).count(), 0);
-        assert_eq!(g.neighbors_outgoing(c).count(), 1);
-
-        assert_eq!(g.neighbors_incoming(a).count(), 0);
-        assert_eq!(g.neighbors_incoming(b).count(), 1);
-        assert_eq!(g.neighbors_incoming(c).count(), 0);
     }
 }

@@ -2,6 +2,10 @@ use std::fmt::Display;
 
 use crate::graph::{DefaultIdx, Edge, EdgeIndex, Graph, NodeIndex};
 
+/// Representation of the graph after running
+///     - NodeContractor::run
+///     - NodeContractor::run_with_order
+/// Shortes path calculation is performed on this graph.
 pub struct OverlayGraph<'a, Idx = DefaultIdx> {
     // Represents the upward graph G↑
     pub edges_fwd: Vec<Vec<EdgeIndex<Idx>>>,
@@ -12,26 +16,25 @@ pub struct OverlayGraph<'a, Idx = DefaultIdx> {
 }
 
 impl<'a> OverlayGraph<'a> {
-    pub fn new(num_nodes: usize, road_graph: &Graph) -> Self {
-        let edges_fwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); num_nodes];
-        let edges_bwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); num_nodes];
-
+    pub(crate) fn new(
+        edges_fwd: Vec<Vec<EdgeIndex>>,
+        edges_bwd: Vec<Vec<EdgeIndex>>,
+        graph: &'a Graph,
+    ) -> Self {
         OverlayGraph {
             edges_fwd,
             edges_bwd,
-            g: road_graph,
+            g: graph,
         }
     }
 
-    pub fn with_capacity(num_nodes: usize, num_edges: usize, road_graph: &Graph) -> Self {
-        let edges_fwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); num_nodes];
-        let edges_bwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); num_nodes];
+    /// Returns the underlying road graph.
+    pub fn road_graph(&self) -> &Graph {
+        self.g
+    }
 
-        OverlayGraph {
-            edges_fwd,
-            edges_bwd,
-            g: road_graph,
-        }
+    pub fn edge(&self, edge_idx: EdgeIndex) -> &Edge<DefaultIdx> {
+        &self.g.edges[edge_idx.index()]
     }
 
     pub fn edges_fwd(&self, node: NodeIndex) -> impl Iterator<Item = (EdgeIndex, &Edge)> {
@@ -46,7 +49,8 @@ impl<'a> OverlayGraph<'a> {
             .map(|edge_idx| (*edge_idx, &self.g.edges[edge_idx.index()]))
     }
 
-    pub fn unpack_edge(&self, edge_idx: EdgeIndex) -> Vec<EdgeIndex> {
+    /// Recursively unpacks shortcut edges. Used to reconstruct the original path after the shortest path calculation.
+    pub(crate) fn unpack_edge(&self, edge_idx: EdgeIndex) -> Vec<EdgeIndex> {
         let edge = &self.g.edges[edge_idx.index()];
         let mut unpacked = Vec::new();
         match edge.shortcut_for {
@@ -96,9 +100,7 @@ impl<'a> Display for OverlayGraph<'a> {
 #[cfg(test)]
 mod tests {
     use crate::{edge, graph::*};
-    use crate::{
-        node_contraction::contract_nodes_with_order, util::test_graphs::generate_simple_graph,
-    };
+    use crate::{node_contraction::NodeContractor, util::test_graphs::generate_simple_graph};
 
     #[test]
     fn test_unpacking_edges() {
@@ -130,9 +132,11 @@ mod tests {
             node_index(1),
         ];
 
-        let search_graph = contract_nodes_with_order(&mut g, &node_order);
+        let mut contractor = NodeContractor::new(&mut g);
 
-        let unpacked_edges = search_graph.unpack_edge(7.into());
+        let overlay_graph = contractor.run_with_order(&node_order);
+
+        let unpacked_edges = overlay_graph.unpack_edge(7.into());
         assert_eq!(vec![ea, ac], unpacked_edges);
     }
 
@@ -153,8 +157,10 @@ mod tests {
             node_index(2),
             node_index(1),
         ];
+        let mut contractor = NodeContractor::new(&mut g);
 
-        let search_graph = contract_nodes_with_order(&mut g, &node_order);
-        println!("{}", search_graph);
+        let overlay_graph = contractor.run_with_order(&node_order);
+
+        println!("{}", overlay_graph);
     }
 }

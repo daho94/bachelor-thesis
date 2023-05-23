@@ -4,7 +4,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     constants::Weight,
-    graph::{DefaultIdx, Graph, IndexType, NodeIndex},
+    graph::{DefaultIdx, IndexType, NodeIndex},
+    node_contraction::NodeContractor,
 };
 
 #[derive(Debug)]
@@ -44,18 +45,18 @@ impl<Idx: IndexType> Ord for Candidate<Idx> {
 
 pub(crate) struct WitnessSearch<'a> {
     max_nodes_settled: usize,
-    g: &'a Graph,
+    g: &'a NodeContractor<'a>,
 }
 
 impl<'a> WitnessSearch<'a> {
-    pub(crate) fn new(g: &'a Graph) -> Self {
+    pub(crate) fn new(g: &'a NodeContractor) -> Self {
         Self {
             g,
             max_nodes_settled: 50,
         }
     }
 
-    pub fn with_params(g: &'a Graph, max_nodes_settled: usize) -> Self {
+    pub fn with_params(g: &'a NodeContractor, max_nodes_settled: usize) -> Self {
         Self {
             g,
             max_nodes_settled,

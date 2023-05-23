@@ -16,7 +16,7 @@ type NodeData = FxHashMap<NodeIndex, (Weight, Option<EdgeIndex>)>;
 
 pub struct BiDirSearch<'a, Idx = DefaultIdx> {
     pub stats: Stats,
-    g: &'a OverlayGraph<Idx>,
+    g: &'a OverlayGraph<'a, Idx>,
 
     settled_fwd: FxHashSet<NodeIndex<Idx>>,
     settled_bwd: FxHashSet<NodeIndex<Idx>>,
@@ -152,10 +152,10 @@ impl<'a> BiDirSearch<'a> {
                     let unpacked = self.g.unpack_edge(prev_edge);
 
                     for edge_idx in unpacked.iter().rev() {
-                        path.push(self.g.edges[edge_idx.index()].target);
+                        path.push(self.g.edge(*edge_idx).target);
                     }
 
-                    previous_node = self.g.edges[prev_edge.index()].source;
+                    previous_node = self.g.edge(prev_edge).source;
                 }
                 path.push(source);
                 path.reverse();
@@ -175,10 +175,10 @@ impl<'a> BiDirSearch<'a> {
                     let unpacked = self.g.unpack_edge(prev_edge);
 
                     for edge_idx in unpacked.iter() {
-                        path.push(self.g.edges[edge_idx.index()].target);
+                        path.push(self.g.edge(*edge_idx).target);
                     }
 
-                    previous_node = self.g.edges[prev_edge.index()].target;
+                    previous_node = self.g.edge(prev_edge).target;
                 }
 
                 Some(path)
@@ -202,7 +202,7 @@ impl<'a> BiDirSearch<'a> {
 mod tests {
     use crate::{
         graph::node_index,
-        node_contraction::{contract_nodes, contract_nodes_with_order},
+        node_contraction::NodeContractor,
         search::assert_path,
         util::test_graphs::{generate_complex_graph, generate_simple_graph, graph_vaterstetten},
     };
@@ -235,9 +235,11 @@ mod tests {
             node_index(1),
         ];
 
-        let search_graph = contract_nodes_with_order(&mut g, &node_order);
+        let mut contractor = NodeContractor::new(&mut g);
 
-        let mut bdir = BiDirSearch::new(&search_graph);
+        let overlay_graph = contractor.run_with_order(&node_order);
+
+        let mut bdir = BiDirSearch::new(&overlay_graph);
         let sp = bdir.search(a, b);
 
         assert_path(vec![0, 2, 1], 2.0, sp);
@@ -272,9 +274,11 @@ mod tests {
             node_index(0),
         ];
 
-        let search_graph = contract_nodes_with_order(&mut g, &node_order);
+        let mut contractor = NodeContractor::new(&mut g);
 
-        let mut bdir = BiDirSearch::new(&search_graph);
+        let overlay_graph = contractor.run_with_order(&node_order);
+
+        let mut bdir = BiDirSearch::new(&overlay_graph);
 
         let sp = bdir.search(node_index(1), node_index(6)); // B -> G
         assert_path(vec![1, 2, 9, 7, 6], 10.0, sp);
@@ -295,8 +299,11 @@ mod tests {
         let sp_ba = dijkstra.search(b, a);
         // 4264 nodes settled
 
-        let search_graph = contract_nodes(&mut g);
-        let mut bidir = BiDirSearch::new(&search_graph);
+        let mut contractor = NodeContractor::new(&mut g);
+
+        let overlay_graph = contractor.run();
+
+        let mut bidir = BiDirSearch::new(&overlay_graph);
         let sp_bidir_ab = bidir.search(a, b);
         let sp_bidir_ba = bidir.search(b, a);
 

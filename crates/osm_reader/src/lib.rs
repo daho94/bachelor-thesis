@@ -6,9 +6,9 @@ mod road_types;
 use road_types::RoadType;
 
 pub struct Arc {
-    source: i64,
-    target: i64,
-    weight: f64,
+    pub source: i64,
+    pub target: i64,
+    pub weight: f64,
 }
 
 impl Arc {
