@@ -6,7 +6,7 @@ members = [
     "crates/frontend/src-tauri",
     "crates/ch_core",
     "crates/repl",
-    "crates/graph_viz",
+    # "crates/graph_viz", Inactive for now
     "crates/graph_viz_macroquad",
 ]
 

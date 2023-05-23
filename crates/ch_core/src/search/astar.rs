@@ -4,7 +4,7 @@ use log::{debug, info};
 use rustc_hash::FxHashMap;
 
 use crate::{
-    constants::{OsmId, Weight},
+    constants::Weight,
     graph::{DefaultIdx, Graph, IndexType, Node, NodeIndex},
     statistics::Stats,
 };
@@ -104,7 +104,7 @@ where
                 break;
             }
 
-            for edge in self.g.neighbors_outgoing(node) {
+            for (_, edge) in self.g.neighbors_outgoing(node) {
                 let real_weight = real_weight + edge.weight;
 
                 if real_weight

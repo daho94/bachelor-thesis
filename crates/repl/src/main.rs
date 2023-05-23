@@ -4,8 +4,10 @@ use std::path::{Path, PathBuf};
 use ch_core::{
     constants::OsmId,
     graph::{node_index, DefaultIdx, Graph},
-    search::dijkstra::Dijkstra,
+    node_contraction::contract_nodes,
     search::{astar::AStar, shortest_path::ShortestPath},
+    search::{bidir_search::BiDirSearch, dijkstra::Dijkstra},
+    search_graph::SearchGraph,
     util::math::straight_line,
 };
 use reedline_repl_rs::clap::{value_parser, Arg, ArgMatches, Command};
@@ -15,11 +17,10 @@ use reedline_repl_rs::{Repl, Result};
 
 /// Print graph info
 fn info(_args: ArgMatches, context: &mut Context) -> Result<Option<String>> {
-    Ok(Some(format!(
-        "Graph has {} nodes and {} edges",
-        context.graph.nodes.len(),
-        context.graph.edges_out.iter().flatten().count()
-    )))
+    context.graph.print_info();
+    context.search_graph.print_info();
+
+    Ok(None)
 }
 
 fn run_dijkstra(args: ArgMatches, context: &mut Context) -> Result<Option<String>> {
@@ -54,14 +55,22 @@ fn run_algorithm(args: ArgMatches, context: &mut Context) -> Result<Option<Strin
             let mut a = AStar::new(&context.graph);
             (a.run(src, dst), a.stats)
         }
+        "bidir" => {
+            let mut b = BiDirSearch::new(&context.search_graph);
+            (b.run(src, dst), b.stats)
+        }
         _ => panic!("Unknown algorithm"),
     };
 
     if let Some(sp) = sp {
         let mut path = String::new();
-        for node in sp.nodes {
-            path.push_str(&format!("{:?}\n", node));
-        }
+        // for node in sp.nodes {
+        //     path.push_str(&format!("{:?}\n", node.index()));
+        // }
+        path.push_str(&format!(
+            "{:?}\n",
+            sp.nodes.iter().map(|n| n.index()).collect::<Vec<_>>()
+        ));
         path.push_str(&format!(
             "Took: {:?} / {} nodes settled",
             stats.duration, stats.nodes_settled
@@ -106,14 +115,19 @@ fn measure_dijkstra(args: ArgMatches, context: &mut Context) -> Result<Option<St
     Ok(Some(res))
 }
 
-#[derive(Default)]
 struct Context {
     graph: Graph,
+    search_graph: SearchGraph,
 }
 
 impl Context {
     fn new(graph: Graph) -> Self {
-        Self { graph }
+        let mut g = graph.clone();
+        let search_graph = contract_nodes(&mut g);
+        Self {
+            graph,
+            search_graph,
+        }
     }
 }
 
@@ -142,7 +156,18 @@ impl Runnable for AStar<'_> {
     }
 }
 
+impl Runnable for BiDirSearch<'_> {
+    fn run(&mut self, src: OsmId, dst: OsmId) -> Option<ShortestPath<DefaultIdx>> {
+        self.search(node_index(src), node_index(dst))
+    }
+
+    fn stats(&self) -> &ch_core::statistics::Stats {
+        &self.stats
+    }
+}
+
 fn main() -> Result<()> {
+    env_logger::init();
     // Init Graph
     let path_to_pbf = std::env::args().nth(1).expect("No path to PBF file given");
     let graph = Graph::<DefaultIdx>::from_pbf(Path::new(&path_to_pbf)).unwrap();
@@ -187,7 +212,7 @@ fn main() -> Result<()> {
             Command::new("run")
                 .arg(
                     Arg::new("algo")
-                        .value_parser(["dijk", "astar"])
+                        .value_parser(["dijk", "astar", "bidir"])
                         .default_value("dijk")
                         .required(true)
                         .help("Name of algorithm"),

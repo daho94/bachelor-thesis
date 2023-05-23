@@ -1,4 +1,7 @@
-use std::time::{Duration, Instant};
+use std::{
+    fmt::{Debug, Display},
+    time::{Duration, Instant},
+};
 
 #[derive(Debug, Default)]
 pub struct Stats {
@@ -21,6 +24,16 @@ impl Stats {
         if let Some(start_time) = self.start_time {
             self.duration = Some(start_time.elapsed());
         }
+    }
+}
+
+impl Display for Stats {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Stats: {} nodes settled in {:?}",
+            self.nodes_settled, self.duration
+        )
     }
 }
 

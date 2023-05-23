@@ -1,6 +1,6 @@
 use crate::{
     constants::Weight,
-    graph::{DefaultIdx, IndexType, NodeIndex},
+    graph::{IndexType, NodeIndex},
 };
 
 #[derive(Debug, PartialEq)]
