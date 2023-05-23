@@ -1,4 +1,3 @@
-use core::num;
 use std::{cmp::Reverse, time::Instant};
 
 use log::{debug, info};
@@ -7,7 +6,7 @@ use rustc_hash::FxHashSet;
 
 use crate::{
     graph::{node_index, Edge, EdgeIndex, Graph, NodeIndex},
-    search_graph::SearchGraph,
+    overlay_graph::OverlayGraph,
     witness_search::WitnessSearch,
 };
 
@@ -82,9 +81,9 @@ fn calc_edge_difference(v: NodeIndex, g: &Graph, ws: WitnessSearch) -> i32 {
 /// TODO: Find the best node order
 /// 1. Calculate edge difference for each node and put them in a priority queue. This is the initial node order.
 ///     - Edge difference: Removed edges - shortcut edges
-pub fn contract_nodes(g: &mut Graph) -> SearchGraph {
+pub fn contract_nodes(g: &mut Graph) -> OverlayGraph {
     info!("BEGIN Node contraction");
-    let mut search_graph = SearchGraph::with_capacity(g.nodes.len(), g.edges.len());
+    let mut overlay_graph = OverlayGraph::with_capacity(g.nodes.len(), g.edges.len());
 
     info!("Start calculating initial node order");
     let mut queue = calc_initial_node_order(g);
@@ -106,12 +105,12 @@ pub fn contract_nodes(g: &mut Graph) -> SearchGraph {
 
         for (in_idx, in_edge) in g.neighbors_incoming(node) {
             neighbors.insert(in_edge.source);
-            search_graph.edges_bwd[node.index()].push(in_idx);
+            overlay_graph.edges_bwd[node.index()].push(in_idx);
         }
 
         for (out_idx, out_edge) in g.neighbors_outgoing(node) {
             neighbors.insert(out_edge.target);
-            search_graph.edges_fwd[node.index()].push(out_idx);
+            overlay_graph.edges_fwd[node.index()].push(out_idx);
         }
 
         // Update priority of neighbors
@@ -139,8 +138,8 @@ pub fn contract_nodes(g: &mut Graph) -> SearchGraph {
         }
     }
 
-    search_graph.edges = g.edges.clone();
-    search_graph
+    overlay_graph.edges = g.edges.clone();
+    overlay_graph
 }
 
 /// Contract nodes in the graph by a given order.
@@ -150,8 +149,8 @@ pub fn contract_nodes(g: &mut Graph) -> SearchGraph {
 /// u1-->v-->w2
 ///    /    \    
 ///  u2      w3
-pub fn contract_nodes_with_order(g: &mut Graph, node_order: &[NodeIndex]) -> SearchGraph {
-    let mut search_graph = SearchGraph::new(g.nodes.len());
+pub fn contract_nodes_with_order(g: &mut Graph, node_order: &[NodeIndex]) -> OverlayGraph {
+    let mut search_graph = OverlayGraph::new(g.nodes.len());
     let now = Instant::now();
     info!("Contracting nodes");
     for node in node_order {

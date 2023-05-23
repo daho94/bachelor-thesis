@@ -7,7 +7,7 @@ use ch_core::{
     node_contraction::contract_nodes,
     search::{astar::AStar, shortest_path::ShortestPath},
     search::{bidir_search::BiDirSearch, dijkstra::Dijkstra},
-    search_graph::SearchGraph,
+    overlay_graph::OverlayGraph,
     util::math::straight_line,
 };
 use reedline_repl_rs::clap::{value_parser, Arg, ArgMatches, Command};
@@ -117,7 +117,7 @@ fn measure_dijkstra(args: ArgMatches, context: &mut Context) -> Result<Option<St
 
 struct Context {
     graph: Graph,
-    search_graph: SearchGraph,
+    search_graph: OverlayGraph,
 }
 
 impl Context {

@@ -6,7 +6,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::{
     constants::Weight,
     graph::{DefaultIdx, EdgeIndex, NodeIndex},
-    search_graph::SearchGraph,
+    overlay_graph::OverlayGraph,
     statistics::Stats,
 };
 
@@ -16,7 +16,7 @@ type NodeData = FxHashMap<NodeIndex, (Weight, Option<EdgeIndex>)>;
 
 pub struct BiDirSearch<'a, Idx = DefaultIdx> {
     pub stats: Stats,
-    g: &'a SearchGraph<Idx>,
+    g: &'a OverlayGraph<Idx>,
 
     settled_fwd: FxHashSet<NodeIndex<Idx>>,
     settled_bwd: FxHashSet<NodeIndex<Idx>>,
@@ -28,7 +28,7 @@ pub struct BiDirSearch<'a, Idx = DefaultIdx> {
 }
 
 impl<'a> BiDirSearch<'a> {
-    pub fn new(graph: &'a SearchGraph) -> Self {
+    pub fn new(graph: &'a OverlayGraph) -> Self {
         BiDirSearch {
             g: graph,
             stats: Stats::default(),

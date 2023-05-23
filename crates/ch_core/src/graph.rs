@@ -302,13 +302,6 @@ impl<Idx: IndexType> Graph<Idx> {
 
     /// Disconnects `node` from the graph by updating the adjacency lists
     pub fn disconnect_node(&mut self, node: NodeIndex<Idx>) {
-        // FIXME: This is not very efficient on large graphs
-        // for list in self.edges_in.iter_mut() {
-        //     list.retain(|edge_idx| self.edges[edge_idx.index()].source != node);
-        // }
-        // for list in self.edges_out.iter_mut() {
-        //     list.retain(|edge_idx| self.edges[edge_idx.index()].target != node);
-        // }
         self.contracted_nodes[node.index()] = true;
     }
 
@@ -323,10 +316,6 @@ impl<Idx: IndexType> Graph<Idx> {
                 !self.contracted_nodes[self.edges[edge_idx.index()].target.index()]
             })
             .map(|edge_idx| (*edge_idx, &self.edges[edge_idx.index()]))
-
-        // self.edges_out[node_idx.index()]
-        //     .iter()
-        //     .map(|edge_idx| (*edge_idx, &self.edges[edge_idx.index()]))
     }
 
     pub fn neighbors_incoming(
@@ -340,10 +329,6 @@ impl<Idx: IndexType> Graph<Idx> {
                 !self.contracted_nodes[self.edges[edge_idx.index()].source.index()]
             })
             .map(|edge_idx| (*edge_idx, &self.edges[edge_idx.index()]))
-
-        // self.edges_in[node_idx.index()]
-        //     .iter()
-        //     .map(|edge_idx| (*edge_idx, &self.edges[edge_idx.index()]))
     }
 
     pub fn print_info(&self) {

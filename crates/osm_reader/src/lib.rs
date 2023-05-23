@@ -5,9 +5,25 @@ use std::{collections::HashMap, fs::File, io::BufWriter, path::Path, str::FromSt
 mod road_types;
 use road_types::RoadType;
 
+pub struct Arc {
+    source: i64,
+    target: i64,
+    weight: f64,
+}
+
+impl Arc {
+    fn new(source: i64, target: i64, weight: f64) -> Self {
+        Self {
+            source,
+            target,
+            weight,
+        }
+    }
+}
+
 pub struct RoadGraph {
     nodes: FxHashMap<i64, [f64; 2]>,
-    arcs: Vec<(i64, i64, f64)>,
+    arcs: Vec<Arc>,
 }
 
 impl RoadGraph {
@@ -23,14 +39,14 @@ impl RoadGraph {
     }
 
     pub fn add_arc(&mut self, from: i64, to: i64, weight: f64) {
-        self.arcs.push((from, to, weight));
+        self.arcs.push(Arc::new(from, to, weight));
     }
 
     pub fn get_nodes(&self) -> &FxHashMap<i64, [f64; 2]> {
         &self.nodes
     }
 
-    pub fn get_arcs(&self) -> &Vec<(i64, i64, f64)> {
+    pub fn get_arcs(&self) -> &Vec<Arc> {
         &self.arcs
     }
 
@@ -245,8 +261,13 @@ impl RoadGraph {
 
         let mut edges_writer = BufWriter::new(edges_file);
         let _ = edges_writer.write("source,target,weight\n".as_bytes())?;
-        for (from, to, weight) in self.arcs.iter() {
-            let _ = edges_writer.write(format!("{},{},{}\n", from, to, weight).as_bytes())?;
+        for Arc {
+            weight,
+            source,
+            target,
+        } in self.arcs.iter()
+        {
+            let _ = edges_writer.write(format!("{},{},{}\n", source, target, weight).as_bytes())?;
         }
         edges_writer.flush()?;
 
@@ -315,7 +336,12 @@ mod tests {
                 haversine_distance(0., 0., 0., 1.) * 3.0,
                 &RoadType::Secondary
             ),
-            graph.arcs.iter().find(|e| e.0 == 2 && e.1 == 5).unwrap().2
+            graph
+                .arcs
+                .iter()
+                .find(|arc| arc.source == 2 && arc.target == 5)
+                .unwrap()
+                .weight
         );
     }
 }
