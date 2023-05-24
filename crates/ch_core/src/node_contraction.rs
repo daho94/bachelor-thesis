@@ -1,4 +1,7 @@
-use std::{cmp::Reverse, time::Instant};
+use std::{
+    cmp::Reverse,
+    time::{Duration, Instant},
+};
 
 use log::{debug, info};
 use priority_queue::PriorityQueue;
@@ -9,6 +12,8 @@ use crate::{
     overlay_graph::OverlayGraph,
     witness_search::WitnessSearch,
 };
+
+const STEP_SIZE: f64 = 5.0;
 
 pub struct NodeContractor<'a> {
     g: &'a mut Graph,
@@ -34,12 +39,13 @@ impl<'a> NodeContractor<'a> {
         let mut edges_fwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); self.num_nodes];
         let mut edges_bwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); self.num_nodes];
 
+        self.g.edges.reserve(self.g.edges.len());
+
         let mut queue = self.calc_initial_node_order();
 
         let num_nodes = self.g.nodes.len();
 
-        let step = 5.0;
-        let mut next_goal = step;
+        let mut next_goal = STEP_SIZE;
 
         while !queue.is_empty() {
             let node = queue.pop().unwrap().0;
@@ -50,12 +56,12 @@ impl<'a> NodeContractor<'a> {
 
             let mut neighbors = FxHashSet::default();
 
-            for (in_idx, in_edge) in self.g.neighbors_incoming(node) {
+            for (in_idx, in_edge) in self.neighbors_incoming(node) {
                 neighbors.insert(in_edge.source);
                 edges_bwd[node.index()].push(in_idx);
             }
 
-            for (out_idx, out_edge) in self.g.neighbors_outgoing(node) {
+            for (out_idx, out_edge) in self.neighbors_outgoing(node) {
                 neighbors.insert(out_edge.target);
                 edges_fwd[node.index()].push(out_idx);
             }
@@ -63,7 +69,7 @@ impl<'a> NodeContractor<'a> {
             // Update priority of neighbors
             for neighbor in neighbors {
                 let edge_difference =
-                    self.calc_edge_difference(neighbor, WitnessSearch::with_params(self, 10));
+                    self.calc_edge_difference(neighbor, WitnessSearch::with_params(self, 25));
                 if let Some(Reverse(old_value)) =
                     queue.change_priority(&neighbor, Reverse(edge_difference))
                 {
@@ -81,12 +87,11 @@ impl<'a> NodeContractor<'a> {
             let progress = (num_nodes - queue.len()) as f64 / num_nodes as f64;
             if progress * 100.0 >= next_goal {
                 info!("Progress: {:.2}%", progress * 100.0);
-                next_goal += step;
+                next_goal += STEP_SIZE;
             }
             self.nodes_rank[node.index()] = num_nodes - queue.len();
         }
 
-        // overlay_graph.edges = self.g.edges.clone();
         OverlayGraph::new(edges_fwd, edges_bwd, self.g)
     }
 
@@ -97,7 +102,10 @@ impl<'a> NodeContractor<'a> {
 
         let now = Instant::now();
         info!("Contracting nodes");
-        for node in node_order {
+
+        let mut next_goal = STEP_SIZE;
+
+        for (progress, node) in node_order.iter().enumerate() {
             let node = *node;
 
             self.contract_node(node);
@@ -109,10 +117,15 @@ impl<'a> NodeContractor<'a> {
             for (out_idx, _) in self.neighbors_outgoing(node) {
                 edges_fwd[node.index()].push(out_idx);
             }
+
+            let progress = (progress + 1) as f64 / node_order.len() as f64;
+            if progress * 100.0 >= next_goal {
+                info!("Progress: {:.2}%", progress * 100.0);
+                next_goal += STEP_SIZE;
+            }
         }
         info!("Contracting nodes took {:?}", now.elapsed());
 
-        // search_graph.edges = g.edges.clone();
         OverlayGraph::new(edges_fwd, edges_bwd, self.g)
     }
 
@@ -141,7 +154,10 @@ impl<'a> NodeContractor<'a> {
     }
 
     #[inline(always)]
-    fn contract_node(&mut self, v: NodeIndex) {
+    fn contract_node(&mut self, v: NodeIndex) -> (Duration, usize) {
+        let mut time = Default::default();
+        let mut added_shortcuts = 0;
+
         let edges_in: Vec<(EdgeIndex, Edge)> = self
             .neighbors_incoming(v)
             .map(|(i, e)| (i, e.clone()))
@@ -169,8 +185,10 @@ impl<'a> NodeContractor<'a> {
             }
 
             // Start seach from u
-            let ws = WitnessSearch::with_params(self, 50);
+            let ws = WitnessSearch::with_params(self, 25);
+            let start = Instant::now();
             let res = ws.search(uv.source, &target_nodes, v, max_weight);
+            time += start.elapsed();
 
             // Add shortcut if no better path <u,...,w> was found
             for (vw_idx, vw) in edges_out.iter() {
@@ -185,11 +203,14 @@ impl<'a> NodeContractor<'a> {
 
                     self.g.add_edge(shortcut);
                     self.num_shortcuts += 1;
+                    added_shortcuts += 1;
                 }
             }
         }
 
         self.disconnect_node(v);
+
+        (time, added_shortcuts)
     }
 
     fn disconnect_node(&mut self, v: NodeIndex) {
@@ -266,15 +287,19 @@ impl<'a> NodeContractor<'a> {
 
 #[cfg(test)]
 mod tests {
+    use core::num;
+
     use crate::{
         edge,
         graph::{DefaultIdx, Node},
-        util::test_graphs::{generate_complex_graph, generate_simple_graph},
+        util::test_graphs::{
+            generate_complex_graph, generate_simple_graph, graph_saarland, graph_vaterstetten,
+        },
     };
 
     use super::*;
 
-    fn init() {
+    fn init_log() {
         let _ = env_logger::builder().is_test(true).try_init();
     }
 
@@ -285,7 +310,7 @@ mod tests {
         // E -> A -> C
         //      |  /
         //      D
-        init();
+        init_log();
         let mut g = generate_simple_graph();
 
         // A,E,D,C,B
@@ -353,13 +378,32 @@ mod tests {
 
     #[test]
     fn contract_complex_graph() {
-        init();
+        init_log();
         let mut g = generate_complex_graph();
 
         let mut contractor = NodeContractor::new(&mut g);
         contractor.run();
 
         assert_eq!(2, contractor.num_shortcuts);
+    }
+
+    #[test]
+    fn contract_saarland() {
+        init_log();
+        let mut g = graph_saarland();
+
+        let mut contractor = NodeContractor::new(&mut g);
+        contractor.run();
+    }
+
+    #[test]
+    fn contract_vaterstetten() {
+        init_log();
+
+        let mut g = graph_vaterstetten();
+
+        let mut contractor = NodeContractor::new(&mut g);
+        contractor.run();
     }
 
     #[test]
