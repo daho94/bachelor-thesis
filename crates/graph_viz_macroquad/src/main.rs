@@ -1,5 +1,9 @@
-use ch_core::graph::Graph;
+use ch_core::{
+    graph::{DefaultIdx, Graph},
+    search::shortest_path::ShortestPath,
+};
 use macroquad::prelude::*;
+use widgets::MyWidget;
 
 mod graph_view;
 mod widgets;
@@ -56,6 +60,8 @@ impl Draggable {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    env_logger::init();
+
     let pbf_path = std::env::args().nth(1).unwrap_or(
         r"F:\Dev\uni\BA\bachelor_thesis\crates\osm_reader\data\vaterstetten_pp.osm.pbf".into(),
     );
@@ -65,10 +71,16 @@ async fn main() {
     let mut draggable = Draggable::new(vec2(0.0, 0.0));
 
     let g = Graph::<u32>::from_pbf(std::path::Path::new(&pbf_path)).unwrap();
-    let mut graph_view = graph_view::GraphView::new(&g);
+
+    // Add channel to communicate between widgets and graph_view
+    let (sender, receiver) = std::sync::mpsc::channel::<ShortestPath<DefaultIdx>>();
+
+    let mut graph_view = graph_view::GraphView::new(&g, receiver);
+    let mut dijkstra = ch_core::search::dijkstra::Dijkstra::new(&g);
 
     // Init egui widgets
     let mut debug_widget = widgets::debug::DebugWidget::new();
+    let mut user_input = widgets::interaction::UserInputWidget::new(&mut dijkstra, sender);
 
     loop {
         clear_background(Color::from_rgba(27, 27, 27, 255));
@@ -105,6 +117,7 @@ async fn main() {
 
         egui_macroquad::ui(|egui_ctx| {
             debug_widget.update(egui_ctx);
+            user_input.update(egui_ctx);
         });
 
         // Draw things before egui
