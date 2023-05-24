@@ -36,6 +36,7 @@ impl<'a> NodeContractor<'a> {
     }
 
     pub fn run(&mut self) -> OverlayGraph {
+        let mut now = Instant::now();
         let mut edges_fwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); self.num_nodes];
         let mut edges_bwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); self.num_nodes];
 
@@ -91,6 +92,9 @@ impl<'a> NodeContractor<'a> {
             }
             self.nodes_rank[node.index()] = num_nodes - queue.len();
         }
+
+        info!("Contracting nodes took {:?}", now.elapsed());
+        info!("Added shortcuts: {}", self.num_shortcuts);
 
         OverlayGraph::new(edges_fwd, edges_bwd, self.g)
     }
@@ -223,7 +227,7 @@ impl<'a> NodeContractor<'a> {
         for v in 0..self.num_nodes {
             let v = node_index(v);
             let edge_difference =
-                self.calc_edge_difference(v, WitnessSearch::with_params(self, 50));
+                self.calc_edge_difference(v, WitnessSearch::with_params(self, 500));
             pq.push(v, Reverse(edge_difference));
         }
 
