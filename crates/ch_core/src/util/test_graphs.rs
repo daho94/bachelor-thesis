@@ -73,3 +73,10 @@ pub fn graph_vaterstetten() -> Graph {
 
     Graph::from_pbf(&path).unwrap()
 }
+
+pub fn graph_saarland() -> Graph {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../osm_reader/test_data/saarland_pp.osm.pbf");
+
+    Graph::from_pbf(&path).unwrap()
+}
