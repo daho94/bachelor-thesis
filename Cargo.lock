@@ -1594,6 +1594,8 @@ dependencies = [
  "ch_core",
  "egui",
  "egui-macroquad",
+ "env_logger",
+ "log",
  "macroquad",
 ]
 

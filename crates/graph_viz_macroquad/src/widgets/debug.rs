@@ -62,10 +62,21 @@ impl DebugWidget {
             .show(ui, |plot_ui| plot_ui.line(line));
     }
 
-    pub(crate) fn update(&mut self, ctx: &Context) {
+    // pub(crate) fn update(&mut self, ctx: &Context) {
+    //     self.update_fps();
+
+    //     Window::new("Debug").show(ctx, |ui| {
+    //         ui.label(format!("FPS: {:.2}", self.fps));
+    //         self.draw_fps(ui);
+    //     });
+    // }
+}
+
+impl super::MyWidget for DebugWidget {
+    fn update(&mut self, ctx: &Context) {
         self.update_fps();
 
-        Window::new("Debug").show(ctx, |ui| {
+        Window::new("Debug").default_open(false).show(ctx, |ui| {
             ui.label(format!("FPS: {:.2}", self.fps));
             self.draw_fps(ui);
         });

@@ -1,19 +1,29 @@
-use ch_core::graph::{Graph, Node};
+use ch_core::{
+    graph::{DefaultIdx, Graph, Node},
+    search::shortest_path::ShortestPath,
+};
 use macroquad::prelude::*;
 
-use std::f32::{MAX, MIN};
+use std::{
+    f32::{MAX, MIN},
+    sync::mpsc::Receiver,
+};
 pub(crate) struct GraphView<'a> {
     first_frame: bool,
     rect: Rect,
     g: &'a Graph,
+    rx: Receiver<ShortestPath<DefaultIdx>>,
+    sp: Option<ShortestPath<DefaultIdx>>,
 }
 
 impl<'a> GraphView<'a> {
-    pub(crate) fn new(g: &'a Graph) -> Self {
+    pub(crate) fn new(g: &'a Graph, rx: Receiver<ShortestPath<DefaultIdx>>) -> Self {
         Self {
             first_frame: true,
             rect: Rect::new(0., 0., 0., 0.),
             g,
+            rx,
+            sp: None,
         }
     }
 
@@ -30,6 +40,36 @@ impl<'a> GraphView<'a> {
         self.draw_edges();
         self.draw_nodes();
         // dbg!(start.elapsed());
+        if let Ok(sp) = self.rx.try_recv() {
+            self.sp = Some(sp);
+        }
+
+        // Draw shortest path
+        if let Some(sp) = &self.sp {
+            let scale_x = screen_width() / self.rect.w;
+            let scale_y = screen_height() / self.rect.h;
+
+            // Use smallest scale to avoid distortion
+            let scale = scale_x.min(scale_y);
+            let mut windows = sp.nodes.windows(2);
+
+            while let Some(&[source, target]) = windows.next() {
+                let from = node_to_vec(self.g.node(source).unwrap());
+                let to = node_to_vec(self.g.node(target).unwrap());
+
+                let from = (from - self.rect.point()) * scale;
+                let to = (to - self.rect.point()) * scale;
+
+                draw_line(
+                    from.x,
+                    from.y,
+                    to.x,
+                    to.y,
+                    1.0,
+                    Color::from_rgba(0, 255, 0, 255),
+                );
+            }
+        }
     }
 
     pub(crate) fn reset(&mut self) {
