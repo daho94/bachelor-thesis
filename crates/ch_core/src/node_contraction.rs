@@ -391,6 +391,7 @@ mod tests {
         assert_eq!(2, contractor.num_shortcuts);
     }
 
+    #[ignore = "Takes too long"]
     #[test]
     fn contract_saarland() {
         init_log();
