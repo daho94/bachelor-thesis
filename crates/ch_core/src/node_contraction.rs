@@ -8,35 +8,41 @@ use priority_queue::PriorityQueue;
 use rustc_hash::FxHashSet;
 
 use crate::{
-    graph::{node_index, Edge, EdgeIndex, Graph, NodeIndex},
+    graph::{node_index, DefaultIdx, Edge, EdgeIndex, Graph, NodeIndex},
     overlay_graph::OverlayGraph,
     witness_search::WitnessSearch,
 };
 
 const STEP_SIZE: f64 = 5.0;
 
-pub struct NodeContractor<'a> {
+pub struct NodeContractor<'a, Idx = DefaultIdx> {
     g: &'a mut Graph,
     nodes_rank: Vec<usize>,
     nodes_contracted: Vec<bool>,
     num_nodes: usize,
-    num_shortcuts: usize,
+    // num_shortcuts: usize,
+    shortcuts: rustc_hash::FxHashMap<EdgeIndex, [EdgeIndex<Idx>; 2]>,
 }
 
 impl<'a> NodeContractor<'a> {
     pub fn new(g: &'a mut Graph) -> Self {
         let num_nodes = g.nodes.len();
+        let num_edges = g.edges.len();
         NodeContractor {
             g,
             nodes_rank: vec![0; num_nodes],
             nodes_contracted: vec![false; num_nodes],
             num_nodes,
-            num_shortcuts: 0,
+            // num_shortcuts: 0,
+            shortcuts: rustc_hash::FxHashMap::with_capacity_and_hasher(
+                num_edges,
+                Default::default(),
+            ),
         }
     }
 
     pub fn run(&mut self) -> OverlayGraph {
-        let mut now = Instant::now();
+        let now = Instant::now();
         let mut edges_fwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); self.num_nodes];
         let mut edges_bwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); self.num_nodes];
 
@@ -94,9 +100,11 @@ impl<'a> NodeContractor<'a> {
         }
 
         info!("Contracting nodes took {:?}", now.elapsed());
-        info!("Added shortcuts: {}", self.num_shortcuts);
+        info!("Added shortcuts: {}", self.g.num_shortcuts);
 
-        OverlayGraph::new(edges_fwd, edges_bwd, self.g)
+        self.g.edges.shrink_to_fit();
+        self.shortcuts.shrink_to_fit();
+        OverlayGraph::new(edges_fwd, edges_bwd, self.g, self.shortcuts.clone())
     }
 
     pub fn run_with_order(&mut self, node_order: &[NodeIndex]) -> OverlayGraph {
@@ -129,8 +137,20 @@ impl<'a> NodeContractor<'a> {
             }
         }
         info!("Contracting nodes took {:?}", now.elapsed());
+        self.g.edges.shrink_to_fit();
+        self.shortcuts.shrink_to_fit();
 
-        OverlayGraph::new(edges_fwd, edges_bwd, self.g)
+        OverlayGraph::new(edges_fwd, edges_bwd, self.g, self.shortcuts.clone())
+    }
+
+    fn add_shortcut(&mut self, edge: Edge, replaces: [EdgeIndex; 2]) -> EdgeIndex {
+        let edge_idx = self.g.add_edge(edge);
+        // self.num_shortcuts += 1;
+        self.g.num_shortcuts += 1;
+
+        self.shortcuts.insert(edge_idx, replaces);
+
+        edge_idx
     }
 
     pub(crate) fn neighbors_outgoing(
@@ -202,11 +222,14 @@ impl<'a> NodeContractor<'a> {
 
                 let weight = uv.weight + vw.weight;
                 if weight < *res.get(&vw.target).unwrap_or(&std::f64::INFINITY) {
-                    let shortcut =
-                        Edge::new_shortcut(uv.source, vw.target, weight, [*uv_idx, *vw_idx]);
+                    // let shortcut =
+                    //     Edge::new_shortcut(uv.source, vw.target, weight, [*uv_idx, *vw_idx]);
 
-                    self.g.add_edge(shortcut);
-                    self.num_shortcuts += 1;
+                    // self.g.add_edge(shortcut);
+                    // self.num_shortcuts += 1;
+                    let shortcut = Edge::new(uv.source, vw.target, weight);
+
+                    self.add_shortcut(shortcut, [*uv_idx, *vw_idx]);
                     added_shortcuts += 1;
                 }
             }
@@ -291,7 +314,6 @@ impl<'a> NodeContractor<'a> {
 
 #[cfg(test)]
 mod tests {
-    use core::num;
 
     use crate::{
         edge,
@@ -330,7 +352,7 @@ mod tests {
 
         contractor.run_with_order(&node_order);
 
-        assert_eq!(2, contractor.num_shortcuts)
+        assert_eq!(2, contractor.g.num_shortcuts)
     }
 
     #[test]
@@ -351,7 +373,7 @@ mod tests {
         let mut contractor = NodeContractor::new(&mut g);
         contractor.run_with_order(&node_order);
 
-        assert_eq!(3, contractor.num_shortcuts)
+        assert_eq!(3, contractor.g.num_shortcuts)
     }
 
     #[test]
@@ -377,7 +399,7 @@ mod tests {
         let mut contractor = NodeContractor::new(&mut g);
         contractor.run_with_order(&node_order);
 
-        assert_eq!(3 * 2, contractor.num_shortcuts);
+        assert_eq!(3 * 2, contractor.g.num_shortcuts);
     }
 
     #[test]
@@ -388,7 +410,7 @@ mod tests {
         let mut contractor = NodeContractor::new(&mut g);
         contractor.run();
 
-        assert_eq!(2, contractor.num_shortcuts);
+        assert_eq!(2, contractor.g.num_shortcuts);
     }
 
     #[ignore = "Takes too long"]
