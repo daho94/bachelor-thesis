@@ -1,9 +1,9 @@
 use crate::constants::{OSMId, OsmId, Weight};
-use anyhow::Context;
-use log::info;
+use anyhow::{Context, Ok};
+use log::{debug, info};
 use osm_reader::*;
 use rustc_hash::FxHashMap;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{fmt, hash::Hash, path::Path};
 
 /// Default integer typer for node and edge indices
@@ -138,12 +138,11 @@ impl<Idx: IndexType> EdgeIndex<Idx> {
 }
 
 /// Represents OSM Node type (https://wiki.openstreetmap.org/wiki/Node)
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Node {
     pub id: OSMId,
     pub lat: f64,
     pub lon: f64,
-    // TODO: Add contraction number
 }
 
 impl Node {
@@ -157,8 +156,6 @@ pub struct Edge<Idx = DefaultIdx> {
     pub source: NodeIndex<Idx>,
     pub target: NodeIndex<Idx>,
     pub weight: Weight,
-    // Used to recursively unpack shortcuts
-    pub shortcut_for: Option<[EdgeIndex<Idx>; 2]>,
 }
 
 impl<Idx: IndexType> Edge<Idx> {
@@ -167,26 +164,7 @@ impl<Idx: IndexType> Edge<Idx> {
             source,
             target,
             weight,
-            shortcut_for: None,
         }
-    }
-
-    pub fn new_shortcut(
-        source: NodeIndex<Idx>,
-        target: NodeIndex<Idx>,
-        weight: Weight,
-        shortcut_for: [EdgeIndex<Idx>; 2],
-    ) -> Self {
-        Edge {
-            source,
-            target,
-            weight,
-            shortcut_for: Some(shortcut_for),
-        }
-    }
-
-    pub fn is_shortcut(&self) -> bool {
-        self.shortcut_for.is_some()
     }
 }
 
@@ -196,6 +174,7 @@ pub struct Graph<Idx = DefaultIdx> {
     pub edges_out: Vec<Vec<EdgeIndex<Idx>>>,
     pub nodes: Vec<Node>,
     pub edges: Vec<Edge<Idx>>,
+    pub num_shortcuts: usize,
 }
 
 impl<Idx: IndexType> Graph<Idx> {
@@ -205,6 +184,7 @@ impl<Idx: IndexType> Graph<Idx> {
             edges_out: Vec::new(),
             nodes: Vec::new(),
             edges: Vec::new(),
+            num_shortcuts: 0,
         }
     }
 
@@ -214,6 +194,7 @@ impl<Idx: IndexType> Graph<Idx> {
             edges_out: Vec::with_capacity(num_nodes),
             nodes: Vec::with_capacity(num_nodes),
             edges: Vec::with_capacity(num_edges),
+            num_shortcuts: 0,
         }
     }
 
@@ -304,7 +285,8 @@ impl<Idx: IndexType> Graph<Idx> {
         // Ignore shortcuts
         self.edges_out[node_idx.index()]
             .iter()
-            .filter(|edge_idx| !self.edges[edge_idx.index()].is_shortcut())
+            // .filter(|edge_idx| !self.edges[edge_idx.index()].is_shortcut())
+            .filter(|edge_idx| edge_idx.index() < self.edges.len() - self.num_shortcuts)
             .map(|edge_idx| (*edge_idx, &self.edges[edge_idx.index()]))
     }
 
@@ -315,18 +297,19 @@ impl<Idx: IndexType> Graph<Idx> {
         // Ignore shortcuts
         self.edges_in[node_idx.index()]
             .iter()
-            .filter(|edge_idx| !self.edges[edge_idx.index()].is_shortcut())
+            // .filter(|edge_idx| !self.edges[edge_idx.index()].is_shortcut())
+            .filter(|edge_idx| edge_idx.index() < self.edges.len() - self.num_shortcuts)
             .map(|edge_idx| (*edge_idx, &self.edges[edge_idx.index()]))
     }
 
     pub fn print_info(&self) {
-        let num_shortcuts = self.edges.iter().filter(|e| e.is_shortcut()).count();
+        // let num_shortcuts = self.edges.iter().filter(|e| e.is_shortcut()).count();
 
         println!(
             "InputGraph:\t#Nodes: {}, #Edges: {}, #Shortcuts: {}",
             self.nodes.len(),
-            self.edges.len() - num_shortcuts,
-            num_shortcuts
+            self.edges.len() - self.num_shortcuts,
+            self.num_shortcuts
         );
     }
 
@@ -397,6 +380,33 @@ impl<Idx: IndexType> Graph<Idx> {
 
         info!("Finished parsing pbf file");
         Ok(g)
+    }
+
+    pub fn export_csv(&self) -> anyhow::Result<()> {
+        let mut wtr = csv::Writer::from_path("nodes.csv")?;
+
+        debug!("BEGIN writing nodes");
+        for node in self.nodes() {
+            wtr.serialize(node)?;
+        }
+
+        wtr.flush()?;
+        debug!("FINISHED writing nodes");
+
+        let mut wtr = csv::Writer::from_path("edges.csv")?;
+        wtr.write_record(["source", "target", "weight"])?;
+        debug!("BEGIN writing edges");
+        for edge in self.edges() {
+            wtr.write_record(&[
+                edge.source.index().to_string(),
+                edge.target.index().to_string(),
+                edge.weight.to_string(),
+            ])?;
+        }
+
+        wtr.flush()?;
+        debug!("FINISHED writing edges");
+        Ok(())
     }
 }
 

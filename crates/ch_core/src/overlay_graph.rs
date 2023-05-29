@@ -1,6 +1,9 @@
-use std::fmt::Display;
+use std::{fmt::Display, path::PathBuf};
 
-use crate::graph::{DefaultIdx, Edge, EdgeIndex, Graph, NodeIndex};
+use csv::Writer;
+use rustc_hash::FxHashMap;
+
+use crate::graph::{DefaultIdx, Edge, EdgeIndex, Graph, Node, NodeIndex};
 
 /// Representation of the graph after running
 ///     - NodeContractor::run
@@ -12,6 +15,7 @@ pub struct OverlayGraph<'a, Idx = DefaultIdx> {
     // Represents the downward graph G↓
     pub edges_bwd: Vec<Vec<EdgeIndex<Idx>>>,
 
+    pub shortcuts: FxHashMap<EdgeIndex, [EdgeIndex<Idx>; 2]>,
     g: &'a Graph,
 }
 
@@ -20,12 +24,18 @@ impl<'a> OverlayGraph<'a> {
         edges_fwd: Vec<Vec<EdgeIndex>>,
         edges_bwd: Vec<Vec<EdgeIndex>>,
         graph: &'a Graph,
+        shortcuts: FxHashMap<EdgeIndex, [EdgeIndex; 2]>,
     ) -> Self {
         OverlayGraph {
             edges_fwd,
             edges_bwd,
             g: graph,
+            shortcuts,
         }
+    }
+
+    pub fn nodes(&self) -> impl Iterator<Item = &Node> {
+        self.g.nodes()
     }
 
     /// Returns the underlying road graph.
@@ -51,12 +61,13 @@ impl<'a> OverlayGraph<'a> {
 
     /// Recursively unpacks shortcut edges. Used to reconstruct the original path after the shortest path calculation.
     pub(crate) fn unpack_edge(&self, edge_idx: EdgeIndex) -> Vec<EdgeIndex> {
-        let edge = &self.g.edges[edge_idx.index()];
+        // let edge = &self.g.edges[edge_idx.index()];
         let mut unpacked = Vec::new();
-        match edge.shortcut_for {
+        // match edge.shortcut_for {
+        match self.shortcuts.get(&edge_idx) {
             Some([first, second]) => {
-                unpacked.append(&mut self.unpack_edge(first));
-                unpacked.append(&mut self.unpack_edge(second));
+                unpacked.append(&mut self.unpack_edge(*first));
+                unpacked.append(&mut self.unpack_edge(*second));
             }
             None => unpacked.push(edge_idx),
         }
@@ -69,6 +80,90 @@ impl<'a> OverlayGraph<'a> {
             self.edges_fwd.len(),
             self.edges_fwd.iter().flatten().count()
         );
+    }
+
+    pub fn export_csv(&self) -> anyhow::Result<()> {
+        self.g.export_csv()?;
+
+        let mut wtr = Writer::from_path("edges_fwd.csv")?;
+        wtr.write_record(["source", "target_edge"])?;
+
+        // Export edges_fwd
+        for (idx_from, edges) in self.edges_fwd.iter().enumerate() {
+            for idx_to in edges {
+                wtr.write_record(&[idx_from.to_string(), idx_to.index().to_string()])?;
+            }
+        }
+        wtr.flush()?;
+
+        let mut wtr = Writer::from_path("edges_bwd.csv")?;
+        wtr.write_record(["source", "target_edge"])?;
+
+        // Export edges_fwd
+        for (idx_from, edges) in self.edges_bwd.iter().enumerate() {
+            for idx_to in edges {
+                wtr.write_record(&[idx_from.to_string(), idx_to.index().to_string()])?;
+            }
+        }
+        wtr.flush()?;
+
+        let mut wtr = csv::Writer::from_path("shortcuts.csv")?;
+        wtr.write_record(["id", "in", "out"])?;
+
+        for (edge_idx, replaces) in self.shortcuts.iter() {
+            wtr.write_record(&[
+                edge_idx.index().to_string(),
+                replaces[0].index().to_string(),
+                replaces[1].index().to_string(),
+            ])?;
+        }
+        wtr.flush()?;
+
+        Ok(())
+    }
+
+    pub fn from_csv<P: Into<PathBuf>>(
+        g: &'a Graph,
+        csv_shortcuts: P,
+        csv_fwd: P,
+        csv_bwd: P,
+    ) -> anyhow::Result<OverlayGraph<'a>> {
+        let mut edges_fwd = vec![Vec::new(); g.nodes.len()];
+        let mut edges_bwd = vec![Vec::new(); g.nodes.len()];
+
+        let mut rdr = csv::Reader::from_path(csv_fwd.into())?;
+        for result in rdr.records() {
+            let record = result?;
+            let source = record[0].parse::<usize>()?;
+            let target = record[1].parse::<usize>()?;
+
+            edges_fwd[source].push(EdgeIndex::new(target));
+        }
+
+        let mut rdr = csv::Reader::from_path(csv_bwd.into())?;
+        for result in rdr.records() {
+            let record = result?;
+            let source = record[0].parse::<usize>()?;
+            let target = record[1].parse::<usize>()?;
+
+            edges_bwd[source].push(EdgeIndex::new(target));
+        }
+
+        let mut rdr = csv::Reader::from_path(csv_shortcuts.into())?;
+        let mut shortcuts = FxHashMap::default();
+        for result in rdr.records() {
+            let record = result?;
+            let id = record[0].parse::<usize>()?;
+            let in_ = record[1].parse::<usize>()?;
+            let out = record[2].parse::<usize>()?;
+
+            shortcuts.insert(
+                EdgeIndex::new(id),
+                [EdgeIndex::new(in_), EdgeIndex::new(out)],
+            );
+        }
+
+        Ok(OverlayGraph::new(edges_fwd, edges_bwd, g, shortcuts))
     }
 }
 
@@ -99,7 +194,7 @@ impl<'a> Display for OverlayGraph<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{edge, graph::*};
+    use crate::{edge, graph::*, overlay_graph::OverlayGraph};
     use crate::{node_contraction::NodeContractor, util::test_graphs::generate_simple_graph};
 
     #[test]
@@ -162,5 +257,52 @@ mod tests {
         let overlay_graph = contractor.run_with_order(&node_order);
 
         println!("{}", overlay_graph);
+    }
+
+    #[test]
+    fn export_csv() {
+        let mut g = generate_simple_graph();
+
+        let node_order = vec![
+            node_index(0),
+            node_index(4),
+            node_index(3),
+            node_index(2),
+            node_index(1),
+        ];
+        let mut contractor = NodeContractor::new(&mut g);
+
+        let overlay_graph = contractor.run_with_order(&node_order);
+
+        let res = overlay_graph.export_csv();
+
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn import_csv() {
+        let mut g = generate_simple_graph();
+
+        let node_order = vec![
+            node_index(0),
+            node_index(4),
+            node_index(3),
+            node_index(2),
+            node_index(1),
+        ];
+        let mut contractor = NodeContractor::new(&mut g);
+
+        let overlay_graph = contractor.run_with_order(&node_order);
+
+        overlay_graph.export_csv().unwrap();
+
+        let h = overlay_graph.road_graph().clone();
+
+        let overlay_graph_imported =
+            OverlayGraph::from_csv(&h, "shortcuts.csv", "edges_fwd.csv", "edges_bwd.csv").unwrap();
+
+        assert_eq!(overlay_graph.edges_bwd, overlay_graph_imported.edges_bwd);
+        assert_eq!(overlay_graph.edges_fwd, overlay_graph_imported.edges_fwd);
+        assert_eq!(overlay_graph.shortcuts, overlay_graph_imported.shortcuts);
     }
 }
