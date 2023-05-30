@@ -17,7 +17,7 @@ const STEP_SIZE: f64 = 5.0;
 
 pub struct NodeContractor<'a, Idx = DefaultIdx> {
     g: &'a mut Graph,
-    nodes_rank: Vec<usize>,
+    node_ranks: Vec<usize>,
     nodes_contracted: Vec<bool>,
     num_nodes: usize,
     // num_shortcuts: usize,
@@ -30,7 +30,7 @@ impl<'a> NodeContractor<'a> {
         let num_edges = g.edges.len();
         NodeContractor {
             g,
-            nodes_rank: vec![0; num_nodes],
+            node_ranks: vec![0; num_nodes],
             nodes_contracted: vec![false; num_nodes],
             num_nodes,
             // num_shortcuts: 0,
@@ -96,7 +96,7 @@ impl<'a> NodeContractor<'a> {
                 info!("Progress: {:.2}%", progress * 100.0);
                 next_goal += STEP_SIZE;
             }
-            self.nodes_rank[node.index()] = num_nodes - queue.len();
+            self.node_ranks[node.index()] = num_nodes - queue.len();
         }
 
         info!("Contracting nodes took {:?}", now.elapsed());
@@ -110,7 +110,7 @@ impl<'a> NodeContractor<'a> {
     pub fn run_with_order(&mut self, node_order: &[NodeIndex]) -> OverlayGraph {
         let mut edges_fwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); self.num_nodes];
         let mut edges_bwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); self.num_nodes];
-        self.nodes_rank = node_order.iter().map(|n| n.index()).collect();
+        self.node_ranks = node_order.iter().map(|n| n.index()).collect();
 
         let now = Instant::now();
         info!("Contracting nodes");

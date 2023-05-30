@@ -1,7 +1,9 @@
 use ch_core::{
-    graph::{DefaultIdx, Graph},
-    search::shortest_path::ShortestPath,
+    graph::{node_index, Graph},
+    node_contraction::NodeContractor,
+    util::test_graphs::generate_complex_graph,
 };
+use graph_view::GraphViewOptions;
 use macroquad::prelude::*;
 use widgets::MyWidget;
 
@@ -66,21 +68,43 @@ async fn main() {
         r"F:\Dev\uni\BA\bachelor_thesis\crates\osm_reader\data\vaterstetten_pp.osm.pbf".into(),
     );
 
+    let mut g = match pbf_path.as_ref() {
+        "test" => generate_complex_graph(),
+        _ => Graph::<u32>::from_pbf(std::path::Path::new(&pbf_path)).unwrap(),
+    };
+
     let mut zoom = 1.0;
     let mut pan = Vec2::default();
     let mut draggable = Draggable::new(vec2(0.0, 0.0));
 
-    let g = Graph::<u32>::from_pbf(std::path::Path::new(&pbf_path)).unwrap();
+    // let mut g = Graph::<u32>::from_pbf(std::path::Path::new(&pbf_path)).unwrap();
+
+    let mut node_contractor = NodeContractor::new(&mut g);
+    let overlay_graph = match pbf_path.as_ref() {
+        "test" => node_contractor.run_with_order(&[
+            node_index(1),
+            node_index(4),
+            node_index(8),
+            node_index(10),
+            node_index(3),
+            node_index(6),
+            node_index(2),
+            node_index(9),
+            node_index(7),
+            node_index(5),
+            node_index(0),
+        ]),
+        _ => node_contractor.run(),
+    };
 
     // Add channel to communicate between widgets and graph_view
-    let (sender, receiver) = std::sync::mpsc::channel::<ShortestPath<DefaultIdx>>();
+    let (sender, receiver) = std::sync::mpsc::channel::<GraphViewOptions>();
 
-    let mut graph_view = graph_view::GraphView::new(&g, receiver);
-    let mut dijkstra = ch_core::search::dijkstra::Dijkstra::new(&g);
+    let mut graph_view = graph_view::GraphView::new(&overlay_graph, receiver);
 
     // Init egui widgets
     let mut debug_widget = widgets::debug::DebugWidget::new();
-    let mut user_input = widgets::interaction::UserInputWidget::new(&mut dijkstra, sender);
+    let mut user_input = widgets::interaction::UserInputWidget::new(&overlay_graph, sender);
 
     loop {
         clear_background(Color::from_rgba(27, 27, 27, 255));
