@@ -3,7 +3,7 @@ use crate::{
     graph::{IndexType, NodeIndex},
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ShortestPath<Idx: IndexType> {
     pub nodes: Vec<NodeIndex<Idx>>,
     pub weight: Weight,
