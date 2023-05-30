@@ -4,44 +4,51 @@ use crate::{
 };
 
 pub fn generate_complex_graph() -> Graph {
-    let mut g = Graph::new();
+    let mut graph = Graph::new();
 
-    // 'A'..='K'
-    for i in 0..11 {
-        g.add_node(Node::new(i, 0.0, 0.0));
-    }
+    let a = graph.add_node(Node::new(0, 6.0, 2.0));
+    let b = graph.add_node(Node::new(1, 3.0, 3.0));
+    let c = graph.add_node(Node::new(2, 4.0, 6.0));
+    let d = graph.add_node(Node::new(3, 2.0, 7.0));
+    let e = graph.add_node(Node::new(4, 3.0, 10.0));
+    let f = graph.add_node(Node::new(5, 2.0, 13.0));
+    let g = graph.add_node(Node::new(6, 7.0, 15.0));
+    let h = graph.add_node(Node::new(7, 5.0, 12.0));
+    let i = graph.add_node(Node::new(8, 7.0, 11.0));
+    let j = graph.add_node(Node::new(9, 5.0, 9.0));
+    let k = graph.add_node(Node::new(10, 7.0, 7.0));
 
-    g.add_edges(edge!(0, 1, 3.0)); // A <=> B
-    g.add_edges(edge!(0, 2, 5.0)); // A <=> C
-    g.add_edges(edge!(0, 10, 3.0)); // A <=> K
+    graph.add_edges(edge!(a, b, 3.0)); // A <=> B
+    graph.add_edges(edge!(a, c, 5.0)); // A <=> C
+    graph.add_edges(edge!(a, k, 3.0)); // A <=> K
 
-    g.add_edges(edge!(1, 3, 5.0)); // B <=> D
-    g.add_edges(edge!(1, 2, 3.0)); // B <=> C
+    graph.add_edges(edge!(b, d, 5.0)); // B <=> D
+    graph.add_edges(edge!(b, c, 3.0)); // B <=> C
 
-    g.add_edges(edge!(2, 3, 2.0)); // C <=> D
-    g.add_edges(edge!(2, 9, 2.0)); // C <=> J
+    graph.add_edges(edge!(c, d, 2.0)); // C <=> D
+    graph.add_edges(edge!(c, j, 2.0)); // C <=> J
 
-    g.add_edges(edge!(3, 9, 4.0)); // D <=> J
-    g.add_edges(edge!(3, 4, 7.0)); // D <=> E
+    graph.add_edges(edge!(d, j, 4.0)); // D <=> J
+    graph.add_edges(edge!(d, e, 7.0)); // D <=> E
 
-    g.add_edges(edge!(4, 9, 3.0)); // E <=> J
-    g.add_edges(edge!(4, 5, 6.0)); // E <=> F
+    graph.add_edges(edge!(e, j, 3.0)); // E <=> J
+    graph.add_edges(edge!(e, f, 6.0)); // E <=> F
 
-    g.add_edges(edge!(5, 7, 2.0)); // F <=> H
-    g.add_edges(edge!(5, 6, 4.0)); // F <=> G
+    graph.add_edges(edge!(f, h, 2.0)); // F <=> H
+    graph.add_edges(edge!(f, g, 4.0)); // F <=> G
 
-    g.add_edges(edge!(6, 7, 3.0)); // G <=> H
-    g.add_edges(edge!(6, 8, 5.0)); // G <=> I
+    graph.add_edges(edge!(g, h, 3.0)); // G <=> H
+    graph.add_edges(edge!(g, i, 5.0)); // G <=> I
 
-    g.add_edges(edge!(7, 8, 3.0)); // H <=> I
-    g.add_edges(edge!(7, 9, 2.0)); // H <=> J
+    graph.add_edges(edge!(h, i, 3.0)); // H <=> I
+    graph.add_edges(edge!(h, j, 2.0)); // H <=> J
 
-    g.add_edges(edge!(8, 9, 4.0)); // I <=> J
-    g.add_edges(edge!(8, 10, 6.0)); // I <=> K
+    graph.add_edges(edge!(i, j, 4.0)); // I <=> J
+    graph.add_edges(edge!(i, k, 6.0)); // I <=> K
 
-    g.add_edges(edge!(9, 10, 3.0)); // J <=> K
+    graph.add_edges(edge!(j, k, 3.0)); // J <=> K
 
-    g
+    graph
 }
 
 pub fn generate_simple_graph() -> Graph {

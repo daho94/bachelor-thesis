@@ -12,7 +12,7 @@ use crate::{
 
 use super::{dijkstra::Candidate, shortest_path::ShortestPath};
 
-type NodeData = FxHashMap<NodeIndex, (Weight, Option<EdgeIndex>)>;
+pub type NodeData = FxHashMap<NodeIndex, (Weight, Option<EdgeIndex>)>;
 
 pub struct BiDirSearch<'a, Idx = DefaultIdx> {
     pub stats: Stats,
@@ -21,8 +21,8 @@ pub struct BiDirSearch<'a, Idx = DefaultIdx> {
     settled_fwd: FxHashSet<NodeIndex<Idx>>,
     settled_bwd: FxHashSet<NodeIndex<Idx>>,
 
-    data_fwd: NodeData,
-    data_bwd: NodeData,
+    pub data_fwd: NodeData,
+    pub data_bwd: NodeData,
 
     intersect_node: Option<NodeIndex<Idx>>,
 }
@@ -249,7 +249,7 @@ mod tests {
     }
 
     #[test]
-    fn search_on_complex_path() {
+    fn search_on_complex_graph() {
         init_log();
         let mut g = generate_complex_graph();
 
