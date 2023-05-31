@@ -81,6 +81,13 @@ pub fn graph_vaterstetten() -> Graph {
     Graph::from_pbf(&path).unwrap()
 }
 
+#[cfg(test)]
+pub fn overlay_graph_vaterstetten() -> crate::overlay_graph::OverlayGraph {
+    let mut g = graph_vaterstetten();
+    let mut contractor = crate::node_contraction::NodeContractor::new(&mut g);
+    contractor.run()
+}
+
 pub fn graph_saarland() -> Graph {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../osm_reader/test_data/saarland_pp.osm.pbf");
