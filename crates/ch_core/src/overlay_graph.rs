@@ -1,4 +1,6 @@
-use std::{fmt::Display, io::stdout, path::PathBuf};
+use std::{fmt::Display, path::PathBuf};
+
+use anyhow::Context;
 
 use csv::Writer;
 use rustc_hash::FxHashMap;
@@ -47,6 +49,17 @@ impl OverlayGraph {
             bincode::serde::encode_into_std_write(self, &mut file, bincode::config::standard())?;
 
         Ok(bytes_written)
+    }
+
+    pub fn from_decode(path: impl Into<PathBuf>) -> anyhow::Result<Self> {
+        let file = std::fs::File::open(path.into()).context("Failed to read file")?;
+        let mut reader = std::io::BufReader::new(file);
+
+        let overlay_graph =
+            bincode::serde::decode_from_std_read(&mut reader, bincode::config::standard())
+                .context("Failed to decode file")?;
+
+        Ok(overlay_graph)
     }
 
     /// Returns the underlying road graph.
@@ -205,7 +218,9 @@ impl Display for OverlayGraph {
 
 #[cfg(test)]
 mod tests {
-    use crate::{edge, graph::*, overlay_graph::OverlayGraph};
+    use crate::{
+        edge, graph::*, overlay_graph::OverlayGraph, util::test_graphs::overlay_graph_vaterstetten,
+    };
     use crate::{node_contraction::NodeContractor, util::test_graphs::generate_simple_graph};
 
     #[test]
@@ -318,7 +333,7 @@ mod tests {
     }
 
     #[test]
-    fn test_encode_simple_graph() {
+    fn test_encode_and_decode_simple_graph() {
         let mut g = generate_simple_graph();
 
         let node_order = vec![
@@ -336,11 +351,26 @@ mod tests {
         let _ = overlay_graph.encode("simple_graph.bin");
 
         // Decode
-        let file = std::fs::File::open("simple_graph.bin").unwrap();
-        let mut reader = std::io::BufReader::new(file);
+        let overlay_graph_imported =
+            OverlayGraph::from_decode("simple_graph.bin").expect("Failed to decode file");
 
-        let overlay_graph_imported: OverlayGraph =
-            bincode::serde::decode_from_std_read(&mut reader, bincode::config::standard()).unwrap();
+        assert_eq!(overlay_graph.edges_bwd, overlay_graph_imported.edges_bwd);
+        assert_eq!(overlay_graph.edges_fwd, overlay_graph_imported.edges_fwd);
+        assert_eq!(overlay_graph.g.edges_in, overlay_graph_imported.g.edges_in);
+        assert_eq!(
+            overlay_graph.g.edges_out,
+            overlay_graph_imported.g.edges_out
+        );
+        assert_eq!(overlay_graph.shortcuts, overlay_graph_imported.shortcuts);
+    }
+
+    #[test]
+    fn encode_and_decode_vaterstetten() {
+        let overlay_graph = overlay_graph_vaterstetten();
+
+        let _ = overlay_graph.encode("vaterstetten.bin");
+
+        let overlay_graph_imported = OverlayGraph::from_decode("vaterstetten.bin").unwrap();
 
         assert_eq!(overlay_graph.edges_bwd, overlay_graph_imported.edges_bwd);
         assert_eq!(overlay_graph.edges_fwd, overlay_graph_imported.edges_fwd);
