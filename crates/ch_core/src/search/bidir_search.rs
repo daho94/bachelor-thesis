@@ -16,7 +16,7 @@ pub type NodeData = FxHashMap<NodeIndex, (Weight, Option<EdgeIndex>)>;
 
 pub struct BiDirSearch<'a, Idx = DefaultIdx> {
     pub stats: Stats,
-    g: &'a OverlayGraph<'a, Idx>,
+    g: &'a OverlayGraph<Idx>,
 
     settled_fwd: FxHashSet<NodeIndex<Idx>>,
     settled_bwd: FxHashSet<NodeIndex<Idx>>,

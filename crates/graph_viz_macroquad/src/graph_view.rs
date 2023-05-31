@@ -44,7 +44,7 @@ pub(crate) struct GraphView<'a> {
     first_frame: bool,
     rect: Rect,
     g: &'a Graph,
-    overlay_graph: &'a OverlayGraph<'a>,
+    overlay_graph: &'a OverlayGraph,
     options: GraphViewOptions,
     rx: Receiver<GraphViewOptions>,
 }

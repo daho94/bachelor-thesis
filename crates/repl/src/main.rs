@@ -113,12 +113,12 @@ fn run_algorithm(args: ArgMatches, context: &mut Context) -> Result<Option<Strin
 //     Ok(Some(res))
 // }
 
-struct Context<'g> {
-    graph: OverlayGraph<'g>,
+struct Context {
+    graph: OverlayGraph,
 }
 
-impl<'g> Context<'g> {
-    fn new(graph: OverlayGraph<'g>) -> Context<'g> {
+impl Context {
+    fn new(graph: OverlayGraph) -> Context {
         Self { graph }
     }
 }

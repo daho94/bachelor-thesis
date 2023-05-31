@@ -13,7 +13,7 @@ pub(crate) struct UserInputWidget<'g> {
     target_node: Option<NodeIndex>,
 
     // dijkstra: &'g mut Dijkstra<'g>,
-    overlay_graph: &'g OverlayGraph<'g>,
+    overlay_graph: &'g OverlayGraph,
     tx: Sender<GraphViewOptions>,
 
     options: GraphViewOptions,
@@ -22,7 +22,7 @@ pub(crate) struct UserInputWidget<'g> {
 impl<'g> UserInputWidget<'g> {
     pub(crate) fn new(
         // dijkstra: &'g mut Dijkstra<'g>,
-        overlay_graph: &'g OverlayGraph<'g>,
+        overlay_graph: &'g OverlayGraph,
         tx: Sender<GraphViewOptions>,
     ) -> UserInputWidget<'g> {
         UserInputWidget {

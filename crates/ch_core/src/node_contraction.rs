@@ -104,7 +104,12 @@ impl<'a> NodeContractor<'a> {
 
         self.g.edges.shrink_to_fit();
         self.shortcuts.shrink_to_fit();
-        OverlayGraph::new(edges_fwd, edges_bwd, self.g, self.shortcuts.clone())
+        OverlayGraph::new(
+            edges_fwd,
+            edges_bwd,
+            self.g.to_owned(),
+            self.shortcuts.clone(),
+        )
     }
 
     pub fn run_with_order(&mut self, node_order: &[NodeIndex]) -> OverlayGraph {
@@ -140,7 +145,12 @@ impl<'a> NodeContractor<'a> {
         self.g.edges.shrink_to_fit();
         self.shortcuts.shrink_to_fit();
 
-        OverlayGraph::new(edges_fwd, edges_bwd, self.g, self.shortcuts.clone())
+        OverlayGraph::new(
+            edges_fwd,
+            edges_bwd,
+            self.g.to_owned(),
+            self.shortcuts.clone(),
+        )
     }
 
     fn add_shortcut(&mut self, edge: Edge, replaces: [EdgeIndex; 2]) -> EdgeIndex {

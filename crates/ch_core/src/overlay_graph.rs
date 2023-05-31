@@ -9,21 +9,22 @@ use crate::graph::{DefaultIdx, Edge, EdgeIndex, Graph, Node, NodeIndex};
 ///     - NodeContractor::run
 ///     - NodeContractor::run_with_order
 /// Shortes path calculation is performed on this graph.
-pub struct OverlayGraph<'a, Idx = DefaultIdx> {
+pub struct OverlayGraph<Idx = DefaultIdx> {
     // Represents the upward graph G↑
     pub edges_fwd: Vec<Vec<EdgeIndex<Idx>>>,
     // Represents the downward graph G↓
     pub edges_bwd: Vec<Vec<EdgeIndex<Idx>>>,
 
     pub shortcuts: FxHashMap<EdgeIndex, [EdgeIndex<Idx>; 2]>,
-    g: &'a Graph,
+
+    g: Graph<Idx>,
 }
 
-impl<'a> OverlayGraph<'a> {
+impl OverlayGraph {
     pub(crate) fn new(
         edges_fwd: Vec<Vec<EdgeIndex>>,
         edges_bwd: Vec<Vec<EdgeIndex>>,
-        graph: &'a Graph,
+        graph: Graph,
         shortcuts: FxHashMap<EdgeIndex, [EdgeIndex; 2]>,
     ) -> Self {
         OverlayGraph {
@@ -40,7 +41,7 @@ impl<'a> OverlayGraph<'a> {
 
     /// Returns the underlying road graph.
     pub fn road_graph(&self) -> &Graph {
-        self.g
+        &self.g
     }
 
     pub fn edge(&self, edge_idx: EdgeIndex) -> &Edge<DefaultIdx> {
@@ -123,11 +124,11 @@ impl<'a> OverlayGraph<'a> {
     }
 
     pub fn from_csv<P: Into<PathBuf>>(
-        g: &'a Graph,
+        g: Graph,
         csv_shortcuts: P,
         csv_fwd: P,
         csv_bwd: P,
-    ) -> anyhow::Result<OverlayGraph<'a>> {
+    ) -> anyhow::Result<OverlayGraph> {
         let mut edges_fwd = vec![Vec::new(); g.nodes.len()];
         let mut edges_bwd = vec![Vec::new(); g.nodes.len()];
 
@@ -167,7 +168,7 @@ impl<'a> OverlayGraph<'a> {
     }
 }
 
-impl<'a> Display for OverlayGraph<'a> {
+impl Display for OverlayGraph {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(
             f,
