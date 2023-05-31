@@ -1,7 +1,8 @@
-use std::{fmt::Display, path::PathBuf};
+use std::{fmt::Display, io::stdout, path::PathBuf};
 
 use csv::Writer;
 use rustc_hash::FxHashMap;
+use serde::{Deserialize, Serialize};
 
 use crate::graph::{DefaultIdx, Edge, EdgeIndex, Graph, Node, NodeIndex};
 
@@ -9,6 +10,7 @@ use crate::graph::{DefaultIdx, Edge, EdgeIndex, Graph, Node, NodeIndex};
 ///     - NodeContractor::run
 ///     - NodeContractor::run_with_order
 /// Shortes path calculation is performed on this graph.
+#[derive(Serialize, Deserialize)]
 pub struct OverlayGraph<Idx = DefaultIdx> {
     // Represents the upward graph G↑
     pub edges_fwd: Vec<Vec<EdgeIndex<Idx>>>,
@@ -37,6 +39,14 @@ impl OverlayGraph {
 
     pub fn nodes(&self) -> impl Iterator<Item = &Node> {
         self.g.nodes()
+    }
+
+    pub fn encode(&self, path: impl Into<PathBuf>) -> anyhow::Result<usize> {
+        let mut file = std::fs::File::create(path.into())?;
+        let bytes_written =
+            bincode::serde::encode_into_std_write(self, &mut file, bincode::config::standard())?;
+
+        Ok(bytes_written)
     }
 
     /// Returns the underlying road graph.
@@ -300,10 +310,45 @@ mod tests {
         let h = overlay_graph.road_graph().clone();
 
         let overlay_graph_imported =
-            OverlayGraph::from_csv(&h, "shortcuts.csv", "edges_fwd.csv", "edges_bwd.csv").unwrap();
+            OverlayGraph::from_csv(h, "shortcuts.csv", "edges_fwd.csv", "edges_bwd.csv").unwrap();
 
         assert_eq!(overlay_graph.edges_bwd, overlay_graph_imported.edges_bwd);
         assert_eq!(overlay_graph.edges_fwd, overlay_graph_imported.edges_fwd);
+        assert_eq!(overlay_graph.shortcuts, overlay_graph_imported.shortcuts);
+    }
+
+    #[test]
+    fn test_encode_simple_graph() {
+        let mut g = generate_simple_graph();
+
+        let node_order = vec![
+            node_index(0),
+            node_index(4),
+            node_index(3),
+            node_index(2),
+            node_index(1),
+        ];
+        let mut contractor = NodeContractor::new(&mut g);
+
+        let overlay_graph = contractor.run_with_order(&node_order);
+
+        // Encode
+        let _ = overlay_graph.encode("simple_graph.bin");
+
+        // Decode
+        let file = std::fs::File::open("simple_graph.bin").unwrap();
+        let mut reader = std::io::BufReader::new(file);
+
+        let overlay_graph_imported: OverlayGraph =
+            bincode::serde::decode_from_std_read(&mut reader, bincode::config::standard()).unwrap();
+
+        assert_eq!(overlay_graph.edges_bwd, overlay_graph_imported.edges_bwd);
+        assert_eq!(overlay_graph.edges_fwd, overlay_graph_imported.edges_fwd);
+        assert_eq!(overlay_graph.g.edges_in, overlay_graph_imported.g.edges_in);
+        assert_eq!(
+            overlay_graph.g.edges_out,
+            overlay_graph_imported.g.edges_out
+        );
         assert_eq!(overlay_graph.shortcuts, overlay_graph_imported.shortcuts);
     }
 }

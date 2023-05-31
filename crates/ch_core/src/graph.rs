@@ -77,7 +77,7 @@ impl IndexType for u8 {
 }
 
 /// Node identifier.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub struct NodeIndex<Idx = DefaultIdx>(Idx);
 
 impl<Idx: IndexType> NodeIndex<Idx> {
@@ -109,7 +109,9 @@ pub fn node_index<Idx: IndexType>(index: usize) -> NodeIndex<Idx> {
 }
 
 /// Edge identifier.
-#[derive(Debug, Copy, Clone, Default, PartialEq, PartialOrd, Eq, Ord, Hash, Deserialize)]
+#[derive(
+    Debug, Copy, Clone, Default, PartialEq, PartialOrd, Eq, Ord, Hash, Deserialize, Serialize,
+)]
 pub struct EdgeIndex<Idx = DefaultIdx>(Idx);
 
 impl<Idx: IndexType> From<Idx> for EdgeIndex<Idx> {
@@ -151,7 +153,7 @@ impl Node {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Edge<Idx = DefaultIdx> {
     pub source: NodeIndex<Idx>,
     pub target: NodeIndex<Idx>,
@@ -168,7 +170,7 @@ impl<Idx: IndexType> Edge<Idx> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Graph<Idx = DefaultIdx> {
     pub edges_in: Vec<Vec<EdgeIndex<Idx>>>,
     pub edges_out: Vec<Vec<EdgeIndex<Idx>>>,
