@@ -79,6 +79,13 @@ fn run_algorithm(args: ArgMatches, context: &mut Context) -> Result<Option<Strin
     }
 }
 
+fn save_graph(args: ArgMatches, context: &mut Context) -> Result<Option<String>> {
+    let path = args.get_one::<PathBuf>("path").unwrap();
+    match context.graph.encode(path) {
+        Ok(bytes_written) => Ok(Some(format!("Graph saved ({} Bytes)", bytes_written))),
+        Err(e) => Ok(Some(format!("Error saving graph: {}", e))),
+    }
+}
 // fn measure_dijkstra(args: ArgMatches, context: &mut Context) -> Result<Option<String>> {
 //     use rand::Rng;
 
@@ -176,23 +183,23 @@ fn main() -> Result<()> {
         .with_banner("Welcome to Pathfinder")
         .with_history(PathBuf::from(r".\history"), 100)
         .with_command(Command::new("info").about("Print graph info"), info)
-        .with_command(
-            Command::new("dijk")
-                .arg(
-                    Arg::new("src")
-                        .value_parser(value_parser!(usize))
-                        .required(true)
-                        .help("ID of source node"),
-                )
-                .arg(
-                    Arg::new("dst")
-                        .value_parser(value_parser!(usize))
-                        .required(true)
-                        .help("ID of destination node"),
-                )
-                .about("Calculate shortest path using Dijkstra's algorithm"),
-            run_dijkstra,
-        )
+        // .with_command(
+        //     Command::new("dijk")
+        //         .arg(
+        //             Arg::new("src")
+        //                 .value_parser(value_parser!(usize))
+        //                 .required(true)
+        //                 .help("ID of source node"),
+        //         )
+        //         .arg(
+        //             Arg::new("dst")
+        //                 .value_parser(value_parser!(usize))
+        //                 .required(true)
+        //                 .help("ID of destination node"),
+        //         )
+        //         .about("Calculate shortest path using Dijkstra's algorithm"),
+        //     run_dijkstra,
+        // )
         // .with_command(
         //     Command::new("dijkm")
         //         .arg(
@@ -227,6 +234,15 @@ fn main() -> Result<()> {
                 )
                 .about("Runs the selected algorithm"),
             run_algorithm,
+        )
+        .with_command(
+            Command::new("save").arg(
+                Arg::new("path")
+                    .value_parser(value_parser!(PathBuf))
+                    .required(true)
+                    .help("Path to save graph to"),
+            ),
+            save_graph,
         );
 
     repl.run()
