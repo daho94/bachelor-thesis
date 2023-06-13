@@ -54,7 +54,7 @@ impl<'a> GraphView<'a> {
         Self {
             first_frame: true,
             rect: Rect::new(0., 0., 0., 0.),
-            g: &overlay_graph.road_graph(),
+            g: overlay_graph.road_graph(),
             overlay_graph,
             rx,
             options: Default::default(),
