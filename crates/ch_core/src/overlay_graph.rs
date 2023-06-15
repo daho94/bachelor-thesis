@@ -85,9 +85,8 @@ impl OverlayGraph {
 
     /// Recursively unpacks shortcut edges. Used to reconstruct the original path after the shortest path calculation.
     pub(crate) fn unpack_edge(&self, edge_idx: EdgeIndex) -> Vec<EdgeIndex> {
-        // let edge = &self.g.edges[edge_idx.index()];
         let mut unpacked = Vec::new();
-        // match edge.shortcut_for {
+
         match self.shortcuts.get(&edge_idx) {
             Some([first, second]) => {
                 unpacked.append(&mut self.unpack_edge(*first));
