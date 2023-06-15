@@ -73,8 +73,17 @@ impl<'a> BiDirSearch<'a> {
         queue_bwd.push(Candidate::new(target, 0.0));
 
         // Do a full dijkstra on upward graph
-        while !queue_fwd.is_empty() {
+        'outer: while !queue_fwd.is_empty() {
             if let Some(cand) = queue_fwd.pop() {
+                // Stall on demand optimization
+                for (_, edge) in self.g.edges_bwd(cand.node_idx) {
+                    if let Some((dist, _)) = self.data_fwd.get(&edge.source) {
+                        if *dist + edge.weight < cand.weight {
+                            continue 'outer;
+                        }
+                    }
+                }
+
                 for (edge_idx, edge) in self.g.edges_fwd(cand.node_idx) {
                     let new_distance = cand.weight + edge.weight;
                     if new_distance
@@ -95,8 +104,17 @@ impl<'a> BiDirSearch<'a> {
         }
 
         // Do a full dijkstra on downward graph
-        while !queue_bwd.is_empty() {
+        'outer: while !queue_bwd.is_empty() {
             if let Some(cand) = queue_bwd.pop() {
+                // Stall on demand optimization
+                for (_, edge) in self.g.edges_fwd(cand.node_idx) {
+                    if let Some((dist, _)) = self.data_bwd.get(&edge.source) {
+                        if *dist + edge.weight < cand.weight {
+                            continue 'outer;
+                        }
+                    }
+                }
+
                 for (edge_idx, edge) in self.g.edges_bwd(cand.node_idx) {
                     let new_distance = cand.weight + edge.weight;
                     if new_distance
@@ -206,6 +224,7 @@ mod tests {
         search::assert_path,
         util::test_graphs::{generate_complex_graph, generate_simple_graph, graph_vaterstetten},
     };
+    use proptest::prelude::*;
 
     use super::*;
     fn init_log() {
@@ -287,29 +306,49 @@ mod tests {
         assert_path(vec![0, 10, 9, 7, 6], 11.0, sp);
     }
 
+    fn test_search(overlay_graph: &OverlayGraph, a: usize, b: usize) {
+        let a = node_index(a);
+        let b = node_index(b);
+
+        let mut dijkstra = super::super::dijkstra::Dijkstra::new(overlay_graph.road_graph());
+        let sp_ab = dijkstra.search(a, b);
+        let sp_ba = dijkstra.search(b, a);
+
+        let mut bidir = BiDirSearch::new(overlay_graph);
+        let sp_bidir_ab = bidir.search(a, b);
+        let sp_bidir_ba = bidir.search(b, a);
+
+        if sp_ab.is_some() {
+            assert_eq!(sp_ab.unwrap().nodes, sp_bidir_ab.unwrap().nodes);
+        } else {
+            // Both should be None
+            assert_eq!(sp_ab, sp_bidir_ab);
+        }
+
+        if sp_ba.is_some() {
+            assert_eq!(sp_ba.unwrap().nodes, sp_bidir_ba.unwrap().nodes);
+        } else {
+            // Both should be None
+            assert_eq!(sp_ba, sp_bidir_ba);
+        }
+    }
+
     #[test]
     fn search_on_vaterstetten() {
         init_log();
         let mut g = graph_vaterstetten();
-        let a = node_index(1);
-        let b = node_index(2);
-
-        let mut dijkstra = super::super::dijkstra::Dijkstra::new(&g);
-        let sp_ab = dijkstra.search(a, b);
-        let sp_ba = dijkstra.search(b, a);
-        // 4264 nodes settled
 
         let mut contractor = NodeContractor::new(&mut g);
 
         let overlay_graph = contractor.run();
 
-        let mut bidir = BiDirSearch::new(&overlay_graph);
-        let sp_bidir_ab = bidir.search(a, b);
-        let sp_bidir_ba = bidir.search(b, a);
+        let mut runner = proptest::test_runner::TestRunner::default();
 
-        // 137 nodes settled
-
-        assert_eq!(sp_ab.unwrap().nodes, sp_bidir_ab.unwrap().nodes);
-        assert_eq!(sp_ba.unwrap().nodes, sp_bidir_ba.unwrap().nodes);
+        runner
+            .run(&(0..4500usize, 0..4500usize), |(a, b)| {
+                test_search(&overlay_graph, a, b);
+                Ok(())
+            })
+            .unwrap();
     }
 }
