@@ -230,6 +230,16 @@ impl<Idx: IndexType> Graph<Idx> {
             edge.target.index()
         );
 
+        // If an edge already exists between source and target but the new edge
+        // has a lower weight, replace the old edge with the new one (update the weight)
+        for (_, edge_idx) in self.edges_out[edge.source.index()].iter().enumerate() {
+            let old_edge = &self.edges[edge_idx.index()];
+            if edge.target == old_edge.target && edge.weight < old_edge.weight {
+                self.edges[edge_idx.index()].weight = edge.weight;
+                return *edge_idx;
+            }
+        }
+
         self.edges_out[edge.source.index()].push(edge_idx);
         self.edges_in[edge.target.index()].push(edge_idx);
         self.edges.push(edge);
@@ -280,6 +290,7 @@ impl<Idx: IndexType> Graph<Idx> {
         self.edges.iter()
     }
 
+    //TODO: FIX API
     pub fn neighbors_outgoing(
         &self,
         node_idx: NodeIndex<Idx>,
@@ -292,6 +303,7 @@ impl<Idx: IndexType> Graph<Idx> {
             .map(|edge_idx| (*edge_idx, &self.edges[edge_idx.index()]))
     }
 
+    //TODO: FIX API
     pub fn neighbors_incoming(
         &self,
         node_idx: NodeIndex<Idx>,
@@ -381,6 +393,11 @@ impl<Idx: IndexType> Graph<Idx> {
         }
 
         info!("Finished parsing pbf file");
+        info!(
+            "Graph has {} nodes and {} edges",
+            g.nodes.len(),
+            g.edges.len()
+        );
         Ok(g)
     }
 
@@ -471,5 +488,18 @@ mod tests {
 
         assert_eq!(graph.nodes.len(), 2);
         assert_eq!(graph.edges_out.len(), 2);
+    }
+
+    #[test]
+    fn add_duplicate_edges() {
+        let mut g = Graph::<DefaultIdx>::new();
+        let a = g.add_node(Node::new(0, 0.0, 0.0));
+        let b = g.add_node(Node::new(1, 0.0, 0.0));
+
+        let edge1 = g.add_edge(edge!(a => b, 2.0));
+        let edge2 = g.add_edge(edge!(a => b, 1.0));
+
+        assert_eq!(g.edges.len(), 1);
+        assert_eq!(g.edges[edge1.index()].weight, 1.0);
     }
 }
