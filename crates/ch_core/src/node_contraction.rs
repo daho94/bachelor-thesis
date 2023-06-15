@@ -8,20 +8,20 @@ use priority_queue::PriorityQueue;
 use rustc_hash::FxHashSet;
 
 use crate::{
-    graph::{node_index, DefaultIdx, Edge, EdgeIndex, Graph, NodeIndex},
+    graph::{node_index, Edge, EdgeIndex, Graph, NodeIndex},
     overlay_graph::OverlayGraph,
     witness_search::WitnessSearch,
 };
 
 const STEP_SIZE: f64 = 5.0;
 
-pub struct NodeContractor<'a, Idx = DefaultIdx> {
+pub struct NodeContractor<'a> {
     g: &'a mut Graph,
     node_ranks: Vec<usize>,
     nodes_contracted: Vec<bool>,
+    nodes_removed_neighbors: Vec<usize>,
     num_nodes: usize,
-    // num_shortcuts: usize,
-    shortcuts: rustc_hash::FxHashMap<EdgeIndex, [EdgeIndex<Idx>; 2]>,
+    shortcuts: rustc_hash::FxHashMap<EdgeIndex, [EdgeIndex; 2]>,
 }
 
 impl<'a> NodeContractor<'a> {
@@ -32,8 +32,8 @@ impl<'a> NodeContractor<'a> {
             g,
             node_ranks: vec![0; num_nodes],
             nodes_contracted: vec![false; num_nodes],
+            nodes_removed_neighbors: vec![0; num_nodes],
             num_nodes,
-            // num_shortcuts: 0,
             shortcuts: rustc_hash::FxHashMap::with_capacity_and_hasher(
                 num_edges,
                 Default::default(),
@@ -46,20 +46,26 @@ impl<'a> NodeContractor<'a> {
         let mut edges_fwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); self.num_nodes];
         let mut edges_bwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); self.num_nodes];
 
+        // Allocate additional space for shortcuts to avoid reallocations
         self.g.edges.reserve(self.g.edges.len());
 
         let mut queue = self.calc_initial_node_order();
 
-        let num_nodes = self.g.nodes.len();
-
-        let mut next_goal = STEP_SIZE;
+        let mut step_size = STEP_SIZE;
+        let mut next_goal = step_size;
 
         while !queue.is_empty() {
-            let node = queue.pop().unwrap().0;
-            debug!("=> Contracting node: {}", node.index());
+            let (node, Reverse(priority)) = queue.pop().unwrap();
 
-            // Contracte node
-            self.contract_node(node);
+            // Lazy Update node: If the priority of the node is worse (higher), it will be updated instead of contracted
+            let importance = self.calc_importance(node, WitnessSearch::with_params(self, 25));
+
+            if importance > priority {
+                queue.push(node, Reverse(importance));
+                continue;
+            }
+
+            debug!("=> Contracting node: {}", node.index());
 
             let mut neighbors = FxHashSet::default();
 
@@ -73,30 +79,42 @@ impl<'a> NodeContractor<'a> {
                 edges_fwd[node.index()].push(out_idx);
             }
 
-            // Update priority of neighbors
+            // Contract node
+            self.contract_node(node);
+
+            // Update only the priority of neighbors = Lazy Neighbor Updating
             for neighbor in neighbors {
-                let edge_difference =
-                    self.calc_edge_difference(neighbor, WitnessSearch::with_params(self, 25));
+                // Spatial Uniformity heuristic
+                self.nodes_removed_neighbors[neighbor.index()] += 1;
+
+                // Linear combination of heuristics
+                let importance =
+                    self.calc_importance(neighbor, WitnessSearch::with_params(self, 25));
+
                 if let Some(Reverse(old_value)) =
-                    queue.change_priority(&neighbor, Reverse(edge_difference))
+                    queue.change_priority(&neighbor, Reverse(importance))
                 {
-                    if edge_difference != old_value {
+                    if importance != old_value {
                         debug!(
                             "[Update] Changed priority of node {} from {} to {}",
                             neighbor.index(),
                             old_value,
-                            edge_difference
+                            importance
                         );
                     }
                 }
             }
 
-            let progress = (num_nodes - queue.len()) as f64 / num_nodes as f64;
+            self.node_ranks[node.index()] = self.num_nodes - queue.len() + 1;
+
+            let progress = (self.num_nodes - queue.len()) as f64 / self.num_nodes as f64;
             if progress * 100.0 >= next_goal {
                 info!("Progress: {:.2}%", progress * 100.0);
-                next_goal += STEP_SIZE;
+                if progress * 100.0 >= 95.0 {
+                    step_size = 0.5;
+                }
+                next_goal += step_size;
             }
-            self.node_ranks[node.index()] = num_nodes - queue.len();
         }
 
         info!("Contracting nodes took {:?}", now.elapsed());
@@ -187,7 +205,6 @@ impl<'a> NodeContractor<'a> {
             .map(|edge_idx| (*edge_idx, &self.g.edges[edge_idx.index()]))
     }
 
-    #[inline(always)]
     fn contract_node(&mut self, v: NodeIndex) -> (Duration, usize) {
         let mut time = Default::default();
         let mut added_shortcuts = 0;
@@ -219,7 +236,7 @@ impl<'a> NodeContractor<'a> {
             }
 
             // Start seach from u
-            let ws = WitnessSearch::with_params(self, 25);
+            let ws = WitnessSearch::with_params(self, usize::MAX);
             let start = Instant::now();
             let res = ws.search(uv.source, &target_nodes, v, max_weight);
             time += start.elapsed();
@@ -232,11 +249,6 @@ impl<'a> NodeContractor<'a> {
 
                 let weight = uv.weight + vw.weight;
                 if weight < *res.get(&vw.target).unwrap_or(&std::f64::INFINITY) {
-                    // let shortcut =
-                    //     Edge::new_shortcut(uv.source, vw.target, weight, [*uv_idx, *vw_idx]);
-
-                    // self.g.add_edge(shortcut);
-                    // self.num_shortcuts += 1;
                     let shortcut = Edge::new(uv.source, vw.target, weight);
 
                     self.add_shortcut(shortcut, [*uv_idx, *vw_idx]);
@@ -265,6 +277,13 @@ impl<'a> NodeContractor<'a> {
         }
 
         pq
+    }
+
+    fn calc_importance(&self, v: NodeIndex, ws: WitnessSearch) -> i32 {
+        let edge_difference = self.calc_edge_difference(v, ws);
+        let removed_neighbors = self.nodes_removed_neighbors[v.index()];
+
+        edge_difference + removed_neighbors as i32
     }
 
     /// ED = Shortcuts - Removed edges
@@ -302,7 +321,6 @@ impl<'a> NodeContractor<'a> {
             }
 
             // Start seach from u
-            // let ws = WitnessSearch::new(g);
             let res = ws.search(uv.source, &target_nodes, v, max_weight);
 
             // Add shortcut if no better path <u,...,w> was found
@@ -336,7 +354,7 @@ mod tests {
     use super::*;
 
     fn init_log() {
-        let _ = env_logger::builder().is_test(true).try_init();
+        let _ = env_logger::builder().is_test(false).try_init();
     }
 
     #[test]
@@ -367,21 +385,22 @@ mod tests {
 
     #[test]
     fn contract_straight_line_of_nodes() {
-        // 0 -> 1 -> 2 -> 3 -> 4
+        // 0 -> 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
         let mut g = Graph::<DefaultIdx>::new();
 
-        for i in 0..5 {
+        for i in 0..8 {
             g.add_node(Node::new(i, 0.0, 0.0));
         }
 
-        for i in 0..4 {
+        for i in 0..7 {
             g.add_edge(edge!(i => i + 1, 1.0));
         }
 
-        let node_order = (1..5).map(node_index).collect::<Vec<_>>();
+        // let node_order = (1..5).map(node_index).collect::<Vec<_>>();
 
         let mut contractor = NodeContractor::new(&mut g);
-        contractor.run_with_order(&node_order);
+        // contractor.run_with_order(&node_order);
+        contractor.run();
 
         assert_eq!(3, contractor.g.num_shortcuts)
     }
@@ -433,6 +452,27 @@ mod tests {
         contractor.run();
     }
 
+    #[ignore = "Takes too long"]
+    #[test]
+    fn contract_bavaria_with_order() {
+        init_log();
+
+        let mut g = Graph::<DefaultIdx>::from_pbf(std::path::Path::new(
+            "../osm_reader/data/bayern_pp.osm.pbf",
+        ))
+        .unwrap();
+
+        // let node_order = (0..g.nodes.len()).map(node_index).collect::<Vec<_>>();
+
+        let mut contractor = NodeContractor::new(&mut g);
+
+        // contractor.run_with_order(&node_order);
+        contractor.run();
+    }
+
+    // Lazy Update Self + Neighbors: 7890
+    // Lazy Update Neighbors: 7907
+    // Lazy Update Self: 7918
     #[test]
     fn contract_vaterstetten() {
         init_log();
