@@ -3,7 +3,7 @@ use ch_core::{
     node_contraction::NodeContractor,
     util::test_graphs::generate_complex_graph,
 };
-use graph_view::GraphViewOptions;
+use crossbeam_channel::bounded;
 use macroquad::prelude::*;
 use widgets::MyWidget;
 
@@ -97,14 +97,25 @@ async fn main() {
         _ => node_contractor.run(),
     };
 
-    // Add channel to communicate between widgets and graph_view
-    let (sender, receiver) = std::sync::mpsc::channel::<GraphViewOptions>();
+    // Add channels to communicate between widgets and view
+    let (tx_graph, rx_graph) = bounded(1);
 
-    let mut graph_view = graph_view::GraphView::new(&overlay_graph, receiver);
+    let (tx_debug, rx_debug) = bounded(1);
+
+    let (tx_search, rx_search) = bounded(2);
+
+    let mut graph_view = graph_view::GraphView::new(
+        &overlay_graph,
+        rx_graph,
+        tx_debug,
+        tx_search.clone(),
+        rx_search.clone(),
+    );
 
     // Init egui widgets
-    let mut debug_widget = widgets::debug::DebugWidget::new();
-    let mut user_input = widgets::interaction::UserInputWidget::new(&overlay_graph, sender);
+    let mut debug_widget = widgets::debug::DebugWidget::new(rx_debug);
+    let mut user_input =
+        widgets::interaction::UserInputWidget::new(&overlay_graph, tx_graph, rx_search, tx_search);
 
     loop {
         clear_background(Color::from_rgba(27, 27, 27, 255));

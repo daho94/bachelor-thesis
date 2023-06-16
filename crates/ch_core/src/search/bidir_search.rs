@@ -224,7 +224,6 @@ mod tests {
         search::assert_path,
         util::test_graphs::{generate_complex_graph, generate_simple_graph, graph_vaterstetten},
     };
-    use proptest::prelude::*;
 
     use super::*;
     fn init_log() {

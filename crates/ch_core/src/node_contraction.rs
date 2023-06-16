@@ -127,13 +127,13 @@ impl<'a> NodeContractor<'a> {
             edges_bwd,
             self.g.to_owned(),
             self.shortcuts.clone(),
+            self.node_ranks.clone(),
         )
     }
 
     pub fn run_with_order(&mut self, node_order: &[NodeIndex]) -> OverlayGraph {
         let mut edges_fwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); self.num_nodes];
         let mut edges_bwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); self.num_nodes];
-        self.node_ranks = node_order.iter().map(|n| n.index()).collect();
 
         let now = Instant::now();
         info!("Contracting nodes");
@@ -153,6 +153,8 @@ impl<'a> NodeContractor<'a> {
                 edges_fwd[node.index()].push(out_idx);
             }
 
+            self.node_ranks[node.index()] = progress;
+
             let progress = (progress + 1) as f64 / node_order.len() as f64;
             if progress * 100.0 >= next_goal {
                 info!("Progress: {:.2}%", progress * 100.0);
@@ -168,6 +170,7 @@ impl<'a> NodeContractor<'a> {
             edges_bwd,
             self.g.to_owned(),
             self.shortcuts.clone(),
+            self.node_ranks.clone(),
         )
     }
 

@@ -12,3 +12,4 @@ macroquad = "0.3.25"
 ch_core = { path = "../ch_core" }
 log = "0.4.17"
 env_logger = "0.10.0"
+crossbeam-channel = "0.5"

@@ -104,7 +104,9 @@ where
                 break;
             }
 
-            for (_, edge) in self.g.neighbors_outgoing(node) {
+            for (_, edge) in self.g.neighbors_outgoing(node).filter(|(edge_idx, _)| {
+                edge_idx.index() < self.g.edges.len() - self.g.num_shortcuts
+            }) {
                 let real_weight = real_weight + edge.weight;
 
                 if real_weight

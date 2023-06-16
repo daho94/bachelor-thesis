@@ -1,16 +1,18 @@
 use ch_core::{
-    graph::{DefaultIdx, Graph, Node},
+    graph::{DefaultIdx, Graph, Node, NodeIndex},
     overlay_graph::OverlayGraph,
     search::shortest_path::ShortestPath,
 };
 use egui::epaint::ahash::HashSet;
 use macroquad::prelude::*;
 
+use crossbeam_channel::{Receiver, Sender};
 use std::{
     collections::BinaryHeap,
     f32::{MAX, MIN},
-    sync::mpsc::Receiver,
 };
+
+use crate::widgets::debug::{DebugInfo, NodeInfo};
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct SearchResult {
@@ -25,17 +27,21 @@ pub(crate) struct GraphViewOptions {
     pub draw_graph_downward: bool,
     pub draw_shortest_path: bool,
     pub search_result: Option<SearchResult>,
+
+    pub draw_top_important_nodes: bool,
 }
 
 impl Default for GraphViewOptions {
     fn default() -> Self {
         Self {
             draw_shortcuts: false,
-            draw_nodes: true,
+            draw_nodes: false,
             draw_graph_upward: false,
             draw_graph_downward: false,
             draw_shortest_path: true,
             search_result: None,
+
+            draw_top_important_nodes: false,
         }
     }
 }
@@ -46,11 +52,26 @@ pub(crate) struct GraphView<'a> {
     g: &'a Graph,
     overlay_graph: &'a OverlayGraph,
     options: GraphViewOptions,
+
+    // Communication channels between widgets
     rx: Receiver<GraphViewOptions>,
+    tx_debug: Sender<DebugInfo>,
+    tx_search: Sender<(Option<NodeIndex>, Option<NodeIndex>)>,
+    rx_search: Receiver<(Option<NodeIndex>, Option<NodeIndex>)>,
+
+    selected_node: Option<NodeIndex>,
+    start_node: Option<NodeIndex>,
+    target_node: Option<NodeIndex>,
 }
 
 impl<'a> GraphView<'a> {
-    pub(crate) fn new(overlay_graph: &'a OverlayGraph, rx: Receiver<GraphViewOptions>) -> Self {
+    pub(crate) fn new(
+        overlay_graph: &'a OverlayGraph,
+        rx: Receiver<GraphViewOptions>,
+        tx_debug: Sender<DebugInfo>,
+        tx_search: Sender<(Option<NodeIndex>, Option<NodeIndex>)>,
+        rx_search: Receiver<(Option<NodeIndex>, Option<NodeIndex>)>,
+    ) -> Self {
         Self {
             first_frame: true,
             rect: Rect::new(0., 0., 0., 0.),
@@ -58,6 +79,12 @@ impl<'a> GraphView<'a> {
             overlay_graph,
             rx,
             options: Default::default(),
+            tx_debug,
+            tx_search,
+            rx_search,
+            selected_node: None,
+            start_node: None,
+            target_node: None,
         }
     }
 
@@ -69,45 +96,93 @@ impl<'a> GraphView<'a> {
 
         self.handle_zoom(zoom);
         self.handle_pan(pan);
+        self.handle_click();
 
-        // dbg!(start.elapsed());
         if let Ok(options) = self.rx.try_recv() {
             self.options = options;
         }
+
+        if let Ok((start, target)) = self.rx_search.try_recv() {
+            self.start_node = start;
+            self.target_node = target;
+        }
+
         self.draw_edges();
+
         if self.options.draw_nodes {
             self.draw_nodes();
         }
 
-        // Draw shortest path
-        if let Some(SearchResult { sp }) = &self.options.search_result {
-            let scale_x = screen_width() / self.rect.w;
-            let scale_y = screen_height() / self.rect.h;
+        // Draw selected node
+        if let Some(node_idx) = self.selected_node {
+            let scale = self.scale();
+            self.draw_node(self.g.node(node_idx).unwrap(), self.scale(), 3.5, ORANGE);
 
-            // Use smallest scale to avoid distortion
-            let scale = scale_x.min(scale_y);
+            // Draw connected edges
+            for (edge_idx, edge) in self.g.neighbors_incoming(node_idx) {
+                let from = node_to_vec(self.g.node(edge.source).unwrap());
+                let to = node_to_vec(self.g.node(edge.target).unwrap());
 
-            // Draw SHORTEST PATH
-            if self.options.draw_shortest_path {
-                let mut windows = sp.nodes.windows(2);
+                let from = (from - self.rect.point()) * scale;
+                let to = (to - self.rect.point()) * scale;
 
-                while let Some(&[source, target]) = windows.next() {
-                    let from = node_to_vec(self.g.node(source).unwrap());
-                    let to = node_to_vec(self.g.node(target).unwrap());
-
-                    let from = (from - self.rect.point()) * scale;
-                    let to = (to - self.rect.point()) * scale;
-
-                    draw_line(
-                        from.x,
-                        from.y,
-                        to.x,
-                        to.y,
-                        2.0,
-                        Color::from_rgba(255, 0, 255, 255),
-                    );
+                if edge_idx.index() >= self.g.edges.len() - self.g.num_shortcuts {
+                    draw_line_with_arrow(from.x, from.y, to.x, to.y, 1.0, RED);
+                } else {
+                    draw_line_with_arrow(from.x, from.y, to.x, to.y, 1.0, ORANGE);
                 }
             }
+
+            for (edge_idx, edge) in self.g.neighbors_outgoing(node_idx) {
+                let from = node_to_vec(self.g.node(edge.source).unwrap());
+                let to = node_to_vec(self.g.node(edge.target).unwrap());
+
+                let from = (from - self.rect.point()) * scale;
+                let to = (to - self.rect.point()) * scale;
+
+                if edge_idx.index() >= self.g.edges.len() - self.g.num_shortcuts {
+                    draw_line_with_arrow(from.x, from.y, to.x, to.y, 1.0, RED);
+                } else {
+                    draw_line_with_arrow(from.x, from.y, to.x, to.y, 1.0, ORANGE);
+                }
+            }
+        }
+
+        // Draw start and target node
+        if let Some(node_idx) = self.start_node {
+            self.draw_node(self.g.node(node_idx).unwrap(), self.scale(), 3.5, PINK);
+        }
+        if let Some(node_idx) = self.target_node {
+            self.draw_node(self.g.node(node_idx).unwrap(), self.scale(), 3.5, PINK);
+        }
+
+        if self.options.draw_top_important_nodes {
+            // TODO: FIX
+            // Draw top 10% of most important nodes
+            // let scale = self.scale();
+            // for node in self
+            //     .overlay_graph
+            //     .node_ranks
+            //     .iter()
+            //     .rev()
+            //     .take(((0.1 * self.g.nodes.len() as f32) as usize).min(1000))
+            // {
+            //     let pos = node_to_vec(&self.g.nodes[*node]);
+
+            //     let pos = (pos - self.rect.point()) * scale;
+
+            //     // Only render lines where from or to point is inside screen
+            //     if pos.x < 0.0 || pos.x > screen_width() || pos.y < 0.0 || pos.y > screen_height() {
+            //         continue;
+            //     }
+
+            //     draw_circle(pos.x, pos.y, 2.0, GREEN);
+            // }
+        }
+
+        // Draw shortest path, Upward and Downward graph
+        if let Some(SearchResult { sp }) = &self.options.search_result {
+            let scale = self.scale();
 
             // Draw upward
             if self.options.draw_graph_upward {
@@ -172,6 +247,28 @@ impl<'a> GraphView<'a> {
                     );
                 }
             }
+
+            // Draw SHORTEST PATH
+            if self.options.draw_shortest_path {
+                let mut windows = sp.nodes.windows(2);
+
+                while let Some(&[source, target]) = windows.next() {
+                    let from = node_to_vec(self.g.node(source).unwrap());
+                    let to = node_to_vec(self.g.node(target).unwrap());
+
+                    let from = (from - self.rect.point()) * scale;
+                    let to = (to - self.rect.point()) * scale;
+
+                    draw_line(
+                        from.x,
+                        from.y,
+                        to.x,
+                        to.y,
+                        2.0,
+                        Color::from_rgba(255, 0, 255, 255),
+                    );
+                }
+            }
         }
     }
 
@@ -179,12 +276,70 @@ impl<'a> GraphView<'a> {
         self.first_frame = true;
     }
 
-    fn draw_edges(&self) {
-        let scale_x = screen_width() / self.rect.w;
-        let scale_y = screen_height() / self.rect.h;
+    fn closest_node(&self) -> Option<(NodeIndex, &Node)> {
+        let (x, y) = mouse_position();
+        let mouse_position = vec2(x, y);
 
-        // Use smallest scale to avoid distortion
-        let scale = scale_x.min(scale_y);
+        let scale = self.scale();
+
+        let mut closest_node = None;
+        let mut closest_node_id = 0;
+        let mut closest_distance = MAX;
+        for (i, node) in self.g.nodes().enumerate() {
+            let pos = node_to_vec(node);
+
+            let pos = (pos - self.rect.point()) * scale;
+
+            let distance = (pos - mouse_position).length();
+
+            if distance < closest_distance {
+                closest_distance = distance;
+                closest_node = Some(node);
+                closest_node_id = i;
+            }
+        }
+
+        Some((ch_core::graph::node_index(closest_node_id), closest_node?))
+    }
+
+    fn handle_click(&mut self) {
+        if is_mouse_button_pressed(MouseButton::Middle) {
+            if let Some((node_idx, node)) = self.closest_node() {
+                log::debug!(
+                    "Clicked node: {:?}, Rank: {}",
+                    node,
+                    self.overlay_graph.node_ranks[node_idx.index()]
+                );
+                self.tx_debug
+                    .send(DebugInfo {
+                        node_info: Some(NodeInfo {
+                            node: node.clone(),
+                            rank: self.overlay_graph.node_ranks[node_idx.index()],
+                        }),
+                    })
+                    .unwrap();
+
+                self.selected_node = Some(node_idx);
+            }
+        }
+
+        if is_key_pressed(KeyCode::Q) {
+            // Set start node
+            if let Some((node_idx, _)) = self.closest_node() {
+                self.tx_search.send((Some(node_idx), None)).unwrap();
+            }
+        }
+
+        if is_key_pressed(KeyCode::E) {
+            // Set end node
+            if let Some((node_idx, _)) = self.closest_node() {
+                self.tx_search.send((None, Some(node_idx))).unwrap();
+            }
+        }
+    }
+
+    fn draw_edges(&self) {
+        let scale = self.scale();
 
         let num_elements = if self.options.draw_shortcuts {
             self.g.edges.len()
@@ -222,25 +377,32 @@ impl<'a> GraphView<'a> {
     }
 
     fn draw_nodes(&self) {
+        let scale = self.scale();
+
+        for node in self.g.nodes() {
+            self.draw_node(node, scale, 2.0, WHITE);
+        }
+    }
+
+    fn draw_node(&self, node: &Node, scale: f32, r: f32, color: Color) {
+        let pos = node_to_vec(node);
+
+        let pos = (pos - self.rect.point()) * scale;
+
+        // Only render lines where from or to point is inside screen
+        if pos.x < 0.0 || pos.x > screen_width() || pos.y < 0.0 || pos.y > screen_height() {
+            return;
+        }
+
+        draw_circle(pos.x, pos.y, r, color);
+    }
+
+    fn scale(&self) -> f32 {
         let scale_x = screen_width() / self.rect.w;
         let scale_y = screen_height() / self.rect.h;
 
         // Use smallest scale to avoid distortion
-        let scale = scale_x.min(scale_y);
-
-        for node in self.g.nodes() {
-            let pos = node_to_vec(node);
-
-            let pos = (pos - self.rect.point()) * scale;
-
-            // Only render lines where from or to point is inside screen
-            if pos.x < 0.0 || pos.x > screen_width() || pos.y < 0.0 || pos.y > screen_height() {
-                continue;
-            }
-
-            draw_circle(pos.x, pos.y, 2.0, WHITE);
-            // draw_rectangle(pos.x - 0.5, pos.y - 0.5, 1.0, 1.0, WHITE);
-        }
+        scale_x.min(scale_y)
     }
 
     fn calculate_bbox(&self) -> Rect {

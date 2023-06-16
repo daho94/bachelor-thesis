@@ -21,6 +21,8 @@ pub struct OverlayGraph<Idx = DefaultIdx> {
 
     pub shortcuts: FxHashMap<EdgeIndex, [EdgeIndex<Idx>; 2]>,
 
+    pub node_ranks: Vec<usize>,
+
     g: Graph<Idx>,
 }
 
@@ -30,12 +32,14 @@ impl OverlayGraph {
         edges_bwd: Vec<Vec<EdgeIndex>>,
         graph: Graph,
         shortcuts: FxHashMap<EdgeIndex, [EdgeIndex; 2]>,
+        node_ranks: Vec<usize>,
     ) -> Self {
         OverlayGraph {
             edges_fwd,
             edges_bwd,
             g: graph,
             shortcuts,
+            node_ranks,
         }
     }
 
@@ -186,7 +190,13 @@ impl OverlayGraph {
             );
         }
 
-        Ok(OverlayGraph::new(edges_fwd, edges_bwd, g, shortcuts))
+        Ok(OverlayGraph::new(
+            edges_fwd,
+            edges_bwd,
+            g,
+            shortcuts,
+            Default::default(),
+        ))
     }
 }
 

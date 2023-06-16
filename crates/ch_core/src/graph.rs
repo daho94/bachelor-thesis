@@ -290,7 +290,6 @@ impl<Idx: IndexType> Graph<Idx> {
         self.edges.iter()
     }
 
-    //TODO: FIX API
     pub fn neighbors_outgoing(
         &self,
         node_idx: NodeIndex<Idx>,
@@ -298,12 +297,10 @@ impl<Idx: IndexType> Graph<Idx> {
         // Ignore shortcuts
         self.edges_out[node_idx.index()]
             .iter()
-            // .filter(|edge_idx| !self.edges[edge_idx.index()].is_shortcut())
-            .filter(|edge_idx| edge_idx.index() < self.edges.len() - self.num_shortcuts)
+            // .filter(|edge_idx| edge_idx.index() < self.edges.len() - self.num_shortcuts)
             .map(|edge_idx| (*edge_idx, &self.edges[edge_idx.index()]))
     }
 
-    //TODO: FIX API
     pub fn neighbors_incoming(
         &self,
         node_idx: NodeIndex<Idx>,
@@ -311,14 +308,10 @@ impl<Idx: IndexType> Graph<Idx> {
         // Ignore shortcuts
         self.edges_in[node_idx.index()]
             .iter()
-            // .filter(|edge_idx| !self.edges[edge_idx.index()].is_shortcut())
-            .filter(|edge_idx| edge_idx.index() < self.edges.len() - self.num_shortcuts)
             .map(|edge_idx| (*edge_idx, &self.edges[edge_idx.index()]))
     }
 
     pub fn print_info(&self) {
-        // let num_shortcuts = self.edges.iter().filter(|e| e.is_shortcut()).count();
-
         println!(
             "InputGraph:\t#Nodes: {}, #Edges: {}, #Shortcuts: {}",
             self.nodes.len(),

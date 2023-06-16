@@ -1,5 +1,7 @@
 use std::time::Instant;
 
+use ch_core::graph::Node;
+use crossbeam_channel::Receiver;
 use egui::{
     plot::{Line, Plot, PlotPoints},
     Color32, Context, Ui, Vec2, Window,
@@ -12,15 +14,35 @@ pub(crate) struct DebugWidget {
     fps_history: Vec<f64>,
     last_update_time: Instant,
     frames_last_time_span: usize,
+    debug_info: DebugInfo,
+    rx: Receiver<DebugInfo>,
+}
+
+pub(crate) struct NodeInfo {
+    pub node: Node,
+    pub rank: usize,
+    // Neighbors...
+}
+
+pub(crate) struct DebugInfo {
+    pub node_info: Option<NodeInfo>,
+}
+
+impl Default for DebugInfo {
+    fn default() -> Self {
+        Self { node_info: None }
+    }
 }
 
 impl DebugWidget {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(rx: Receiver<DebugInfo>) -> Self {
         Self {
             fps: 0.,
             fps_history: Default::default(),
             last_update_time: Instant::now(),
             frames_last_time_span: 0,
+            debug_info: Default::default(),
+            rx,
         }
     }
 
@@ -51,6 +73,7 @@ impl DebugWidget {
         let line = Line::new(points).color(FPS_LINE_COLOR);
         Plot::new("my_plot")
             .min_size(Vec2::new(100., 50.))
+            .height(50.)
             .show_x(false)
             .show_background(false)
             .show_axes([false, false])
@@ -62,22 +85,36 @@ impl DebugWidget {
             .show(ui, |plot_ui| plot_ui.line(line));
     }
 
-    // pub(crate) fn update(&mut self, ctx: &Context) {
-    //     self.update_fps();
-
-    //     Window::new("Debug").show(ctx, |ui| {
-    //         ui.label(format!("FPS: {:.2}", self.fps));
-    //         self.draw_fps(ui);
-    //     });
-    // }
+    fn draw_node_info(&self, ui: &mut Ui) {
+        ui.label("Selected Node");
+        ui.separator();
+        if let Some(node_info) = &self.debug_info.node_info {
+            ui.label(format!("Node (OSMID): {}", node_info.node.id));
+            ui.label(format!("Lat: {:.7}°", node_info.node.lat));
+            ui.label(format!("Lon: {:.7}°", node_info.node.lon));
+            ui.label(format!("Importance: {}", node_info.rank));
+        } else {
+            ui.label("Nothing selected");
+        }
+    }
 }
 
 impl super::MyWidget for DebugWidget {
     fn update(&mut self, ctx: &Context) {
         self.update_fps();
 
+        if let Ok(debug_info) = self.rx.try_recv() {
+            self.debug_info = debug_info;
+        }
+
         Window::new("Debug").default_open(false).show(ctx, |ui| {
+            self.draw_node_info(ui);
+
+            ui.add_space(10.);
+
             ui.label(format!("FPS: {:.2}", self.fps));
+            ui.separator();
+
             self.draw_fps(ui);
         });
     }
