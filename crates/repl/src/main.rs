@@ -21,25 +21,6 @@ fn info(_args: ArgMatches, context: &mut Context) -> Result<Option<String>> {
     Ok(None)
 }
 
-fn run_dijkstra(args: ArgMatches, context: &mut Context) -> Result<Option<String>> {
-    let src = *args.get_one::<usize>("src").unwrap();
-    let dst = *args.get_one::<usize>("dst").unwrap();
-
-    let mut dijkstra = Dijkstra::new(context.graph.road_graph());
-    let sp = dijkstra.search(node_index(src), node_index(dst));
-
-    if let Some(sp) = sp {
-        let mut path = String::new();
-        for node in sp.nodes {
-            path.push_str(&format!("{:?}\n", node));
-        }
-        path.push_str(&format!("Took: {:?}", dijkstra.stats.duration));
-        Ok(Some(path))
-    } else {
-        Ok(Some("No path found".to_string()))
-    }
-}
-
 fn run_algorithm(args: ArgMatches, context: &mut Context) -> Result<Option<String>> {
     let src = *args.get_one::<usize>("src").unwrap();
     let dst = *args.get_one::<usize>("dst").unwrap();
@@ -131,12 +112,12 @@ impl Context {
 }
 
 trait Runnable {
-    fn run(&mut self, src: OsmId, dst: OsmId) -> Option<ShortestPath<DefaultIdx>>;
+    fn run(&mut self, src: OsmId, dst: OsmId) -> Option<ShortestPath>;
     fn stats(&self) -> &ch_core::statistics::Stats;
 }
 
 impl Runnable for Dijkstra<'_> {
-    fn run(&mut self, src: OsmId, dst: OsmId) -> Option<ShortestPath<DefaultIdx>> {
+    fn run(&mut self, src: OsmId, dst: OsmId) -> Option<ShortestPath> {
         self.search(node_index(src), node_index(dst))
     }
 
@@ -146,7 +127,7 @@ impl Runnable for Dijkstra<'_> {
 }
 
 impl Runnable for AStar<'_> {
-    fn run(&mut self, src: OsmId, dst: OsmId) -> Option<ShortestPath<DefaultIdx>> {
+    fn run(&mut self, src: OsmId, dst: OsmId) -> Option<ShortestPath> {
         self.search(node_index(src), node_index(dst), straight_line)
     }
 
@@ -156,7 +137,7 @@ impl Runnable for AStar<'_> {
 }
 
 impl Runnable for BiDirSearch<'_> {
-    fn run(&mut self, src: OsmId, dst: OsmId) -> Option<ShortestPath<DefaultIdx>> {
+    fn run(&mut self, src: OsmId, dst: OsmId) -> Option<ShortestPath> {
         self.search(node_index(src), node_index(dst))
     }
 

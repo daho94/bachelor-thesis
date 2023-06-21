@@ -377,7 +377,7 @@ mod tests {
     #[test]
     fn contract_straight_line_of_nodes() {
         // 0 -> 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
-        let mut g = Graph::<DefaultIdx>::new();
+        let mut g = Graph::new();
 
         for i in 0..8 {
             g.add_node(Node::new(i, 0.0, 0.0));
@@ -501,7 +501,7 @@ mod tests {
 
     #[test]
     fn disconnect_node() {
-        let mut g = Graph::<DefaultIdx>::new();
+        let mut g = Graph::new();
         let a = g.add_node(Node::new(0, 0.0, 0.0));
         let b = g.add_node(Node::new(1, 0.0, 0.0));
         let c = g.add_node(Node::new(2, 0.0, 0.0));

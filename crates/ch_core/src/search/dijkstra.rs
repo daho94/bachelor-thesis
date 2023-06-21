@@ -13,27 +13,27 @@ pub(crate) struct Candidate<Idx = DefaultIdx> {
     pub(crate) weight: Weight,
 }
 
-impl<Idx: IndexType> Candidate<Idx> {
-    pub(crate) fn new(node_idx: NodeIndex<Idx>, weight: Weight) -> Self {
+impl Candidate {
+    pub(crate) fn new(node_idx: NodeIndex, weight: Weight) -> Self {
         Self { node_idx, weight }
     }
 }
 
-impl<Idx: IndexType> PartialOrd for Candidate<Idx> {
+impl PartialOrd for Candidate {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         other.weight.partial_cmp(&self.weight)
     }
 }
 
-impl<Idx: IndexType> PartialEq for Candidate<Idx> {
+impl PartialEq for Candidate {
     fn eq(&self, other: &Self) -> bool {
         other.weight == self.weight
     }
 }
 
-impl<Idx: IndexType> Eq for Candidate<Idx> {}
+impl Eq for Candidate {}
 
-impl<Idx: IndexType> Ord for Candidate<Idx> {
+impl Ord for Candidate {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         other
             .weight
@@ -47,22 +47,15 @@ pub struct Dijkstra<'a, Idx = DefaultIdx> {
     g: &'a Graph<Idx>,
 }
 
-impl<'a, Idx> Dijkstra<'a, Idx>
-where
-    Idx: IndexType,
-{
-    pub fn new(graph: &'a Graph<Idx>) -> Self {
+impl<'a> Dijkstra<'a> {
+    pub fn new(graph: &'a Graph) -> Self {
         Dijkstra {
             g: graph,
             stats: Stats::default(),
         }
     }
 
-    pub fn search(
-        &mut self,
-        source: NodeIndex<Idx>,
-        target: NodeIndex<Idx>,
-    ) -> Option<ShortestPath<Idx>> {
+    pub fn search(&mut self, source: NodeIndex, target: NodeIndex) -> Option<ShortestPath> {
         self.stats.init();
 
         if source == target {
@@ -71,8 +64,7 @@ where
             return Some(ShortestPath::new(vec![source], 0.0));
         }
 
-        let mut node_data: FxHashMap<NodeIndex<Idx>, (Weight, Option<NodeIndex<Idx>>)> =
-            FxHashMap::default();
+        let mut node_data: FxHashMap<NodeIndex, (Weight, Option<NodeIndex>)> = FxHashMap::default();
         node_data.insert(source, (0.0, None));
 
         let mut queue = BinaryHeap::new();
@@ -136,7 +128,7 @@ mod tests {
         // 0 -> 5 -> 6 -  |
         // |         |  \ |
         // 1 -> 2 -> 3 -> 4
-        let mut g = Graph::<DefaultIdx>::new();
+        let mut g = Graph::new();
 
         for i in 0..10 {
             g.add_node(Node::new(i, 0.0, 0.0));
@@ -168,7 +160,7 @@ mod tests {
     fn disconnected_graph() {
         // 0 -> 1 -> 2
         // 3 -> 4 -> 5
-        let mut g = Graph::<DefaultIdx>::new();
+        let mut g = Graph::new();
         for i in 0..6 {
             g.add_node(Node::new(i, 0.0, 0.0));
         }
@@ -191,7 +183,7 @@ mod tests {
         // 0 -> 1
         // |    |
         // 2 -> 3
-        let mut g = Graph::<DefaultIdx>::new();
+        let mut g = Graph::new();
         let a = g.add_node(Node::new(0, 0.0, 0.0));
         let b = g.add_node(Node::new(1, 0.0, 0.0));
         let c = g.add_node(Node::new(2, 0.0, 0.0));

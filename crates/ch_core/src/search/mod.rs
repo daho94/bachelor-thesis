@@ -1,6 +1,6 @@
 use rustc_hash::FxHashMap;
 
-use crate::graph::{IndexType, NodeIndex};
+use crate::graph::NodeIndex;
 
 use self::shortest_path::ShortestPath;
 
@@ -9,11 +9,11 @@ pub mod bidir_search;
 pub mod dijkstra;
 pub mod shortest_path;
 
-pub fn reconstruct_path<Idx: IndexType>(
-    target: NodeIndex<Idx>,
-    source: NodeIndex<Idx>,
-    node_data: &FxHashMap<NodeIndex<Idx>, (f64, Option<NodeIndex<Idx>>)>,
-) -> Option<ShortestPath<Idx>> {
+pub fn reconstruct_path(
+    target: NodeIndex,
+    source: NodeIndex,
+    node_data: &FxHashMap<NodeIndex, (f64, Option<NodeIndex>)>,
+) -> Option<ShortestPath> {
     let mut path = vec![target];
     let weight = node_data.get(&target)?.0;
 
@@ -29,7 +29,7 @@ pub fn reconstruct_path<Idx: IndexType>(
 }
 
 #[cfg(test)]
-fn assert_no_path(path: Option<ShortestPath<crate::graph::DefaultIdx>>) {
+fn assert_no_path(path: Option<ShortestPath>) {
     assert_eq!(None, path);
 }
 
@@ -37,7 +37,7 @@ fn assert_no_path(path: Option<ShortestPath<crate::graph::DefaultIdx>>) {
 fn assert_path(
     expected_path: Vec<usize>,
     expected_weight: crate::constants::Weight,
-    path: Option<ShortestPath<crate::graph::DefaultIdx>>,
+    path: Option<ShortestPath>,
 ) {
     assert_eq!(
         Some(ShortestPath::new(

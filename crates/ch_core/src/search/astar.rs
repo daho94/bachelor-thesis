@@ -5,7 +5,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     constants::Weight,
-    graph::{DefaultIdx, Graph, IndexType, Node, NodeIndex},
+    graph::{DefaultIdx, Graph, Node, NodeIndex},
     statistics::Stats,
 };
 
@@ -23,8 +23,8 @@ struct Candidate<Idx = DefaultIdx> {
     tentative_weight: Weight,
 }
 
-impl<Idx: IndexType> Candidate<Idx> {
-    fn new(node: NodeIndex<Idx>, real_weight: Weight, estimated_weight: Weight) -> Self {
+impl Candidate {
+    fn new(node: NodeIndex, real_weight: Weight, estimated_weight: Weight) -> Self {
         Self {
             node,
             real_weight,
@@ -32,21 +32,21 @@ impl<Idx: IndexType> Candidate<Idx> {
         }
     }
 }
-impl<Idx: IndexType> PartialOrd for Candidate<Idx> {
+impl PartialOrd for Candidate {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         other.tentative_weight.partial_cmp(&self.tentative_weight)
     }
 }
 
-impl<Idx: IndexType> PartialEq for Candidate<Idx> {
+impl PartialEq for Candidate {
     fn eq(&self, other: &Self) -> bool {
         other.tentative_weight == self.tentative_weight
     }
 }
 
-impl<Idx: IndexType> Eq for Candidate<Idx> {}
+impl Eq for Candidate {}
 
-impl<Idx: IndexType> Ord for Candidate<Idx> {
+impl Ord for Candidate {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         other
             .tentative_weight
@@ -55,11 +55,8 @@ impl<Idx: IndexType> Ord for Candidate<Idx> {
     }
 }
 
-impl<'a, Idx> AStar<'a, Idx>
-where
-    Idx: IndexType,
-{
-    pub fn new(g: &'a Graph<Idx>) -> Self {
+impl<'a> AStar<'a> {
+    pub fn new(g: &'a Graph) -> Self {
         AStar {
             g,
             stats: Stats::default(),
@@ -68,10 +65,10 @@ where
 
     pub fn search(
         &mut self,
-        src: NodeIndex<Idx>,
-        dst: NodeIndex<Idx>,
+        src: NodeIndex,
+        dst: NodeIndex,
         heuristic: impl Fn(&Node, &Node) -> Weight,
-    ) -> Option<ShortestPath<Idx>> {
+    ) -> Option<ShortestPath> {
         self.stats.init();
 
         if src == dst {
@@ -80,8 +77,7 @@ where
             return Some(ShortestPath::new(vec![src], 0.0));
         }
 
-        let mut node_data: FxHashMap<NodeIndex<Idx>, (Weight, Option<NodeIndex<Idx>>)> =
-            FxHashMap::default();
+        let mut node_data: FxHashMap<NodeIndex, (Weight, Option<NodeIndex>)> = FxHashMap::default();
         node_data.insert(src, (0.0, None));
 
         let mut queue = BinaryHeap::new();
@@ -167,7 +163,7 @@ mod tests {
         // 0 -> 5 -> 6 -  |
         // |         |  \ |
         // 1 -> 2 -> 3 -> 4
-        let mut g = Graph::<DefaultIdx>::new();
+        let mut g = Graph::new();
 
         for i in 0..10 {
             g.add_node(Node::new(i, 0.0, 0.0));
@@ -215,7 +211,7 @@ mod tests {
     fn disconnected_graph() {
         // 0 -> 1 -> 2
         // 3 -> 4 -> 5
-        let mut g = Graph::<DefaultIdx>::new();
+        let mut g = Graph::new();
         for i in 0..6 {
             g.add_node(Node::new(i, 0.0, 0.0));
         }
@@ -246,7 +242,7 @@ mod tests {
         // 0 -> 1
         // |    |
         // 2 -> 3
-        let mut g = Graph::<DefaultIdx>::new();
+        let mut g = Graph::new();
         let a = g.add_node(Node::new(0, 0.0, 0.0));
         let b = g.add_node(Node::new(1, 0.0, 0.0));
         let c = g.add_node(Node::new(2, 0.0, 0.0));

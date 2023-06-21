@@ -1,5 +1,5 @@
 use ch_core::{
-    graph::{DefaultIdx, Graph, Node, NodeIndex},
+    graph::{Graph, Node, NodeIndex},
     overlay_graph::OverlayGraph,
     search::shortest_path::ShortestPath,
 };
@@ -16,7 +16,7 @@ use crate::widgets::debug::{DebugInfo, NodeInfo};
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct SearchResult {
-    pub sp: ShortestPath<DefaultIdx>,
+    pub sp: ShortestPath,
 }
 
 #[derive(Debug, Clone)]

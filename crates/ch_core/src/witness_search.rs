@@ -1,6 +1,6 @@
 use std::collections::BinaryHeap;
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 
 use crate::{
     constants::Weight,
