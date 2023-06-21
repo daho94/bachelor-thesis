@@ -24,14 +24,9 @@ pub(crate) struct NodeInfo {
     // Neighbors...
 }
 
+#[derive(Default)]
 pub(crate) struct DebugInfo {
     pub node_info: Option<NodeInfo>,
-}
-
-impl Default for DebugInfo {
-    fn default() -> Self {
-        Self { node_info: None }
-    }
 }
 
 impl DebugWidget {

@@ -50,11 +50,7 @@ impl<'a> BiDirSearch<'a> {
     }
 
     /// Performs a bidirectional search on the graph.
-    pub fn search(
-        &mut self,
-        source: NodeIndex,
-        target: NodeIndex,
-    ) -> Option<ShortestPath<DefaultIdx>> {
+    pub fn search(&mut self, source: NodeIndex, target: NodeIndex) -> Option<ShortestPath> {
         self.init();
         info!(
             "BEGIN BIDIRECTIONAL SEARCH from {:?} to {:?}",

@@ -80,7 +80,7 @@ impl IndexType for u8 {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub struct NodeIndex<Idx = DefaultIdx>(Idx);
 
-impl<Idx: IndexType> NodeIndex<Idx> {
+impl NodeIndex {
     #[inline]
     pub fn new(x: usize) -> Self {
         NodeIndex(IndexType::new(x))
@@ -104,7 +104,7 @@ impl<Idx: IndexType> From<Idx> for NodeIndex<Idx> {
 }
 
 /// Short version of `NodeIndex::new`
-pub fn node_index<Idx: IndexType>(index: usize) -> NodeIndex<Idx> {
+pub fn node_index(index: usize) -> NodeIndex {
     NodeIndex::new(index)
 }
 
@@ -160,8 +160,12 @@ pub struct Edge<Idx = DefaultIdx> {
     pub weight: Weight,
 }
 
-impl<Idx: IndexType> Edge<Idx> {
-    pub fn new(source: NodeIndex<Idx>, target: NodeIndex<Idx>, weight: Weight) -> Self {
+impl Edge {
+    pub fn new(
+        source: NodeIndex<DefaultIdx>,
+        target: NodeIndex<DefaultIdx>,
+        weight: Weight,
+    ) -> Self {
         Edge {
             source,
             target,
@@ -179,7 +183,7 @@ pub struct Graph<Idx = DefaultIdx> {
     pub num_shortcuts: usize,
 }
 
-impl<Idx: IndexType> Graph<Idx> {
+impl Graph {
     pub fn new() -> Self {
         Self {
             edges_in: Vec::new(),
@@ -200,10 +204,6 @@ impl<Idx: IndexType> Graph<Idx> {
         }
     }
 
-    // pub fn connected_edges(&self, node: OsmId) -> impl Iterator<Item = &Edge<Idx>> {
-    //     todo!()
-    // }
-
     /// Add a new `edge` to the graph.
     ///
     /// **Panics** if the Graph is at the maximum number of edges for its index
@@ -211,13 +211,13 @@ impl<Idx: IndexType> Graph<Idx> {
     /// **Panics** if the source or target node does not exist
     ///
     /// Returns the index of the new created edge.
-    pub fn add_edge(&mut self, edge: Edge<Idx>) -> EdgeIndex<Idx> {
+    pub fn add_edge(&mut self, edge: Edge) -> EdgeIndex {
         let edge_idx = EdgeIndex::new(self.edges.len());
 
         assert!(
             EdgeIndex::end() != edge_idx,
             "Maximum number of edges for index type {} exceeded",
-            std::any::type_name::<Idx>()
+            std::any::type_name::<DefaultIdx>()
         );
         assert!(
             edge.source.index() < self.nodes.len(),
@@ -247,20 +247,20 @@ impl<Idx: IndexType> Graph<Idx> {
         edge_idx
     }
 
-    pub fn add_edges(&mut self, edges: Vec<Edge<Idx>>) {
+    pub fn add_edges(&mut self, edges: Vec<Edge>) {
         for edge in edges {
             self.add_edge(edge);
         }
     }
 
     /// Adds a new node to the graph
-    pub fn add_node(&mut self, node: Node) -> NodeIndex<Idx> {
-        let node_idx: NodeIndex<Idx> = NodeIndex::new(self.nodes.len());
+    pub fn add_node(&mut self, node: Node) -> NodeIndex {
+        let node_idx: NodeIndex = NodeIndex::new(self.nodes.len());
 
         assert!(
             NodeIndex::end() != node_idx,
             "Maximum number of nodes for index type {} exceeded",
-            std::any::type_name::<Idx>()
+            std::any::type_name::<DefaultIdx>()
         );
 
         // Create new entry in adjacency list for new node
@@ -272,7 +272,7 @@ impl<Idx: IndexType> Graph<Idx> {
         node_idx
     }
 
-    pub fn node(&self, node_idx: NodeIndex<Idx>) -> Option<&Node> {
+    pub fn node(&self, node_idx: NodeIndex) -> Option<&Node> {
         self.nodes.get(node_idx.index())
     }
 
@@ -286,14 +286,14 @@ impl<Idx: IndexType> Graph<Idx> {
     }
 
     /// Returns an iterator over all edges of the graph
-    pub fn edges(&self) -> impl Iterator<Item = &Edge<Idx>> {
+    pub fn edges(&self) -> impl Iterator<Item = &Edge> {
         self.edges.iter()
     }
 
     pub fn neighbors_outgoing(
         &self,
-        node_idx: NodeIndex<Idx>,
-    ) -> impl Iterator<Item = (EdgeIndex<Idx>, &Edge<Idx>)> {
+        node_idx: NodeIndex,
+    ) -> impl Iterator<Item = (EdgeIndex, &Edge)> {
         // Ignore shortcuts
         self.edges_out[node_idx.index()]
             .iter()
@@ -303,8 +303,8 @@ impl<Idx: IndexType> Graph<Idx> {
 
     pub fn neighbors_incoming(
         &self,
-        node_idx: NodeIndex<Idx>,
-    ) -> impl Iterator<Item = (EdgeIndex<Idx>, &Edge<Idx>)> {
+        node_idx: NodeIndex,
+    ) -> impl Iterator<Item = (EdgeIndex, &Edge)> {
         // Ignore shortcuts
         self.edges_in[node_idx.index()]
             .iter()
@@ -331,7 +331,7 @@ impl<Idx: IndexType> Graph<Idx> {
             nodes.push(node);
         }
 
-        let mut edges: Vec<Edge<Idx>> = Vec::new();
+        let mut edges: Vec<Edge> = Vec::new();
         let mut reader = csv::Reader::from_path(path_to_edges)?;
         for result in reader.deserialize() {
             let edge: Edge<DefaultIdx> = result.context("Failed to parse Edge")?;
@@ -377,7 +377,7 @@ impl<Idx: IndexType> Graph<Idx> {
             weight,
         } in road_graph.get_arcs()
         {
-            let edge: Edge<Idx> = Edge::new(
+            let edge: Edge = Edge::new(
                 NodeIndex::new(node_index[source]),
                 NodeIndex::new(node_index[target]),
                 *weight,
@@ -422,7 +422,7 @@ impl<Idx: IndexType> Graph<Idx> {
     }
 }
 
-impl<Idx: IndexType> Default for Graph<Idx> {
+impl Default for Graph {
     fn default() -> Self {
         Self::new()
     }
@@ -461,7 +461,7 @@ mod tests {
 
     #[test]
     fn read_from_csv() {
-        let graph: Graph<DefaultIdx> = Graph::from_csv(
+        let graph: Graph = Graph::from_csv(
             &Path::new(env!("CARGO_MANIFEST_DIR")).join("test_data/nodes.csv"),
             &Path::new(env!("CARGO_MANIFEST_DIR")).join("test_data/edges.csv"),
         )
@@ -477,7 +477,7 @@ mod tests {
     #[test]
     fn read_from_pbf() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("test_data/minimal.osm.pbf");
-        let graph: Graph<DefaultIdx> = Graph::from_pbf(&path).unwrap();
+        let graph: Graph = Graph::from_pbf(&path).unwrap();
 
         assert_eq!(graph.nodes.len(), 2);
         assert_eq!(graph.edges_out.len(), 2);
@@ -485,12 +485,12 @@ mod tests {
 
     #[test]
     fn add_duplicate_edges() {
-        let mut g = Graph::<DefaultIdx>::new();
+        let mut g = Graph::new();
         let a = g.add_node(Node::new(0, 0.0, 0.0));
         let b = g.add_node(Node::new(1, 0.0, 0.0));
 
         let edge1 = g.add_edge(edge!(a => b, 2.0));
-        let edge2 = g.add_edge(edge!(a => b, 1.0));
+        let _edge2 = g.add_edge(edge!(a => b, 1.0));
 
         assert_eq!(g.edges.len(), 1);
         assert_eq!(g.edges[edge1.index()].weight, 1.0);

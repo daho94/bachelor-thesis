@@ -131,12 +131,12 @@ impl Context {
 }
 
 trait Runnable {
-    fn run(&mut self, src: OsmId, dst: OsmId) -> Option<ShortestPath<DefaultIdx>>;
+    fn run(&mut self, src: OsmId, dst: OsmId) -> Option<ShortestPath>;
     fn stats(&self) -> &ch_core::statistics::Stats;
 }
 
 impl Runnable for Dijkstra<'_> {
-    fn run(&mut self, src: OsmId, dst: OsmId) -> Option<ShortestPath<DefaultIdx>> {
+    fn run(&mut self, src: OsmId, dst: OsmId) -> Option<ShortestPath> {
         self.search(node_index(src), node_index(dst))
     }
 
@@ -146,7 +146,7 @@ impl Runnable for Dijkstra<'_> {
 }
 
 impl Runnable for AStar<'_> {
-    fn run(&mut self, src: OsmId, dst: OsmId) -> Option<ShortestPath<DefaultIdx>> {
+    fn run(&mut self, src: OsmId, dst: OsmId) -> Option<ShortestPath> {
         self.search(node_index(src), node_index(dst), straight_line)
     }
 
@@ -156,7 +156,7 @@ impl Runnable for AStar<'_> {
 }
 
 impl Runnable for BiDirSearch<'_> {
-    fn run(&mut self, src: OsmId, dst: OsmId) -> Option<ShortestPath<DefaultIdx>> {
+    fn run(&mut self, src: OsmId, dst: OsmId) -> Option<ShortestPath> {
         self.search(node_index(src), node_index(dst))
     }
 
