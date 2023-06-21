@@ -8,6 +8,7 @@ use priority_queue::PriorityQueue;
 use rustc_hash::FxHashSet;
 
 use crate::{
+    contraction_strategy::CHStrategy,
     graph::{node_index, Edge, EdgeIndex, Graph, NodeIndex},
     overlay_graph::OverlayGraph,
     witness_search::WitnessSearch,
@@ -41,7 +42,7 @@ impl<'a> NodeContractor<'a> {
         }
     }
 
-    pub fn run(&mut self) -> OverlayGraph {
+    pub fn run_with_strategy(&mut self, strategy: CHStrategy) -> OverlayGraph {
         let now = Instant::now();
         let mut edges_fwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); self.num_nodes];
         let mut edges_bwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); self.num_nodes];
@@ -49,7 +50,18 @@ impl<'a> NodeContractor<'a> {
         // Allocate additional space for shortcuts to avoid reallocations
         self.g.edges.reserve(self.g.edges.len());
 
-        let mut queue = self.calc_initial_node_order();
+        let mut queue = match strategy {
+            CHStrategy::FixedOrder(order) => {
+                let mut pq = PriorityQueue::new();
+
+                for (priority, node) in order.iter().enumerate() {
+                    pq.push(*node, Reverse(priority as i32));
+                }
+
+                pq
+            }
+            _ => self.calc_initial_node_order(),
+        };
 
         let mut step_size = STEP_SIZE;
         let mut next_goal = step_size;
@@ -57,12 +69,18 @@ impl<'a> NodeContractor<'a> {
         while !queue.is_empty() {
             let (node, Reverse(priority)) = queue.pop().unwrap();
 
-            // Lazy Update node: If the priority of the node is worse (higher), it will be updated instead of contracted
-            let importance = self.calc_importance(node, WitnessSearch::with_params(self, 25));
+            match strategy {
+                CHStrategy::LazyUpdateSelfAndNeighbors | CHStrategy::LazyUpdateSelf => {
+                    // Lazy Update node: If the priority of the node is worse (higher), it will be updated instead of contracted
+                    let importance =
+                        self.calc_importance(node, WitnessSearch::with_params(self, 25));
 
-            if importance > priority {
-                queue.push(node, Reverse(importance));
-                continue;
+                    if importance > priority {
+                        queue.push(node, Reverse(importance));
+                        continue;
+                    }
+                }
+                _ => {}
             }
 
             debug!("=> Contracting node: {}", node.index());
@@ -87,25 +105,30 @@ impl<'a> NodeContractor<'a> {
                 // Spatial Uniformity heuristic
                 self.nodes_removed_neighbors[neighbor.index()] += 1;
 
-                // Linear combination of heuristics
-                let importance =
-                    self.calc_importance(neighbor, WitnessSearch::with_params(self, 25));
+                match strategy {
+                    CHStrategy::LazyUpdateSelfAndNeighbors | CHStrategy::LazyUpdateNeighbors => {
+                        // Linear combination of heuristics
+                        let importance =
+                            self.calc_importance(neighbor, WitnessSearch::with_params(self, 25));
 
-                if let Some(Reverse(old_value)) =
-                    queue.change_priority(&neighbor, Reverse(importance))
-                {
-                    if importance != old_value {
-                        debug!(
-                            "[Update] Changed priority of node {} from {} to {}",
-                            neighbor.index(),
-                            old_value,
-                            importance
-                        );
+                        if let Some(Reverse(old_value)) =
+                            queue.change_priority(&neighbor, Reverse(importance))
+                        {
+                            if importance != old_value {
+                                debug!(
+                                    "[Update] Changed priority of node {} from {} to {}",
+                                    neighbor.index(),
+                                    old_value,
+                                    importance
+                                );
+                            }
+                        }
                     }
+                    _ => {}
                 }
             }
 
-            self.node_ranks[node.index()] = self.num_nodes - queue.len() + 1;
+            self.node_ranks[node.index()] = self.num_nodes - queue.len();
 
             let progress = (self.num_nodes - queue.len()) as f64 / self.num_nodes as f64;
             if progress * 100.0 >= next_goal {
@@ -131,47 +154,12 @@ impl<'a> NodeContractor<'a> {
         )
     }
 
+    pub fn run(&mut self) -> OverlayGraph {
+        self.run_with_strategy(CHStrategy::LazyUpdateSelfAndNeighbors)
+    }
+
     pub fn run_with_order(&mut self, node_order: &[NodeIndex]) -> OverlayGraph {
-        let mut edges_fwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); self.num_nodes];
-        let mut edges_bwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); self.num_nodes];
-
-        let now = Instant::now();
-        info!("Contracting nodes");
-
-        let mut next_goal = STEP_SIZE;
-
-        for (progress, node) in node_order.iter().enumerate() {
-            let node = *node;
-
-            self.contract_node(node);
-
-            for (in_idx, _) in self.neighbors_incoming(node) {
-                edges_bwd[node.index()].push(in_idx);
-            }
-
-            for (out_idx, _) in self.neighbors_outgoing(node) {
-                edges_fwd[node.index()].push(out_idx);
-            }
-
-            self.node_ranks[node.index()] = progress;
-
-            let progress = (progress + 1) as f64 / node_order.len() as f64;
-            if progress * 100.0 >= next_goal {
-                info!("Progress: {:.2}%", progress * 100.0);
-                next_goal += STEP_SIZE;
-            }
-        }
-        info!("Contracting nodes took {:?}", now.elapsed());
-        self.g.edges.shrink_to_fit();
-        self.shortcuts.shrink_to_fit();
-
-        OverlayGraph::new(
-            edges_fwd,
-            edges_bwd,
-            self.g.to_owned(),
-            self.shortcuts.clone(),
-            self.node_ranks.clone(),
-        )
+        self.run_with_strategy(CHStrategy::FixedOrder(node_order))
     }
 
     fn add_shortcut(&mut self, edge: Edge, replaces: [EdgeIndex; 2]) -> EdgeIndex {
@@ -399,11 +387,11 @@ mod tests {
             g.add_edge(edge!(i => i + 1, 1.0));
         }
 
-        // let node_order = (1..5).map(node_index).collect::<Vec<_>>();
-
         let mut contractor = NodeContractor::new(&mut g);
-        // contractor.run_with_order(&node_order);
-        contractor.run();
+        let overlay_graph = contractor.run();
+
+        dbg!(overlay_graph.shortcuts);
+        dbg!(overlay_graph.node_ranks);
 
         assert_eq!(3, contractor.g.num_shortcuts)
     }
@@ -435,14 +423,39 @@ mod tests {
     }
 
     #[test]
+    fn contract_complex_graph_with_optimal_order() {
+        let mut g = generate_complex_graph();
+
+        // [D, I, F, G, E, B, C, A, K, H, J]
+        let node_order = vec![
+            node_index(3),
+            node_index(8),
+            node_index(5),
+            node_index(6),
+            node_index(4),
+            node_index(1),
+            node_index(2),
+            node_index(0),
+            node_index(10),
+            node_index(7),
+            node_index(9),
+        ];
+
+        let mut contractor = NodeContractor::new(&mut g);
+        contractor.run_with_order(&node_order);
+
+        assert_eq!(0, contractor.g.num_shortcuts);
+    }
+
+    #[test]
     fn contract_complex_graph() {
         init_log();
         let mut g = generate_complex_graph();
 
         let mut contractor = NodeContractor::new(&mut g);
-        contractor.run();
+        contractor.run_with_strategy(CHStrategy::LazyUpdateSelfAndNeighbors);
 
-        assert_eq!(2, contractor.g.num_shortcuts);
+        assert_eq!(2 * 2, contractor.g.num_shortcuts);
     }
 
     #[ignore = "Takes too long"]

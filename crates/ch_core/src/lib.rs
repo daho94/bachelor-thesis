@@ -1,8 +1,9 @@
 pub mod constants;
+pub mod contraction_strategy;
 pub mod graph;
 pub mod node_contraction;
-pub mod search;
 pub mod overlay_graph;
+pub mod search;
 pub mod statistics;
 pub mod util;
 pub(crate) mod witness_search;
