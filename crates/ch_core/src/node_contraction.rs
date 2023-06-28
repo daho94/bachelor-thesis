@@ -16,13 +16,78 @@ use crate::{
 
 const STEP_SIZE: f64 = 5.0;
 
+/// Parameters for the priority function
+/// P(v) = edge_difference_coeff * edge_difference(v)
+///     + contracted_neighbors_coeff * contracted_neighbors(v)
+///     + search_space_coeff * Level(v)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PriorityParams {
+    edge_difference_coeff: i32,
+    contracted_neighbors_coeff: i32,
+    search_space_coeff: i32,
+}
+
+impl PriorityParams {
+    pub fn new(
+        edge_difference_coeff: i32,
+        contracted_neighbors_coeff: i32,
+        search_space_coeff: i32,
+    ) -> Self {
+        PriorityParams {
+            edge_difference_coeff,
+            contracted_neighbors_coeff,
+            search_space_coeff,
+        }
+    }
+
+    pub fn edge_difference_coeff(mut self, coeff: i32) -> Self {
+        self.edge_difference_coeff = coeff;
+        self
+    }
+
+    pub fn contracted_neighbors_coeff(mut self, coeff: i32) -> Self {
+        self.contracted_neighbors_coeff = coeff;
+        self
+    }
+
+    pub fn search_space_coeff(mut self, coeff: i32) -> Self {
+        self.search_space_coeff = coeff;
+        self
+    }
+}
+
+// From Diploma thesis Contraction Hierarchies - Geisberger
+// edge_difference_coeff: 190,
+// contracted_neighbors_coeff: 120,
+// search_space_coeff: 1,
+//
+// From Raster Search - Vaterstetten:
+// edge_difference_coeff: 101,
+// contracted_neighbors_coeff: 101,
+// search_space_coeff: 6,
+//
+// From Raster Search - Saarland:
+// edge_difference_coeff: 401,
+// contracted_neighbors_coeff: 301,
+// search_space_coeff: 2,
+impl Default for PriorityParams {
+    fn default() -> Self {
+        PriorityParams {
+            edge_difference_coeff: 101,
+            contracted_neighbors_coeff: 101,
+            search_space_coeff: 6,
+        }
+    }
+}
+
 pub struct NodeContractor<'a> {
     g: &'a mut Graph,
     node_ranks: Vec<usize>,
     nodes_contracted: Vec<bool>,
-    nodes_removed_neighbors: Vec<usize>,
+    contracted_neighbors: Vec<usize>,
     num_nodes: usize,
     shortcuts: rustc_hash::FxHashMap<EdgeIndex, [EdgeIndex; 2]>,
+    priority_params: PriorityParams,
 }
 
 impl<'a> NodeContractor<'a> {
@@ -33,12 +98,30 @@ impl<'a> NodeContractor<'a> {
             g,
             node_ranks: vec![0; num_nodes],
             nodes_contracted: vec![false; num_nodes],
-            nodes_removed_neighbors: vec![0; num_nodes],
+            contracted_neighbors: vec![0; num_nodes],
             num_nodes,
             shortcuts: rustc_hash::FxHashMap::with_capacity_and_hasher(
                 num_edges,
                 Default::default(),
             ),
+            priority_params: Default::default(),
+        }
+    }
+
+    pub fn new_with_priority_params(g: &'a mut Graph, priority_params: PriorityParams) -> Self {
+        let num_nodes = g.nodes.len();
+        let num_edges = g.edges.len();
+        NodeContractor {
+            g,
+            node_ranks: vec![0; num_nodes],
+            nodes_contracted: vec![false; num_nodes],
+            contracted_neighbors: vec![0; num_nodes],
+            num_nodes,
+            shortcuts: rustc_hash::FxHashMap::with_capacity_and_hasher(
+                num_edges,
+                Default::default(),
+            ),
+            priority_params,
         }
     }
 
@@ -73,8 +156,12 @@ impl<'a> NodeContractor<'a> {
             match strategy {
                 CHStrategy::LazyUpdateSelfAndNeighbors | CHStrategy::LazyUpdateSelf => {
                     // Lazy Update node: If the priority of the node is worse (higher), it will be updated instead of contracted
-                    let importance =
-                        self.calc_importance(node, 0, WitnessSearch::with_params(self, 25));
+                    let importance = self.calc_priority(
+                        node,
+                        0,
+                        WitnessSearch::with_params(self, 25),
+                        self.priority_params,
+                    );
 
                     if importance > priority {
                         queue.push(node, Reverse(importance));
@@ -104,16 +191,17 @@ impl<'a> NodeContractor<'a> {
             // Update only the priority of neighbors = Lazy Neighbor Updating
             for neighbor in neighbors {
                 // Spatial Uniformity heuristic
-                self.nodes_removed_neighbors[neighbor.index()] += 1;
+                self.contracted_neighbors[neighbor.index()] += 1;
                 levels[neighbor.index()] = max(levels[node.index()] + 1, levels[neighbor.index()]);
 
                 match strategy {
                     CHStrategy::LazyUpdateSelfAndNeighbors | CHStrategy::LazyUpdateNeighbors => {
                         // Linear combination of heuristics
-                        let importance = self.calc_importance(
+                        let importance = self.calc_priority(
                             neighbor,
                             levels[neighbor.index()],
                             WitnessSearch::with_params(self, 25),
+                            self.priority_params,
                         );
 
                         if let Some(Reverse(old_value)) =
@@ -267,19 +355,40 @@ impl<'a> NodeContractor<'a> {
 
         for v in 0..self.num_nodes {
             let v = node_index(v);
-            let edge_difference =
-                self.calc_edge_difference(v, WitnessSearch::with_params(self, 500));
-            pq.push(v, Reverse(edge_difference));
+            // let edge_difference =
+            //     self.calc_edge_difference(v, WitnessSearch::with_params(self, 500));
+            let importance = self.calc_priority(
+                v,
+                0,
+                WitnessSearch::with_params(self, 500),
+                self.priority_params,
+            );
+            pq.push(v, Reverse(importance));
         }
 
         pq
     }
 
-    fn calc_importance(&self, v: NodeIndex, level: usize, ws: WitnessSearch) -> i32 {
+    /// Calculates the importance/relevance of a node v
+    /// The lower the value, the more important the node.
+    /// Priority terms:
+    /// - Edge difference: Shortcuts - Removed edges
+    /// - Level: Level of the node in the hierarchy.
+    // Coefficients of priority terms (From Diploma thesis Contraction Hierarchies - Geisberger)
+    fn calc_priority(
+        &self,
+        v: NodeIndex,
+        level: usize,
+        ws: WitnessSearch,
+        params: PriorityParams,
+    ) -> i32 {
+        // let edge_difference = self.calc_edge_difference(v, ws);
         let edge_difference = self.calc_edge_difference(v, ws);
-        let removed_neighbors = self.nodes_removed_neighbors[v.index()];
+        let contracted_neighbors = self.contracted_neighbors[v.index()];
 
-        edge_difference + removed_neighbors as i32
+        edge_difference * params.edge_difference_coeff
+            + level as i32 * params.search_space_coeff
+            + contracted_neighbors as i32 * params.contracted_neighbors_coeff
     }
 
     /// ED = Shortcuts - Removed edges
@@ -296,8 +405,8 @@ impl<'a> NodeContractor<'a> {
             .map(|(i, e)| (i, e.clone()))
             .collect();
 
-        removed_edges += edges_in.len() as i32;
-        removed_edges += edges_out.len() as i32;
+        removed_edges += edges_in.len();
+        removed_edges += edges_out.len();
 
         let mut added_shortcuts = 0;
         for (_, uv) in edges_in.iter() {
@@ -332,7 +441,7 @@ impl<'a> NodeContractor<'a> {
             }
         }
 
-        added_shortcuts - removed_edges
+        added_shortcuts - removed_edges as i32
     }
 }
 
