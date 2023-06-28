@@ -1,5 +1,5 @@
 use std::{
-    cmp::Reverse,
+    cmp::{max, Reverse},
     time::{Duration, Instant},
 };
 
@@ -47,6 +47,7 @@ impl<'a> NodeContractor<'a> {
         let mut edges_fwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); self.num_nodes];
         let mut edges_bwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); self.num_nodes];
 
+        let mut levels = vec![0; self.num_nodes];
         // Allocate additional space for shortcuts to avoid reallocations
         self.g.edges.reserve(self.g.edges.len());
 
@@ -73,7 +74,7 @@ impl<'a> NodeContractor<'a> {
                 CHStrategy::LazyUpdateSelfAndNeighbors | CHStrategy::LazyUpdateSelf => {
                     // Lazy Update node: If the priority of the node is worse (higher), it will be updated instead of contracted
                     let importance =
-                        self.calc_importance(node, WitnessSearch::with_params(self, 25));
+                        self.calc_importance(node, 0, WitnessSearch::with_params(self, 25));
 
                     if importance > priority {
                         queue.push(node, Reverse(importance));
@@ -104,12 +105,16 @@ impl<'a> NodeContractor<'a> {
             for neighbor in neighbors {
                 // Spatial Uniformity heuristic
                 self.nodes_removed_neighbors[neighbor.index()] += 1;
+                levels[neighbor.index()] = max(levels[node.index()] + 1, levels[neighbor.index()]);
 
                 match strategy {
                     CHStrategy::LazyUpdateSelfAndNeighbors | CHStrategy::LazyUpdateNeighbors => {
                         // Linear combination of heuristics
-                        let importance =
-                            self.calc_importance(neighbor, WitnessSearch::with_params(self, 25));
+                        let importance = self.calc_importance(
+                            neighbor,
+                            levels[neighbor.index()],
+                            WitnessSearch::with_params(self, 25),
+                        );
 
                         if let Some(Reverse(old_value)) =
                             queue.change_priority(&neighbor, Reverse(importance))
@@ -270,7 +275,7 @@ impl<'a> NodeContractor<'a> {
         pq
     }
 
-    fn calc_importance(&self, v: NodeIndex, ws: WitnessSearch) -> i32 {
+    fn calc_importance(&self, v: NodeIndex, level: usize, ws: WitnessSearch) -> i32 {
         let edge_difference = self.calc_edge_difference(v, ws);
         let removed_neighbors = self.nodes_removed_neighbors[v.index()];
 

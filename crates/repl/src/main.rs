@@ -34,11 +34,11 @@ fn run_algorithm(args: ArgMatches, context: &mut Context) -> Result<Option<Strin
             let mut a = AStar::new(context.graph.road_graph());
             (a.run(src, dst), a.stats)
         }
-        "bidir" => {
+        "ch" => {
             let mut b = BiDirSearch::new(&context.graph);
             (b.run(src, dst), b.stats)
         }
-        _ => panic!("Unknown algorithm"),
+        _ => unreachable!("Unknown algorithm"),
     };
 
     if let Some(sp) = sp {
@@ -196,7 +196,7 @@ fn main() -> Result<()> {
             Command::new("run")
                 .arg(
                     Arg::new("algo")
-                        .value_parser(["dijk", "astar", "bidir"])
+                        .value_parser(["dijk", "astar", "ch"])
                         .default_value("dijk")
                         .required(true)
                         .help("Name of algorithm"),
