@@ -15,6 +15,11 @@ rustc-hash = "1.1"
 priority-queue = "1"
 env_logger = "0.10.0"
 bincode = { version = "2.0.0-rc.3", features = ["serde"] }
+rand = "0.8.5"
 
 [dev-dependencies]
 proptest = "1"
+
+[[bin]]
+name = "raster_search"
+path = "src/bin/raster_search.rs"

@@ -459,6 +459,7 @@ dependencies = [
  "osm_reader",
  "priority-queue",
  "proptest",
+ "rand 0.8.5",
  "rustc-hash",
  "serde",
 ]
