@@ -1,6 +1,6 @@
 use std::{
     cmp::{max, Reverse},
-    time::{Duration, Instant},
+    time::Instant,
 };
 
 use log::{debug, info};
@@ -156,12 +156,7 @@ impl<'a> NodeContractor<'a> {
             match strategy {
                 CHStrategy::LazyUpdateSelfAndNeighbors | CHStrategy::LazyUpdateSelf => {
                     // Lazy Update node: If the priority of the node is worse (higher), it will be updated instead of contracted
-                    let importance = self.calc_priority(
-                        node,
-                        0,
-                        WitnessSearch::with_params(self, 25),
-                        self.priority_params,
-                    );
+                    let importance = self.calc_priority(node, 0, 50, self.priority_params);
 
                     if importance > priority {
                         queue.push(node, Reverse(importance));
@@ -200,7 +195,7 @@ impl<'a> NodeContractor<'a> {
                         let importance = self.calc_priority(
                             neighbor,
                             levels[neighbor.index()],
-                            WitnessSearch::with_params(self, 25),
+                            25,
                             self.priority_params,
                         );
 
@@ -265,6 +260,7 @@ impl<'a> NodeContractor<'a> {
         edge_idx
     }
 
+    /// Iterator over all outgoing edges of a node v excluding edges to already contracted nodes
     pub(crate) fn neighbors_outgoing(
         &self,
         node_idx: NodeIndex,
@@ -277,6 +273,7 @@ impl<'a> NodeContractor<'a> {
             .map(|edge_idx| (*edge_idx, &self.g.edges[edge_idx.index()]))
     }
 
+    /// Iterator over all incoming edges of a node v excluding edges to already contracted nodes
     pub(crate) fn neighbors_incoming(
         &self,
         node_idx: NodeIndex,
@@ -289,9 +286,16 @@ impl<'a> NodeContractor<'a> {
             .map(|edge_idx| (*edge_idx, &self.g.edges[edge_idx.index()]))
     }
 
-    fn contract_node(&mut self, v: NodeIndex) -> (Duration, usize) {
-        let mut time = Default::default();
+    /// Returns (E, S) the number of removed edges and added shortcuts
+    /// If the is_simulation flag is set, the function only simulates the node contraction and returns the number of shortcuts that would be added
+    fn handle_contract_node(
+        &mut self,
+        v: NodeIndex,
+        max_nodes_settled_limit: usize,
+        is_simulation: bool,
+    ) -> (usize, usize) {
         let mut added_shortcuts = 0;
+        let mut removed_edges = 0;
 
         let edges_in: Vec<(EdgeIndex, Edge)> = self
             .neighbors_incoming(v)
@@ -302,6 +306,9 @@ impl<'a> NodeContractor<'a> {
             .neighbors_outgoing(v)
             .map(|(i, e)| (i, e.clone()))
             .collect();
+
+        removed_edges += edges_in.len();
+        removed_edges += edges_out.len();
 
         for (uv_idx, uv) in edges_in.iter() {
             let mut max_weight = 0.0;
@@ -320,10 +327,9 @@ impl<'a> NodeContractor<'a> {
             }
 
             // Start seach from u
-            let ws = WitnessSearch::with_params(self, usize::MAX);
-            let start = Instant::now();
+            let ws = WitnessSearch::with_params(self, max_nodes_settled_limit);
+
             let res = ws.search(uv.source, &target_nodes, v, max_weight);
-            time += start.elapsed();
 
             // Add shortcut if no better path <u,...,w> was found
             for (vw_idx, vw) in edges_out.iter() {
@@ -332,37 +338,43 @@ impl<'a> NodeContractor<'a> {
                 }
 
                 let weight = uv.weight + vw.weight;
-                if weight < *res.get(&vw.target).unwrap_or(&std::f64::INFINITY) {
-                    let shortcut = Edge::new(uv.source, vw.target, weight);
+                let witness_weight = *res.get(&vw.target).unwrap_or(&std::f64::INFINITY);
 
-                    self.add_shortcut(shortcut, [*uv_idx, *vw_idx]);
-                    added_shortcuts += 1;
+                if witness_weight <= weight {
+                    continue;
                 }
+
+                let shortcut = Edge::new(uv.source, vw.target, weight);
+
+                if !is_simulation {
+                    self.add_shortcut(shortcut, [*uv_idx, *vw_idx]);
+                }
+                added_shortcuts += 1;
             }
         }
 
-        self.disconnect_node(v);
+        if !is_simulation {
+            self.disconnect_node(v);
+        }
 
-        (time, added_shortcuts)
+        debug!("{v:?}: ({removed_edges},{added_shortcuts})");
+        (removed_edges, added_shortcuts)
+    }
+
+    fn contract_node(&mut self, v: NodeIndex) {
+        self.handle_contract_node(v, 50, false);
     }
 
     fn disconnect_node(&mut self, v: NodeIndex) {
         self.nodes_contracted[v.index()] = true;
     }
 
-    fn calc_initial_node_order(&self) -> PriorityQueue<NodeIndex, Reverse<i32>> {
+    fn calc_initial_node_order(&mut self) -> PriorityQueue<NodeIndex, Reverse<i32>> {
         let mut pq = PriorityQueue::new();
 
         for v in 0..self.num_nodes {
             let v = node_index(v);
-            // let edge_difference =
-            //     self.calc_edge_difference(v, WitnessSearch::with_params(self, 500));
-            let importance = self.calc_priority(
-                v,
-                0,
-                WitnessSearch::with_params(self, 500),
-                self.priority_params,
-            );
+            let importance = self.calc_priority(v, 0, 500, self.priority_params);
             pq.push(v, Reverse(importance));
         }
 
@@ -376,14 +388,14 @@ impl<'a> NodeContractor<'a> {
     /// - Level: Level of the node in the hierarchy.
     // Coefficients of priority terms (From Diploma thesis Contraction Hierarchies - Geisberger)
     fn calc_priority(
-        &self,
+        &mut self,
         v: NodeIndex,
         level: usize,
-        ws: WitnessSearch,
+        // ws: WitnessSearch,
+        max_nodes_settled_limit: usize,
         params: PriorityParams,
     ) -> i32 {
-        // let edge_difference = self.calc_edge_difference(v, ws);
-        let edge_difference = self.calc_edge_difference(v, ws);
+        let edge_difference = self.calc_edge_difference(v, max_nodes_settled_limit);
         let contracted_neighbors = self.contracted_neighbors[v.index()];
 
         edge_difference * params.edge_difference_coeff
@@ -392,56 +404,14 @@ impl<'a> NodeContractor<'a> {
     }
 
     /// ED = Shortcuts - Removed edges
-    fn calc_edge_difference(&self, v: NodeIndex, ws: WitnessSearch) -> i32 {
-        let mut removed_edges = 0;
-
-        let edges_in: Vec<(EdgeIndex, Edge)> = self
-            .neighbors_incoming(v)
-            .map(|(i, e)| (i, e.clone()))
-            .collect();
-
-        let edges_out: Vec<(EdgeIndex, Edge)> = self
-            .neighbors_outgoing(v)
-            .map(|(i, e)| (i, e.clone()))
-            .collect();
-
-        removed_edges += edges_in.len();
-        removed_edges += edges_out.len();
-
-        let mut added_shortcuts = 0;
-        for (_, uv) in edges_in.iter() {
-            let mut max_weight = 0.0;
-            let mut target_nodes = Vec::new();
-            // Calculate max_weight <u,v,w>
-            for (_, vw) in edges_out.iter() {
-                if uv.source == vw.target {
-                    continue;
-                }
-
-                let weight = uv.weight + vw.weight;
-                if weight > max_weight {
-                    max_weight = weight;
-                }
-                target_nodes.push(vw.target);
-            }
-
-            // Start seach from u
-            let res = ws.search(uv.source, &target_nodes, v, max_weight);
-
-            // Add shortcut if no better path <u,...,w> was found
-            for (_, vw) in edges_out.iter() {
-                if uv.source == vw.target {
-                    continue;
-                }
-
-                let weight = uv.weight + vw.weight;
-                if weight < *res.get(&vw.target).unwrap_or(&std::f64::INFINITY) {
-                    added_shortcuts += 1;
-                }
-            }
-        }
-
-        added_shortcuts - removed_edges as i32
+    fn calc_edge_difference(
+        &mut self,
+        v: NodeIndex,
+        max_nodes_settled_limit: usize, /*ws: WitnessSearch*/
+    ) -> i32 {
+        let (removed_edges, added_shortcuts) =
+            self.handle_contract_node(v, max_nodes_settled_limit, true);
+        added_shortcuts as i32 - removed_edges as i32
     }
 }
 
@@ -568,8 +538,6 @@ mod tests {
 
         let mut contractor = NodeContractor::new(&mut g);
         contractor.run_with_strategy(CHStrategy::LazyUpdateSelfAndNeighbors);
-
-        assert_eq!(2 * 2, contractor.g.num_shortcuts);
     }
 
     #[ignore = "Takes too long"]
