@@ -76,7 +76,6 @@ impl<'a> WitnessSearch<'a> {
         let mut targets_settled = 0;
 
         let mut queue = BinaryHeap::new();
-        // let mut settled = FxHashSet::default();
 
         queue.push(Candidate::new(start, 0.0));
 
@@ -110,7 +109,6 @@ impl<'a> WitnessSearch<'a> {
             }
 
             nodes_settled += 1;
-            // settled.insert(node_idx);
             if targets.contains(&node_idx) {
                 targets_settled += 1;
             }
