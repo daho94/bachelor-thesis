@@ -57,6 +57,7 @@ impl<'a> Dijkstra<'a> {
 
     pub fn search(&mut self, source: NodeIndex, target: NodeIndex) -> Option<ShortestPath> {
         self.stats.init();
+        info!("BEGIN DIJKSTRA SEARCH from {:?} to {:?}", source, target);
 
         if source == target {
             self.stats.nodes_settled += 1;
@@ -95,23 +96,19 @@ impl<'a> Dijkstra<'a> {
         }
         self.stats.finish();
 
-        let sp = super::reconstruct_path(target, source, &node_data);
-        if sp.is_some() {
+        if let Some(sp) = super::reconstruct_path(target, source, &node_data) {
             debug!("Path found: {:?}", sp);
-            info!(
-                "Path found: {:?}/{} nodes settled",
-                self.stats.duration.unwrap(),
-                self.stats.nodes_settled
-            );
+            info!("{}, weight: {}", self.stats, sp.weight);
+
+            Some(sp)
         } else {
             info!(
                 "No path found: {:?}/{} nodes settled",
                 self.stats.duration.unwrap(),
                 self.stats.nodes_settled
             );
+            None
         }
-
-        sp
     }
 }
 
