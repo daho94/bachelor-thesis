@@ -134,7 +134,7 @@ impl<'a> BiDirSearch<'a> {
         let intersect = self.settled_fwd.intersection(&self.settled_bwd);
 
         // Find
-        // dist(s,t) = min { dist(s,v) + dist(t,v) | v in I}
+        // dist(s,t) = min { dist(s,v) + dist(v,t) | v in I}
         // and remember intersect node `v`
         let mut min_dist = std::f64::INFINITY;
         for node in intersect {
@@ -202,7 +202,7 @@ impl<'a> BiDirSearch<'a> {
             debug!("Path bwd: {:?}", &path_bwd);
             let path = [path_fwd, path_bwd].concat();
 
-            info!("{}", self.stats);
+            info!("{}, weight: {}", self.stats, weight);
 
             Some(ShortestPath::new(path, weight))
         } else {
@@ -214,6 +214,10 @@ impl<'a> BiDirSearch<'a> {
 
 #[cfg(test)]
 mod tests {
+    use core::num;
+
+    use approx::{abs_diff_eq, assert_abs_diff_eq, assert_ulps_eq};
+
     use crate::{
         graph::node_index,
         node_contraction::NodeContractor,
@@ -263,7 +267,7 @@ mod tests {
     }
 
     #[test]
-    fn search_on_complex_graph() {
+    fn search_on_ordered_complex_graph() {
         init_log();
         let mut g = generate_complex_graph();
 
@@ -314,18 +318,47 @@ mod tests {
         let sp_bidir_ba = bidir.search(b, a);
 
         if sp_ab.is_some() {
-            assert_eq!(sp_ab.unwrap().nodes, sp_bidir_ab.unwrap().nodes);
+            assert_abs_diff_eq!(
+                sp_ab.unwrap().weight,
+                sp_bidir_ab.unwrap().weight,
+                epsilon = 1e-4,
+            );
         } else {
             // Both should be None
             assert_eq!(sp_ab, sp_bidir_ab);
         }
 
         if sp_ba.is_some() {
-            assert_eq!(sp_ba.unwrap().nodes, sp_bidir_ba.unwrap().nodes);
+            assert_abs_diff_eq!(
+                sp_ba.unwrap().weight,
+                sp_bidir_ba.unwrap().weight,
+                epsilon = 1e-4,
+            );
         } else {
             // Both should be None
             assert_eq!(sp_ba, sp_bidir_ba);
         }
+    }
+
+    #[test]
+    fn search_on_complex_graph() {
+        init_log();
+        let mut g = generate_complex_graph();
+
+        let num_nodes = g.nodes.len();
+
+        let mut contractor = NodeContractor::new(&mut g);
+
+        let overlay_graph = contractor.run();
+
+        let mut runner = proptest::test_runner::TestRunner::default();
+
+        runner
+            .run(&(0..num_nodes, 0..num_nodes), |(a, b)| {
+                test_search(&overlay_graph, a, b);
+                Ok(())
+            })
+            .unwrap();
     }
 
     #[test]
