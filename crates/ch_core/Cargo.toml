@@ -19,6 +19,7 @@ rand = "0.8.5"
 
 [dev-dependencies]
 proptest = "1"
+approx = "0.5.1"
 
 [[bin]]
 name = "raster_search"
