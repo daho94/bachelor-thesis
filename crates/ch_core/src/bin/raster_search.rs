@@ -23,7 +23,7 @@ fn main() {
     let mut min_params_aggressive = None;
     let mut min_time_aggressive = std::u128::MAX;
 
-    // let min_params_economicalx;
+    // let min_params_economical;
     // let min_time_economical = std::u128::MAX;
 
     for edge_difference_coeff in (1..=501).step_by(100) {
