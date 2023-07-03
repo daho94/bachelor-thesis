@@ -4,7 +4,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     constants::Weight,
-    graph::{DefaultIdx, IndexType, NodeIndex},
+    graph::{DefaultIdx, NodeIndex},
     node_contraction::NodeContractor,
 };
 
@@ -14,27 +14,27 @@ struct Candidate<Idx = DefaultIdx> {
     weight: Weight,
 }
 
-impl<Idx: IndexType> Candidate<Idx> {
-    fn new(node_idx: NodeIndex<Idx>, weight: Weight) -> Self {
+impl Candidate {
+    fn new(node_idx: NodeIndex, weight: Weight) -> Self {
         Self { node_idx, weight }
     }
 }
 
-impl<Idx: IndexType> PartialOrd for Candidate<Idx> {
+impl PartialOrd for Candidate {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         other.weight.partial_cmp(&self.weight)
     }
 }
 
-impl<Idx: IndexType> PartialEq for Candidate<Idx> {
+impl PartialEq for Candidate {
     fn eq(&self, other: &Self) -> bool {
         other.weight == self.weight
     }
 }
 
-impl<Idx: IndexType> Eq for Candidate<Idx> {}
+impl Eq for Candidate {}
 
-impl<Idx: IndexType> Ord for Candidate<Idx> {
+impl Ord for Candidate {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         other
             .weight
