@@ -358,7 +358,8 @@ impl Graph {
     pub fn from_pbf(path_to_pbf: &Path) -> anyhow::Result<Self> {
         info!("Parsing pbf file: {:?}", path_to_pbf);
 
-        let road_graph = RoadGraph::from_pbf(path_to_pbf).context("Could not parse pbf file")?;
+        let road_graph = RoadGraph::from_pbf_without_geometry(path_to_pbf)
+            .context("Could not parse pbf file")?;
 
         let mut node_index: FxHashMap<i64, usize> =
             FxHashMap::with_capacity_and_hasher(road_graph.get_nodes().len(), Default::default());
