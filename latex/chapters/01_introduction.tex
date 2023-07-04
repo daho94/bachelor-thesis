@@ -29,18 +29,18 @@ Laufzeit der Suche verbessern. So wurde \ua der A*-Algorithmus ("`A-Stern"') im 
 Hart, Nils J. Nilsson und Bertram Raphael als eine Erweiterung des Dijkstra-Algorithmus
 veröffentlicht\todo{Add ref}. Der Algorithmus verfolgt das Ziel durch das Hinzufügen einer
 zusätzlichen Heuristik, orientierter Richtung Ziel zu suchen. Dadurch wurde die Laufzeit
-nochmals verbessert, war aber immer noch nicht schnell genug für sehr große Graphen.
+nochmals verbessert, war aber immer noch nicht ausreichend für sehr große Graphen.
 Eine weitere Technik wurde 2008 von Geisberger, Sanders, Schultes, und Delling vorgestellt
 \cite{geisberger.workshop}, die als Contraction Hierarchies (CHs) bezeichnet wird. Sie basiert auf
 einer Vorverarbeitung des Graphen, bei der ausgenutzt wird, dass Straßennetzwerke bereits eine
 natürliche Hierarchie besitzen. Während der Vorverarbeitung werden dem Graph zusätzliche
 Informationen hinzugefügt, die dann zur Laufzeit während der Suche ausgenutzt werden, was zu
-erheblich schnelleren Laufzeiten führt. Da diese Technik als Sprungbrett für viele neue erweiterte
+erheblich schnelleren Berechnung der Route führt. Da diese Technik als Sprungbrett für viele neue erweiterte
 Routenplanungstechniken gilt, soll sie im Rahmen dieser Arbeit genauer untersucht werden. Dazu soll
-ein Prototyp implementiert werden, der die Funktionsweise von CHs durch eine konkrete
+ein Prototyp erstellt werden, der die Funktionsweise von CHs durch eine konkrete
 Implementierung demonstriert. Als Eingangsdaten werden die frei nutzbaren Geodaten des
 OpenStreetMap-Projekts (Open Data) \todo{Add ref} verwendet, um die Ergebnisse an realen Daten zu
-analysieren und testen.
+analysieren und zu testen.
 
 
 \subsection{Stand der Forschung}
