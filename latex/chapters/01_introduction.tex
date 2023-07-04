@@ -1,37 +1,54 @@
 \section{Einleitung}
 
-Im Folgenden wird beispielhaft gezeigt, wie Zitate, Bilder, Tabellen oder Quellcode in die Arbeit eingefügt werden können.
-
-\subsection{Zitate}
-Menschen, die mit ihrem IQ prahlen, sind Versager (\cite[S. 99]{hawking_1999}).
-
-\subsection{Bilder}
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.5\textwidth]{figures/figure_example.png}
-    \caption{Mooresches Gesetz}
-\end{figure}
-
-\subsection{Tabellen}
-\begin{table}[H]
-    \centering
-    \begin{tabular}[H]{l|l|l}
-        Bezeichnung   & Kerne & TDP   \\
-        \hline
-        Intel Core i5 & 6     & 111 W \\
-        \hline
-        AMD Ryzen 7   & 8     & 178 W \\
-    \end{tabular}
-    \caption{Prozessoren}
-\end{table}
+\subsection{Motivation und Kontext}
+Mit der fortschreitenden Entwicklung von Verkehrsmitteln und der dadurch zunehmenden Mobilität
+gewinnt die Routenplanung eine immer größere Bedeutung. Routenplanung ist ein faszinierendes und
+herausforderndes Gebiet, das eine wichtige Rolle in verschiedenen Bereichen spielt. Egal, ob es
+darum geht, den schnellsten Weg von einem Ort zum anderen zu finden, die effizienteste Route für die
+Zustellung von Waren zu bestimmen oder den Verkehr in einem komplexen Straßensystem zu simulieren,
+durch die Anwendung und Erforschung von Routenplanungsalgorithmen können effiziente und optimale
+Wege in komplexen Netzwerken gefunden werden, um Zeit, Ressourcen und Kosten zu sparen.
 
 
-\subsection{Quellcode}
-\begin{lstlisting}[language=java, caption=Hello World in Java, captionpos=b]
-    class HelloWorld {
-        public static void main(String[] args) {
-            // Display the string.y
-            System.out.println("Hello World!");
-        }
-    }
-\end{lstlisting}
+Das Problem, nach der Suche des kürzesten Weges, lässt sich auf ein zentrales und bekanntes Problem
+aus der Graphentheorie, einem Teilgebiet der Mathematik und theoretischen Informatik \todo{Add ref}
+zurückführen. Ein Straßennetzwerk kann als Graph, eine mathematische Struktur, die aus Knoten und
+Kanten besteht, modelliert werden. Knoten repräsentieren dabei Kreuzungen und Kanten Straßen, die zwei
+Knoten miteinander verbinden. Auf dem Graphen lassen sich anschließend Algorithmen ausführen, die
+den kürzesten Weg zwischen zwei Knoten bestimmen können. Einer der wohl bekanntesten Algorithmen, um
+diese Aufgabe zu lösen wurde von dem niederländischen Informatiker Edsger W. Dijkstra entwickelt und
+im Jahr 1959 veröffentlicht \cite{Dijkstra_1959}. Der Dijkstra-Algorithmus funktioniert zwar gut auf
+kleinen Graphen und wird auch noch heutzutage häufig angewendet, skaliert jedoch schlecht mit immer
+größer werdenden Datenmengen. Da ein Straßennetz aus mehreren Millionen Knoten und Kanten besteht,
+ist der Dijkstra-Algorithmus daher in Anwendungen, die in kurzer Zeit viele kürzeste Wege berechnen
+müssen, wie \zB Navigationssysteme, die Routen in Echtzeit aktualisieren müssen, nicht mehr geeignet.
+
+
+Um dieses Problem zu lösen, wurden im Laufe der Zeit neue Speed-Up Techniken entwickelt, die die
+Laufzeit der Suche verbessern. So wurde \ua der A*-Algorithmus ("`A-Stern"') im Jahr 1968 von Peter
+Hart, Nils J. Nilsson und Bertram Raphael als eine Erweiterung des Dijkstra-Algorithmus
+veröffentlicht\todo{Add ref}. Der Algorithmus verfolgt das Ziel durch das Hinzufügen einer
+zusätzlichen Heuristik, orientierter Richtung Ziel zu suchen. Dadurch wurde die Laufzeit
+nochmals verbessert, war aber immer noch nicht schnell genug für sehr große Graphen.
+Eine weitere Technik wurde 2008 von Geisberger, Sanders, Schultes, und Delling vorgestellt
+\cite{geisberger.workshop}, die als Contraction Hierarchies (CHs) bezeichnet wird. Sie basiert auf
+einer Vorverarbeitung des Graphen, bei der ausgenutzt wird, dass Straßennetzwerke bereits eine
+natürliche Hierarchie besitzen. Während der Vorverarbeitung werden dem Graph zusätzliche
+Informationen hinzugefügt, die dann zur Laufzeit während der Suche ausgenutzt werden, was zu
+erheblich schnelleren Laufzeiten führt. Da diese Technik als Sprungbrett für viele neue erweiterte
+Routenplanungstechniken gilt, soll sie im Rahmen dieser Arbeit genauer untersucht werden. Dazu soll
+ein Prototyp implementiert werden, der die Funktionsweise von CHs durch eine konkrete
+Implementierung demonstriert. Als Eingangsdaten werden die frei nutzbaren Geodaten des
+OpenStreetMap-Projekts (Open Data) \todo{Add ref} verwendet, um die Ergebnisse an realen Daten zu
+analysieren und testen.
+
+
+\subsection{Stand der Forschung}
+\begin{enumerate}
+    \item Wettbewerbe
+    \item ...
+\end{enumerate}
+
+\subsection{Beitrag der Arbeit}
+
+\subsection{Struktur der Arbeit}
