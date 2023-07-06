@@ -1,0 +1,16 @@
+\section{Theoretische und technische Grundlagen}
+
+\subsection{Grundlegende Datenstrukturen}
+
+\tikzset{every picture/.style={line width=0.75pt}} %set default line width to 0.75pt        
+
+\begin{tikzpicture}
+    \Vertex[style={color=green}]{A}
+    \Vertex[x=1,style=dashed]{B}
+    \Vertex[x=2,style={shading=ball}]{C}
+\end{tikzpicture}
+\begin{tikzpicture}
+    \Vertex{A} \Vertex[x=2]{B} \Vertex[x=2,y=-1]{C}
+    \Edge[label=X,position=above](A)(B)
+    \Edge[label=Y,position={below left=2mm}](A)(C)
+\end{tikzpicture}
