@@ -9,46 +9,92 @@ Zustellung von Waren zu bestimmen oder den Verkehr in einem komplexen Straßensy
 durch die Anwendung und Erforschung von Routenplanungsalgorithmen können effiziente und optimale
 Wege in komplexen Netzwerken gefunden werden, um Zeit, Ressourcen und Kosten zu sparen.
 
-
-Das Problem, nach der Suche des kürzesten Weges, lässt sich auf ein zentrales und bekanntes Problem
+Das Problem, nach der Suche des kürzesten Weges, lässt sich auf eines der fundamentalsten Probleme
 aus der Graphentheorie, einem Teilgebiet der Mathematik und theoretischen Informatik \todo{Add ref}
-zurückführen. Ein Straßennetzwerk kann als Graph, eine mathematische Struktur, die aus Knoten und
-Kanten besteht, modelliert werden. Knoten repräsentieren dabei Kreuzungen und Kanten Straßen, die zwei
-Knoten miteinander verbinden. Auf dem Graphen lassen sich anschließend Algorithmen ausführen, die
-den kürzesten Weg zwischen zwei Knoten bestimmen können. Einer der wohl bekanntesten Algorithmen, um
-diese Aufgabe zu lösen wurde von dem niederländischen Informatiker Edsger W. Dijkstra entwickelt und
-im Jahr 1959 veröffentlicht \cite{Dijkstra_1959}. Der Dijkstra-Algorithmus funktioniert zwar gut auf
-kleinen Graphen und wird auch noch heutzutage häufig angewendet, skaliert jedoch schlecht mit immer
-größer werdenden Datenmengen. Da ein Straßennetz aus mehreren Millionen Knoten und Kanten besteht,
-ist der Dijkstra-Algorithmus daher in Anwendungen, die in kurzer Zeit viele kürzeste Wege berechnen
-müssen, wie \zB Navigationssysteme, die Routen in Echtzeit aktualisieren müssen, nicht mehr geeignet.
-
+zurückführen. Mit Graphen lassen sich eine Vielzahl von Problemen aus der echten Welt als
+mathematische Struktur, bestehend aus Knoten und Kanten, modellieren. So kann auch ein
+Straßennetzwerk durch Knoten, die Kreuzungen repräsentieren und Kanten, die als Straßensegmente
+Kreuzungen miteinander verbinden, dargestellt werden. Jeder Kante wird dabei ein Gewicht zugewiesen,
+das die mit dem Durchlaufen dieser Kante verbundenen Kosten widerspiegelt. Auf dem Graphen lassen
+sich anschließend Algorithmen ausführen, die den kürzesten Weg dist(s,t) zwischen einem Startknoten
+s und Zielknoten t bestimmen können, indem die Kosten des Weges minimiert werden. Einer der wohl
+bekanntesten Algorithmen, um diese Aufgabe zu lösen wurde von dem niederländischen Informatiker
+Edsger W. Dijkstra entwickelt und im Jahr 1959 veröffentlicht \cite{Dijkstra_1959}. Der
+Dijkstra-Algorithmus funktioniert zwar gut auf kleinen Graphen und wird auch noch heutzutage häufig
+angewendet, skaliert jedoch schlecht mit immer größer werdenden Datenmengen, denn im schlechtesten
+Fall muss der gesamte Graph traversiert werden. Da ein Straßennetz aus mehreren Millionen Knoten und
+Kanten besteht, ist der Dijkstra-Algorithmus daher in Anwendungen, die in kurzer Zeit viele kürzeste
+Wege berechnen müssen, wie \zB Navigationssysteme, die Routen in Echtzeit aktualisieren müssen,
+nicht mehr geeignet.
 
 Um dieses Problem zu lösen, wurden im Laufe der Zeit neue Speed-Up Techniken entwickelt, die die
 Laufzeit der Suche verbessern. So wurde \ua der A*-Algorithmus ("`A-Stern"') im Jahr 1968 von Peter
 Hart, Nils J. Nilsson und Bertram Raphael als eine Erweiterung des Dijkstra-Algorithmus
-veröffentlicht\todo{Add ref}. Der Algorithmus verfolgt das Ziel durch das Hinzufügen einer
-zusätzlichen Heuristik, orientierter Richtung Ziel zu suchen. Dadurch wurde die Laufzeit
-nochmals verbessert, war aber immer noch nicht ausreichend für sehr große Graphen.
-Eine weitere Technik wurde 2008 von Geisberger, Sanders, Schultes, und Delling vorgestellt
-\cite{geisberger.workshop}, die als Contraction Hierarchies (CHs) bezeichnet wird. Sie basiert auf
-einer Vorverarbeitung des Graphen, bei der ausgenutzt wird, dass Straßennetzwerke bereits eine
-natürliche Hierarchie besitzen. Während der Vorverarbeitung werden dem Graph zusätzliche
-Informationen hinzugefügt, die dann zur Laufzeit während der Suche ausgenutzt werden, was zu
-erheblich schnelleren Berechnung der Route führt. Da diese Technik als Sprungbrett für viele neue erweiterte
+veröffentlicht \cite{Hart.1968}. Der Algorithmus ist in der Lage durch das Einführen einer
+zusätzlichen Heuristik, orientierter Richtung Ziel zu suchen und damit den Suchraum deutlich
+einzuschränken. Dadurch wurde die Laufzeit nochmals verbessert, war aber immer noch nicht
+ausreichend für sehr große Graphen.
+
+Viele weitere Techniken basieren auf einer starken
+Vorverarbeitung des Graphen. So wurde 2008 von Geisberger, Sanders, Schultes, und Delling
+vorgestellt \cite{geisberger.workshop}, die als \ac{CHs} bezeichnet wird. Sie basiert auf einer
+Vorverarbeitung des Graphen, bei der ausgenutzt wird, dass Straßennetzwerke bereits eine natürliche
+Hierarchie besitzen. Während der Vorverarbeitung werden dem Graph zusätzliche Informationen
+hinzugefügt, die dann zur Laufzeit während der Suche ausgenutzt werden, was zu erheblich schnelleren
+Berechnung der Route führt. Da diese Technik als Sprungbrett für viele neue erweiterte
 Routenplanungstechniken gilt, soll sie im Rahmen dieser Arbeit genauer untersucht werden. Dazu soll
-ein Prototyp erstellt werden, der die Funktionsweise von CHs durch eine konkrete
+ein Prototyp erstellt werden, der die Funktionsweise von \ac{CHs} durch eine konkrete
 Implementierung demonstriert. Als Eingangsdaten werden die frei nutzbaren Geodaten des
 OpenStreetMap-Projekts (Open Data) \todo{Add ref} verwendet, um die Ergebnisse an realen Daten zu
 analysieren und zu testen.
 
 
 \subsection{Stand der Forschung}
-\begin{enumerate}
-    \item Wettbewerbe
-    \item ...
-\end{enumerate}
+Die Berechnung von kürzesten Wegen in dynamischen gewichteten Graphen ist in den letzten Jahrzehnten
+intensiv untersucht worden und es entstanden viele neue Techniken zur Lösung verschiedener Varianten
+des Problems. Das kürzeste-Wege-Problem ist so relevant, dass regelmäßig Wettbewerbe stattfinden,
+bei denen die aktuell besten Routenplanungsalgorithmen auf speziellen Eingabedaten ermittelt werden.
+So wurde \zB 2006 die neunte DIMACS Implementation Challenge \cite{dimacs9} ausgerichtet, in der die
+"`State of the Art"'-Techniken vorgestellt wurden. Eine ausführliche Übersicht über verschiedene
+Algorithmen zur Routenplanung in Straßennetzwerken wurde von Delling et al.
+\cite{delling.engineering} veröffentlicht, ist aber durch die signifikante Weiterentwicklungen der
+letzten Jahre nicht mehr topaktuell. Es sind neue Algorithmen entstanden, die Suchanfragen auf
+Straßennetzwerken in der Größenordnung von Kontinenten in wenigen hundert Nanosekunden beantworten
+können oder aktuelle Verkehrsinformationen mit in die Suche einfließen lassen
+\cite{Bast.20.04.2015}. Durch den aktuellen Stand der Technik können Methoden des maschinellen
+Lernens verwendet werden, um je nach Situation den Verkehrsfluss in Echtzeit vorherzusagen und mit in der
+Routenplanung zu berücksichtigen \cite{LIEBIG2017258}.
+
+
+Diese Entwicklungen zeigen, dass die Routenplanung in Straßennetzwerken
+ein aktiver Forschungsbereich ist, der sich ständig weiterentwickelt, um den Bedürfnissen der Nutzer
+und modernen Anwendungen gerecht zu werden.
 
 \subsection{Beitrag der Arbeit}
+Im Rahmen dieser Arbeit wird die Implementierung der \ac{CHs}-Technik in der Programmiersprache
+\emph{Rust} untersucht. Rust ist eine moderne, systemsprachenorientierte Programmiersprache, die auf
+Performance, Sicherheit und Nebenläufigkeit abzielt \cite{rust.book}. Die Wahl von Rust als
+Implementierungssprache bietet die Möglichkeit, die Vorteile dieser Sprache in Bezug auf
+Geschwindigkeit, Speichersicherheit und Thread-Sicherheit in der Routenplanung zu erforschen.
+
+Das Hauptziel dieser Arbeit ist, die Implementierung von \ac{CHs} detailliert zu beschreiben und
+anschließend eine umfassende Leistungsanalyse durchzuführen, indem die Ergebnisse mit herkömmlichen
+Algorithmen wie dem Dijkstra-Algorithmus und dem A*-Algorithmus verglichen werden. Die Evaluierung
+erfolgt anhand verschiedener Metriken wie Laufzeit, Vorverarbeitungszeit und Speicherbedarf.
+Durch diesen Vergleich wird ein tieferes Verständnis für die Leistungsfähigkeit von \ac{CHs}
+gewonnen und die verbundenen Vor- und Nachteile im Vergleich zu herkömmlichen Algorithmen ermittelt.
+
+Die Ergebnisse dieser Arbeit können wichtige Erkenntnisse liefern, die zur
+Weiterentwicklung und Optimierung von Routenplanungssystemen beitragen. Darüber
+hinaus bietet die Implementierung in Rust einen wertvollen Beitrag zur
+wachsenden Gemeinschaft von Rust-Entwicklern und demonstriert die Anwendung der
+Sprache in einem relevanten Anwendungsfall.
 
 \subsection{Struktur der Arbeit}
+Die folgenden Abschnitte der Arbeit werden die theoretischen Grundlagen von
+Routenplanungsalgorithmen, insbesondere des Dijkstra-Algorithmus, des A*-Algorithmus
+und der CH-Technik, erläutern. Anschließend wird die Implementierung der CH-Technik in
+Rust beschrieben und detailliert analysiert. Abschließend werden die Ergebnisse der
+Leistungsanalyse präsentiert und diskutiert, gefolgt von einem Fazit, das die Erkenntnisse
+dieser Arbeit zusammenfasst und mögliche Ansätze für zukünftige Forschungen aufzeigt.
+\todo{Shorten}
