@@ -29,13 +29,14 @@ limitiert ist,ist es wichtig den verfügbaren Speicher effizient auszunutzen. F�
 \ac{CHs} und der Suche ist es außerdem wichtig schnell auf alle Nachbarn eines Knotens bzw. dessen
 eingehende und ausgehende Kanten zuzugreifen. Fast alle dieser Eigenschaften erfüllt eine
 Adjazenzliste, bis auf den schnellen Zugriff auf die eingehenden Kanten eines Knotens. Um das
-Problem zu lösen werden in dieser Arbeit zwei Adjazenzlisten verwendet, eine für die ausgehenden
-und eine für die eingehenden Kanten. Obwohl zwei Listen verwendet werden, ist der Speicherverbrauch
-immer noch geringer als das Verwenden einer Adjazenzmatrix mit $O(n^2)$ Speicherkomplexität.
+Problem zu lösen werden in dieser Arbeit zwei Adjazenzlisten verwendet, eine für alle ausgehenden
+Kanten eines Knotens und eine für alle eingehenden Kanten. Obwohl zwei Listen verwendet werden, ist
+der Speicherverbrauch immer noch geringer als das Verwenden einer Adjazenzmatrix mit $O(n^2)$
+Speicherkomplexität.
 
-Es ist wichtig anzumerken, dass die Wahl der geeigneten Datenstruktur von verschiedenen Faktoren
-abhängt, einschließlich der Größe und Dichte des Graphen sowie der Art der geplanten Operationen auf
-dem Graphen.
+% Es ist wichtig anzumerken, dass die Wahl der geeigneten Datenstruktur von verschiedenen Faktoren
+% abhängt, einschließlich der Größe und Dichte des Graphen sowie der Art der geplanten Operationen auf
+% dem Graphen.
 
 \begin{figure}[H]
     \centering
