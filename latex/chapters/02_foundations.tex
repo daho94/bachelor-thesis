@@ -5,38 +5,40 @@
 Um das kürzeste-Wege-Problem zu lösen, muss zunächst das reale Straßennetz in eine abstrakte Form
 gebracht werden. Hierzu wird das Straßennetz als Graph modelliert. Ein Graph $G = (V,E)$ besteht aus
 einer Menge von Knoten V und einer Menge von Kanten E. Jede Kante $e = (u,v)\in E$ verbindet zwei
-Knoten $u,v \in V$. Ein Graph kann als gerichtet oder ungerichtet definiert werden. Bei einem
-ungerichteten  Graphen sind die Kanten bidirektional und können in beide Richtungen durchlaufen
-werden, während bei einem gerichteten Graphen die Kanten nur in eine Richtung durchlaufen werden
-können. In dieser Arbeit wird ein gerichteter Graph verwendet, da Straßen normalerweise in einer
-bestimmten Richtung befahrbar sind und damit die Richtung des
-Verkehrs korrekt dargestellt wird.
+Knoten $u,v \in V$. Knoten bilden Kreuzungen ab und Kanten Straßensegmente zwischen zwei Kreuzungen.
+Ein Graph kann als gerichtet oder ungerichtet definiert werden. Bei einem ungerichteten  Graphen
+sind die Kanten bidirektional und können in beide Richtungen durchlaufen werden, während bei einem
+gerichteten Graphen die Kanten nur in eine Richtung durchlaufen werden können.\\
 
-Der Graph ist gewichtet, \dH für jede Kante wird während der Vorverarbeitung ein Gewicht $w(e)$
-berechnet, das sich aus der Länge des Straßensegments und der maximal erlaubten Geschwindigkeit auf
-dieser Straße ergibt. Der kürzeste Weg zwischen zwei Knoten ist damit der Weg mit der minimalen Zeit.
+Der Graph in dieser Arbeit ist gerichtet und gewichtet. Die Kantenrichtung spiegelt dabei die
+Richtung des Verkehrs wieder, \dH sie gibt an, ob eine Straße in einer bestimmten Richtung befahren
+werden darf oder nicht. Zusätzlich wird für jede Kante ein Gewicht $w(e)$ festgelegt. In diesem Fall
+wird die durchscnittliche Zeit $t = \frac{V}{S}$ in Sekunden verwendet, die  sich aus der Länge des
+Straßensegments \emph{S} und der maximal erlaubten Geschwindigkeit \emph{V} auf dieser Straße berechnet. Der
+kürzeste Weg zwischen zwei Knoten ist damit der Weg mit der minimalen Zeit.\\
 
-Es gibt verschiedene Möglichkeiten, einen Graphen als Datenstruktur darzustellen. Eine häufig
-verwendete Darstellung ist die Verwendung von Adjazenzlisten. Dabei wird für jeden Knoten eine Liste
-der benachbarten Knoten bzw. ausgehenden Kanten gespeichert. Eine andere Möglichkeit ist die
-Verwendung einer Adjazenzmatrix. Dabei wird eine zweidimensionale Matrix verwendet, bei der die
-Zeilen und Spalten den Knoten entsprechen. Der Eintrag an Position (i, j) in der Matrix gibt an, ob
-eine Kante zwischen den Knoten i und j existiert. Ein Beispiel für einen einfachen Graph befindet
-sich in Abbildung~\ref{fig:graph_ex1}.
+Es gibt generell zwei Möglichkeiten, einen Graphen als Datenstruktur darzustellen. Eine davon ist
+die Verwendung von Adjazenzlisten. Dabei wird für jeden Knoten $u \in V$ eine Liste der benachbarten
+Knoten bzw. ausgehenden Kanten $e(u,v) \in E$ gespeichert. Die Summe der Länge aller Adjazenzlisten
+in einem gerichteten Graph ist $|E|$, bzw. $2|E|$ in einem ungerichteten Graph. Der
+Speicherverbrauch für die Adjazenzliste ist damit $\Theta(|V| + |E|)$ \cite{intro.algo}.
 
-Da wir in dieser Arbeit mit Straßennetzen arbeiten, die sehr groß sein können und Arbeitsspeicher
-limitiert ist,ist es wichtig den verfügbaren Speicher effizient auszunutzen. Für den Aufbau der
-\ac{CHs} und der Suche ist es außerdem wichtig schnell auf alle Nachbarn eines Knotens bzw. dessen
-eingehende und ausgehende Kanten zuzugreifen. Fast alle dieser Eigenschaften erfüllt eine
-Adjazenzliste, bis auf den schnellen Zugriff auf die eingehenden Kanten eines Knotens. Um das
-Problem zu lösen werden in dieser Arbeit zwei Adjazenzlisten verwendet, eine für alle ausgehenden
-Kanten eines Knotens und eine für alle eingehenden Kanten. Obwohl zwei Listen verwendet werden, ist
-der Speicherverbrauch immer noch geringer als das Verwenden einer Adjazenzmatrix mit $O(n^2)$
-Speicherkomplexität.
+Die zweite Möglichkeit ist die Verwendung einer Adjazenzmatrix. Hier wird eine zweidimensionale
+Matrix der Größe $|V| \times |V|$ verwendet, bei der die Zeilen und Spalten den Knoten entsprechen.
+Der Eintrag an Position $(i,j)$ in der Matrix gibt an, ob eine Kante zwischen den Knoten $i$ und $j$
+existiert. Unabhängig von der Anzahl an Kanten ist der Speicherverbrauch $\Theta(|V|^2)$
+\cite{intro.algo}. Ein Beispiel für beide Darstellungen anhand eines einfachen Graph befindet sich
+in Abbildung~\ref{fig:graph_ex1}.\\
 
-% Es ist wichtig anzumerken, dass die Wahl der geeigneten Datenstruktur von verschiedenen Faktoren
-% abhängt, einschließlich der Größe und Dichte des Graphen sowie der Art der geplanten Operationen auf
-% dem Graphen.
+Für diese Arbeit werden Adjazenzlisten verwendet, da zum einen Straßennetze dünne Graphen sind ($|E|
+    << |V|^2$), und damit die Speichereffizienz gegenüber einer Adjazenzmatrix deutlich effizienter
+ist. Zum anderen ist für es wichtig, für den Aufbau der \ac{CHs} und der Suche, schnell auf alle
+Nachbarn eines Knotens zuzugreifen zu können. Der Zugriff auf
+eingehende Kanten ist allerding nur sehr aufwendig  möglich, wird  aber für den Aufbau der
+Kontraktionshierarchien benötigt. Das Problem lässt sich jedoch lösen indem auch
+Adjazenzlisten für alle eingehenden Kanten eines Knotens angelegt werden. Damit erhöht sich der
+Speicherverbrauch auf $\Theta(|V| + 2|E|)$, was aber immer noch deutlich effizienter ist als
+eine Darstellung als Adjazenzmatrix.\todo{Ref genaue Datenstruktur?}
 
 \begin{figure}[H]
     \centering
@@ -46,6 +48,7 @@ Speicherkomplexität.
             \Vertices[color=gray!90!blue]{data/graphs/ex1/vertices.csv}
             \Edges{data/graphs/ex1/edges.csv}
         \end{tikzpicture}
+        \caption{}
     \end{subfigure}
     \\[3ex]
     \begin{subfigure}[b]{0.3\textwidth}
@@ -61,43 +64,98 @@ Speicherkomplexität.
                 E &3 & 0 & 0 & 3 & 0 \\
             \end{block}
         \end{blockarray} \
-        \caption{Adjazenzmatrix}
+        \caption{}
     \end{subfigure}
     \hspace{3em}
     \begin{subfigure}[b]{0.3\textwidth}
         \centering
-        % \begin{blockarray}{c|ccccc}
-        %     &   &   &   &   &   \\
-        %     \BAhline
-        %     \begin{block}{c|ccccc}
-        %         A &B & C & E &   &   \\
-        %         B &A & C &   &   &   \\
-        %         C &D &   &   &   &   \\
-        %         D &C & E &   &   &   \\
-        %         E &A & D &   &   &   \\
-        %     \end{block}
-        % \end{blockarray} \
-        \begin{blockarray}{c|ccccc}
-            & A & B & C & D & E \\
-            \BAhline
-            \begin{block}{c|ccccc}
-                A &  & $\bullet$ & $\bullet$ &   & $\bullet$ \\
-                B &  $\bullet$&   &$\bullet$   &   &   \\
-                C &  &   &   & $\bullet$  &   \\
-                D &  &   &$\bullet$   &   &$\bullet$   \\
-                E &$\bullet$  &   &   &$\bullet$   &   \\
-            \end{block}
-        \end{blockarray} \
-        \caption{Adjazenzliste}
+        \begin{tikzpicture}[
+                node distance = 21mm and 7mm,
+                box/.style = {draw, minimum size=5mm, inner sep=0pt, outer sep=0pt, anchor=west},
+                pin edge = {Straight Barb-, shorten <=1mm,semithick}
+            ]
+            \matrix (mat1) [matrix of nodes,
+                nodes={box},
+                align=left,
+                column sep=-\pgflinewidth,
+                inner sep=0pt,
+                pin=180:A
+            ]
+            {
+                B & C & E \\
+            };
+            \matrix (mat2) [matrix of nodes,
+                below=1.5em of mat1-1-1.west,
+                anchor=west,
+                nodes={box},
+                column sep=-\pgflinewidth,
+                inner sep=0pt,
+                pin=180:B
+            ]
+            {
+                A & C \\
+            };
+            \matrix (mat3) [matrix of nodes,
+                below=1.5em of mat2-1-1.west,
+                anchor=west,
+                nodes={box},
+                column sep=-\pgflinewidth,
+                inner sep=0pt,
+                pin=180:C
+            ]
+            {
+                D \\
+            };
+            \matrix (mat4) [matrix of nodes,
+                below=1.5em of mat3-1-1.west,
+                anchor=west,
+                nodes={box},
+                column sep=-\pgflinewidth,
+                inner sep=0pt,
+                pin=180:D
+            ]
+            {
+                C & E \\
+            };
+            \matrix (mat5) [matrix of nodes,
+                below=1.5em of mat4-1-1.west,
+                anchor=west,
+                nodes={box},
+                column sep=-\pgflinewidth,
+                inner sep=0pt,
+                pin=180:E
+            ]
+            {
+                A & D \\
+            };
+        \end{tikzpicture}
+        \vspace{1em}
+        \caption{}
     \end{subfigure}
-    \caption{Der oben gezeigte gerichtete Graph kann durch eine Adjazenzmatrix oder eine
-        Adjazenzliste im Speicher dargestellt werden. In der Adjazenzliste wird für jeden Knoten
-        eine Liste mit den ausgehenden Kanten zu den markierten Knoten abgespeichert. Die
-        Zusatzinformation des Gewichts wird im Gegensatz zur Adjazenzmatrix mit der Kante
-        abgespeichert.}
+    \caption{Der oben gezeigte gerichtete Graph (a) dargestellt als Adjazenzmatrix(b) oder
+        Adjazenzliste (c).}
     \label{fig:graph_ex1}
 \end{figure}
 
-\subsubsection{Prioritätswarteschlange}
+\subsubsection{Vorrangwarteschlangen}
+Eine \ac{PQ} ist eine Datenstruktur, in der nur auf das Element mit der höchsten Priorität
+zugegriffen werden kann. Eine \ac{PQ} unterstützt in der Regel die folgenden Operationen:
+\begin{enumerate}
+    \item Einfügen (Push): Ein Element wird mit seiner zugehörigen Priorität in die Warteschlange
+          eingefügt. Das Element wird entsprechend seiner Priorität platziert.
+    \item Entfernen (Pop): Das Element mit der aktuell höchsten Priorität wird aus der Warteschlange
+          entfernt und zurückgegeben.
+\end{enumerate}
+\ac{PQ}s werden allen nachfolgenden Suchalgorithmen verwendet, daher hat die Implementierung der
+Warteschlange einen großen Einfluss auf die Laufzeit der Algorithmen. In der Arbeit wird die
+Implementierung als binärern Min-Heap verwendet mit einer Zeitkompexität für das Einfügen von
+$\theta(1)\sim$ und für das Entfernen von $\theta(\log n)$.
 
+\subsection{Kürzeste-Wege-Algorithmen}
+Haha das ist doch wahnsinn
 
+\subsubsection{Grundlegende Technik}
+\subsubsection{Zielorientiert}
+\subsubsection{Hierarchisch}
+
+\subsection{OpenStreetMap}
