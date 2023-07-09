@@ -55,6 +55,13 @@
 
 % Allow to draw figures
 \usepackage{tikz-network}
+\usetikzlibrary{
+    external,
+    arrows.meta,
+    matrix,
+    positioning,
+}
+\tikzexternalize[prefix=cache/]
 
 % Allows to draw complex tables or matrices
 \usepackage{blkarray}
