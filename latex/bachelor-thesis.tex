@@ -39,6 +39,8 @@
 \newcommand*{\dH}{d.\,h. } % Non-breaking d.h.
 \newcommand*{\ua}{u.\,a. } % Non-breaking u.a.
 
+% Ignore todo notes with tikzexternalize
+\renewcommand{\todo}[2][]{\tikzexternaldisable\@todo[#1]{#2}\tikzexternalenable}
 
 % **************************************************
 % PDF Metadata
@@ -56,11 +58,12 @@
 % Content
 % **************************************************
 
+% \includeonly{chapters/02_foundations}
 \begin{document}
 
-\input{pages/title}
+\include{pages/title}
 
-\input{pages/abstract}
+\include{pages/abstract}
 
 \tableofcontents
 
@@ -73,22 +76,24 @@
 \clearpage
 \lstlistoflistings
 
-\clearpage
-\input{pages/acronyms}
+\listoftodos
 
 \clearpage
-\input{chapters/01_introduction}
+\include{pages/acronyms}
 
 \clearpage
-\input{chapters/02_foundations}
+\include{chapters/01_introduction}
 
 \clearpage
-\input{chapters/99_conclusion}
+\include{chapters/02_foundations}
+
+\clearpage
+\include{chapters/99_conclusion}
 
 \clearpage
 \printbibliography
 
 \clearpage
-\input{pages/declaration}
+\include{pages/declaration}
 
 \end{document}
