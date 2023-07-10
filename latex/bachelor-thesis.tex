@@ -40,7 +40,9 @@
 \newcommand*{\ua}{u.\,a. } % Non-breaking u.a.
 
 % Ignore todo notes with tikzexternalize
+\makeatletter
 \renewcommand{\todo}[2][]{\tikzexternaldisable\@todo[#1]{#2}\tikzexternalenable}
+\makeatother
 
 % **************************************************
 % PDF Metadata
