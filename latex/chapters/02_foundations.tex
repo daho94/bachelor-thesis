@@ -12,10 +12,11 @@ gerichteten Graphen die Kanten nur in eine Richtung durchlaufen werden können.\
 
 Der Graph in dieser Arbeit ist gerichtet und gewichtet. Die Kantenrichtung spiegelt dabei die
 Richtung des Verkehrs wieder, \dH sie gibt an, ob eine Straße in einer bestimmten Richtung befahren
-werden darf oder nicht. Zusätzlich wird für jede Kante ein Gewicht $w(e)$ festgelegt. In diesem Fall
-wird die durchscnittliche Zeit $t = \frac{V}{S}$ in Sekunden verwendet, die  sich aus der Länge des
-Straßensegments \emph{S} und der maximal erlaubten Geschwindigkeit \emph{V} auf dieser Straße
-ergibt. Der kürzeste Weg zwischen zwei Knoten ist damit der Weg mit der minimalen Zeit.\\
+werden darf oder nicht. Zusätzlich wird auf jede Kante eine Kostenfunktion angewandt, die dann ein
+Gewicht $w(e)$ festgelegt. In der Routenplanung ist normalerweise nicht die kürzeste Strecke von
+Interesse, sondern die Strecke mit der kürzesten Reisezeit. Diese lässt sich aus der
+Länge des Straßensegments \emph{S} und der maximal erlaubten Geschwindigkeit \emph{V} auf dieser
+Straße $t = \frac{V}{S}$ in Sekunden berechnen.\\
 
 Es gibt generell zwei Möglichkeiten, einen Graphen als Datenstruktur darzustellen. Eine davon ist
 die Verwendung von Adjazenzlisten. Dabei wird für jeden Knoten $u \in V$ eine Liste der benachbarten
@@ -31,121 +32,121 @@ existiert. Unabhängig von der Anzahl an Kanten ist der Speicherverbrauch $\Thet
 in Abbildung~\ref{fig:graph_ex1}.\\
 
 Für diese Arbeit werden Adjazenzlisten verwendet, da zum einen Straßennetze dünne Graphen sind ($|E|
-	<< |V|^2$), und damit die Speichereffizienz gegenüber einer Adjazenzmatrix deutlich effizienter
+    << |V|^2$), und damit die Speichereffizienz gegenüber einer Adjazenzmatrix deutlich effizienter
 ist. Zum anderen ist für es wichtig, für den Aufbau der \ac{CHs} und der Suche, schnell auf alle
 Nachbarn eines Knotens zuzugreifen zu können. Der Zugriff auf
 eingehende Kanten ist allerding nur sehr aufwendig  möglich, wird  aber für den Aufbau der
 Kontraktionshierarchien benötigt. Das Problem lässt sich jedoch lösen indem auch
 Adjazenzlisten für alle eingehenden Kanten eines Knotens angelegt werden. Damit erhöht sich der
 Speicherverbrauch auf $\Theta(|V| + 2|E|)$, was aber immer noch deutlich effizienter ist als
-eine Darstellung als Adjazenzmatrix.\todo{Ref genaue Datenstruktur?}
+eine Darstellung als Adjazenzmatrix.%\todo{Ref genaue Datenstruktur?}
 
 \begin{figure}[H]
-	\centering
-	\begin{subfigure}{1.0\textwidth}
-		\centering
-		\begin{tikzpicture}
-			\Vertices[color=gray!90!blue]{data/graphs/ex1/vertices.csv}
-			\Edges{data/graphs/ex1/edges.csv}
-		\end{tikzpicture}
-		\caption{}
-	\end{subfigure}
-	\\[3ex]
-	\begin{subfigure}[b]{0.3\textwidth}
-		\centering
-		\begin{blockarray}{c|ccccc}
-			& A & B & C & D & E \\
-			\BAhline
-			\begin{block}{c|ccccc}
-				A &0 & 3 & 5 & 0 & 3 \\
-				B &3 & 0 & 3 & 0 & 0 \\
-				C &0 & 0 & 0 & 2 & 0 \\
-				D &0 & 0 & 2 & 0 & 3 \\
-				E &3 & 0 & 0 & 3 & 0 \\
-			\end{block}
-		\end{blockarray} \
-		\caption{}
-	\end{subfigure}
-	\hspace{3em}
-	\begin{subfigure}[b]{0.3\textwidth}
-		\centering
-		\begin{tikzpicture}[
-				node distance = 21mm and 7mm,
-				box/.style = {draw, minimum size=5mm, inner sep=0pt, outer sep=0pt, anchor=west},
-				pin edge = {Straight Barb-, shorten <=1mm,semithick}
-			]
-			\matrix (mat1) [matrix of nodes,
-				nodes={box},
-				align=left,
-				column sep=-\pgflinewidth,
-				inner sep=0pt,
-				pin=180:A
-			]
-			{
-				B & C & E \\
-			};
-			\matrix (mat2) [matrix of nodes,
-				below=1.5em of mat1-1-1.west,
-				anchor=west,
-				nodes={box},
-				column sep=-\pgflinewidth,
-				inner sep=0pt,
-				pin=180:B
-			]
-			{
-				A & C \\
-			};
-			\matrix (mat3) [matrix of nodes,
-				below=1.5em of mat2-1-1.west,
-				anchor=west,
-				nodes={box},
-				column sep=-\pgflinewidth,
-				inner sep=0pt,
-				pin=180:C
-			]
-			{
-				D \\
-			};
-			\matrix (mat4) [matrix of nodes,
-				below=1.5em of mat3-1-1.west,
-				anchor=west,
-				nodes={box},
-				column sep=-\pgflinewidth,
-				inner sep=0pt,
-				pin=180:D
-			]
-			{
-				C & E \\
-			};
-			\matrix (mat5) [matrix of nodes,
-				below=1.5em of mat4-1-1.west,
-				anchor=west,
-				nodes={box},
-				column sep=-\pgflinewidth,
-				inner sep=0pt,
-				pin=180:E
-			]
-			{
-				A & D \\
-			};
-		\end{tikzpicture}
-		\vspace{1em}
-		\caption{}
-	\end{subfigure}
-	\caption{Der oben gezeigte gerichtete Graph (a) dargestellt als Adjazenzmatrix(b) oder
-		Adjazenzliste (c). Viele Einträge der Matrix sind 0, da der Graph dünn ist, \dH $|E|$
-		um einiges kleiner ist als $|V^2|$.}
-	\label{fig:graph_ex1}
+    \centering
+    \begin{subfigure}{1.0\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \Vertices[color=gray!90!blue]{data/graphs/ex1/vertices.csv}
+            \Edges{data/graphs/ex1/edges.csv}
+        \end{tikzpicture}
+        \caption{}
+    \end{subfigure}
+    \\[3ex]
+    \begin{subfigure}[b]{0.3\textwidth}
+        \centering
+        \begin{blockarray}{c|ccccc}
+            & A & B & C & D & E \\
+            \BAhline
+            \begin{block}{c|ccccc}
+                A &0 & 3 & 5 & 0 & 3 \\
+                B &3 & 0 & 3 & 0 & 0 \\
+                C &0 & 0 & 0 & 2 & 0 \\
+                D &0 & 0 & 2 & 0 & 3 \\
+                E &3 & 0 & 0 & 3 & 0 \\
+            \end{block}
+        \end{blockarray} \
+        \caption{}
+    \end{subfigure}
+    \hspace{3em}
+    \begin{subfigure}[b]{0.3\textwidth}
+        \centering
+        \begin{tikzpicture}[
+                node distance = 21mm and 7mm,
+                box/.style = {draw, minimum size=5mm, inner sep=0pt, outer sep=0pt, anchor=west},
+                pin edge = {Straight Barb-, shorten <=1mm,semithick}
+            ]
+            \matrix (mat1) [matrix of nodes,
+                nodes={box},
+                align=left,
+                column sep=-\pgflinewidth,
+                inner sep=0pt,
+                pin=180:A
+            ]
+            {
+                B & C & E \\
+            };
+            \matrix (mat2) [matrix of nodes,
+                below=1.5em of mat1-1-1.west,
+                anchor=west,
+                nodes={box},
+                column sep=-\pgflinewidth,
+                inner sep=0pt,
+                pin=180:B
+            ]
+            {
+                A & C \\
+            };
+            \matrix (mat3) [matrix of nodes,
+                below=1.5em of mat2-1-1.west,
+                anchor=west,
+                nodes={box},
+                column sep=-\pgflinewidth,
+                inner sep=0pt,
+                pin=180:C
+            ]
+            {
+                D \\
+            };
+            \matrix (mat4) [matrix of nodes,
+                below=1.5em of mat3-1-1.west,
+                anchor=west,
+                nodes={box},
+                column sep=-\pgflinewidth,
+                inner sep=0pt,
+                pin=180:D
+            ]
+            {
+                C & E \\
+            };
+            \matrix (mat5) [matrix of nodes,
+                below=1.5em of mat4-1-1.west,
+                anchor=west,
+                nodes={box},
+                column sep=-\pgflinewidth,
+                inner sep=0pt,
+                pin=180:E
+            ]
+            {
+                A & D \\
+            };
+        \end{tikzpicture}
+        \vspace{1em}
+        \caption{}
+    \end{subfigure}
+    \caption{Der oben gezeigte gerichtete Graph (a) dargestellt als Adjazenzmatrix(b) oder
+        Adjazenzliste (c). Viele Einträge der Matrix sind 0, da der Graph dünn ist, \dH $|E|$
+        um einiges kleiner ist als $|V^2|$.}
+    \label{fig:graph_ex1}
 \end{figure}
 
 \subsubsection{Vorrangwarteschlangen}
 Eine \ac{PQ} ist eine Datenstruktur, in der nur auf das Element mit der höchsten Priorität
 zugegriffen werden kann. Eine \ac{PQ} unterstützt in der Regel die folgenden Operationen:
 \begin{enumerate}
-	\item Einfügen (Push): Ein Element wird mit seiner zugehörigen Priorität in die Warteschlange
-	      eingefügt. Das Element wird entsprechend seiner Priorität platziert.
-	\item Entfernen (Pop): Das Element mit der aktuell höchsten Priorität wird aus der Warteschlange
-	      entfernt und zurückgegeben.
+    \item Einfügen (Push): Ein Element wird mit seiner zugehörigen Priorität in die Warteschlange
+          eingefügt. Das Element wird entsprechend seiner Priorität platziert.
+    \item Entfernen (Pop): Das Element mit der aktuell höchsten Priorität wird aus der Warteschlange
+          entfernt und zurückgegeben.
 \end{enumerate}
 \ac{PQ}s werden allen nachfolgenden Suchalgorithmen verwendet, daher hat die Implementierung der
 Warteschlange einen großen Einfluss auf die Laufzeit der Algorithmen. In der Arbeit wird die
@@ -171,44 +172,251 @@ Der Algorithmus besteht aus einer Initialisierungsphase, in der die Kosten $dist
 auf den Wert $\infty$ gesetzt werden. Bereits besuchte Knoten werden in der Menge $M$ gespeichert,
 um zu verhindern, dass Knoten doppelte besucht werden. Um am Ende nicht nur die Kosten, sondern auch
 den Weg zu erhalten wird zusätzlich der Vorgänger $P$ für jeden Knoten gespeichert. In folgender
-Implementierung wird eine Min-Vorrangwarteschlange $Q$ verwendet, in der zu Beginn der Startknoten $s$ mit
-Kosten 0 eingefügt wird. In der Hauptschleife wird nun solange ein Knoten $u \in V - S$ aus der
-Warteschlange entnommen, bis diese leer ist. Wenn ein Nachbarknoten $v$ von $u$ noch nicht besucht
-wurde, werden die Kosten $dist(v)$ aktualisiert, falls der Weg über $u$ kürzer ist. Der Vorgänger
-$P(v)$ wird ebenfalls aktualisiert und der Knoten $v$ in die Warteschlange eingefügt. Der
-Algorithmus  terminiert, wenn alle Knoten besucht wurden. Die Laufzeit des Algorithmus beträgt
-$\Theta(|V|^2)$, wenn eine Adjazenzmatrix verwendet wird, oder $\Theta(|E| + |V| \log |V|)$, wenn
-Adjazenzlisten verwendet werden \cite{intro.algo}.\\
-
+Implementierung wird eine Min-Vorrangwarteschlange $Q$ verwendet, in der zu Beginn der Startknoten
+$s$ mit Kosten 0 eingefügt wird. In der Hauptschleife wird nun solange ein Knoten $u \in V - S$ aus
+der Warteschlange entnommen, bis diese leer ist. Wenn ein Nachbarknoten $v$ von $u$ noch nicht
+besucht wurde, werden die Kosten $dist(v)$ aktualisiert, falls der Weg über $u$ kürzer ist. Der
+Vorgänger $P(v)$ wird ebenfalls aktualisiert und der Knoten $v$ in die Warteschlange eingefügt. Der
+Algorithmus  terminiert, wenn alle Knoten besucht wurden.
 \begin{algorithm}[H]
-	\caption{Algorithmus nach Dijkstra}
-	\label{algo:dijkstra}
-	\begin{algorithmic}
-		\Function{Dijkstra}{G, s}
-		\State Kosten $dist$ für alle Knoten außer $s$ mit $\infty$ bewerten
-		\State dist(s) = 0
-		\State Besuchte Knoten $M = \emptyset$
-		\State Vorgänger $P = \emptyset$
-		\State Q.push(s)
+    \caption{Algorithmus nach Dijkstra}
+    \label{algo:dijkstra}
+    \begin{algorithmic}
+        \Function{Dijkstra}{G, s}
+        \State Kosten $dist$ für alle Knoten außer $s$ mit $\infty$ bewerten
+        \State dist(s) = 0
+        \State Besuchte Knoten $M = \emptyset$
+        \State Vorgänger $P = \emptyset$
+        \State Q.push(s)
 
-		\While{$Q \ne \emptyset$}
-		\State u = Q.pop()
-		\State $M = M \cup \{u\}$
+        \While{$Q \ne \emptyset$}
+        \State u = Q.pop()
+        \State $M = M \cup \{u\}$
 
-		\For{alle ausgehenden Kanten $e(u,v) \in Adj[u]$ und v $\notin M$}
-		\If{dist(u) + w(u,v) < dist(v)}
-		\State dist(v) = dist(u) + w(u,v)
-		\State P(v) = u
-		\State Q.push(v)
-		\EndIf
-		\EndFor
-		\EndWhile
-		\EndFunction
-	\end{algorithmic}
+        \For{alle ausgehenden Kanten $e(u,v) \in$ Adj[u] und v $\notin M$}
+        \If{dist(u) + w(u,v) < dist(v)}
+        \State dist(v) = dist(u) + w(u,v)
+        \State P(v) = u
+        \State Q.push(v)
+        \EndIf
+        \EndFor
+        \EndWhile
+        \EndFunction
+    \end{algorithmic}
 \end{algorithm}
+Die Laufzeit des Algorithmus hängt hauptsächlich von der Implementierung der Prioritätswarteschlange
+ab. Mit der verwendeten Implementierung ergibt sich eine Laufzeit von $\Theta(|E| + |V| \log |V|)$,
+wenn Adjazenzlisten verwendet werden \cite{intro.algo}.
+% \todo{Laufzeiten angeben? Mehrwert?}
 
 
-\subsubsection{Zielorientiert}
+\subsubsection{Bidirektionaler Dijkstra}
+Eine weitere Variante des klassischen DIjkstra-Algorithmus ist die Erweiterung um Bidirektionalität.
+Im Gegensatz zum herkömmlichen Algorithmus, der nur in einer Richtung vom Startknoten zum Zielknoten
+arbeitet, führt der bidirektionale Dijkstra-Algorithmus eine Suche von beiden Knoten gleichzeitig
+durch. Die Rückwärtssuche traversiert dabei den transponierten Graphen, \dH die Richtung der Kanten
+sind invertiert.
+
+Der Algorithmus verwendet zwei Prioritätswarteschlangen, eine für die Vorwärtsrichtung und eine für
+die Rückwärtsrichtung. Der Ablauf des Algorithmus ist in Abbildung~\ref{fig:bidirectional_dijkstra}
+illustriert.
+
+\begin{enumerate}
+    \item Initialisierung: Jede Prioritätswarteschlange wird mit dem Startknoten bzw. dem Zielknoten
+          initialisiert. Die vorläufigen Werte werden auf 0 für den Startknoten bzw. auf unendlich
+          für den Zielknoten gesetzt.
+
+    \item Expansionsschritt: In jedem Schritt wird der Knoten mit dem kleinsten vorläufigen Wert
+          sowohl in der Vorwärts- als auch in der Rückwärtsrichtung ausgewählt. Es werden die
+          benachbarten Knoten in beiden Richtungen untersucht und die vorläufigen Werte
+          aktualisiert, wenn ein kürzerer Weg gefunden wird.
+
+    \item Überprüfung des Treffpunkts: Bei jedem Expansionsschritt wird überprüft, ob der aktuelle
+          Knoten in beiden Richtungen erreicht wurde. Wenn ein Knoten in beiden Richtungen erreicht
+          wurde, gibt es einen potenziellen Pfad von Start zu Ziel.
+
+    \item Terminierung: Der Algorithmus terminiert, wenn beide Prioritätswarteschlangen
+          leer sind.
+
+    \item Kürzester Weg: Für jeden Knoten $u$ der von beiden Seiten relaxiert wurde, wird die Summe
+          $dist(s,t) = dist(s,u) + dist(t,u)$ berechnet. Der kürzeste Weg verläuft über den Knoten bei dem
+          die Summe minimal ist.
+
+    \item Rückverfolgung des kürzesten Pfades: Wenn ein Treffpunkt gefunden wurde, kann der kürzeste
+          Pfad durch Rückverfolgung der Vorgängerknoten von Startknoten bis zum Treffpunkt in der
+          Vorwärtsrichtung und von Zielknoten bis zum Treffpunkt in der Rückwärtsrichtung
+          rekonstruiert werden.
+\end{enumerate}
+
+
+\begin{figure}[H]
+    \begin{tblr}{
+        colspec = {X[c]X[c]},
+        rowspec = {Q[m]Q[c]},
+        stretch = 0,
+        rowsep = 4pt,
+        hlines = {red5, 0pt},
+        vlines = {red5, 0pt},
+        }
+        \begin{tikzpicture}[
+                xscale=.8,yscale=.8,
+                box/.style = {draw, minimum size=6mm, inner sep=0pt, outer sep=0pt, anchor=south}
+            ]
+            \Text[position=left,distance=1cm]{(a)}
+            \Vertices{data/graphs/ex2/vertices.csv}
+            \Edges{data/graphs/ex2/edges.csv}
+            \Text[x=1.5,y=2.0]{$\infty$}
+            \Text[x=1.5,y=-2.0]{$\infty$}
+            \Text[x=2.5,y=-2.0]{3}
+            \Text[x=2.5,y=2.0]{$\infty$}
+            \Vertex[x=4,y=1,opacity=0,size=0,Pseudo] {F};
+            \Vertex[x=4,y=-1,opacity=0,size=0,Pseudo] {B};
+            \matrix (mat1) [matrix of nodes,
+                nodes={box},
+                align=left,
+                right=3em of F,
+                column sep=-\pgflinewidth,
+                inner sep=0pt,
+                ampersand replacement=\&,
+            ]
+            {
+                P \& Q \\
+            };
+            \node[left=2mm of mat1-1-1]{$Q_{fwd}$};
+            \matrix (mat2) [matrix of nodes,
+                right=3em of B,
+                nodes={box},
+                column sep=-\pgflinewidth,
+                inner sep=0pt,
+                ampersand replacement=\&,
+            ]
+            {
+                Q \& P \\
+            };
+            \node[left=2mm of mat2-1-1]{$Q_{bwd}$};
+        \end{tikzpicture}       &
+        \begin{tikzpicture}[
+                xscale=.8,yscale=.8,
+                box/.style = {draw, minimum size=6mm, inner sep=0pt, outer sep=0pt, anchor=south}
+            ]
+            \Text[position=left,distance=1cm]{(b)}
+            \Vertices{data/graphs/ex2/vertices.csv}
+            \Edges{data/graphs/ex2/edges.csv}
+            \Text[x=1.5,y=2.0]{$\infty$}
+            \Text[x=1.5,y=-2.0]{$\infty$}
+            \Text[x=2.5,y=-2.0]{3}
+            \Text[x=2.5,y=2.0,]{5}
+            \Vertex[x=4,y=1,opacity=0,size=0,Pseudo] {F};
+            \Vertex[x=4,y=-1,opacity=0,size=0,Pseudo] {B};
+            \matrix (mat1) [matrix of nodes,
+                nodes={box},
+                align=left,
+                right=3em of F,
+                column sep=-\pgflinewidth,
+                inner sep=0pt,
+                ampersand replacement=\&,
+            ]
+            {
+                P \& Q \\
+            };
+            \node[left=2mm of mat1-1-1]{$Q_{fwd}$};
+            \matrix (mat2) [matrix of nodes,
+                right=3em of B,
+                nodes={box},
+                column sep=-\pgflinewidth,
+                inner sep=0pt,
+                ampersand replacement=\&,
+            ]
+            {
+                P \& \\
+            };
+            \node[left=2mm of mat2-1-1]{$Q_{bwd}$};
+        \end{tikzpicture}       \\
+        \begin{tikzpicture}[
+                xscale=.8,yscale=.8,
+                box/.style = {draw, minimum size=6mm, inner sep=0pt, outer sep=0pt, anchor=south}
+            ]
+            \Text[position=left,distance=1cm]{(c)}
+            \Vertices{data/graphs/ex2/vertices.csv}
+            \Edges{data/graphs/ex2/edges.csv}
+            \Vertex[x=2,y=1.5,color=black,fontcolor=white,label=P]{P}
+            \Text[x=1.5,y=2.0]{8}
+            \Text[x=1.5,y=-2.0]{$\infty$}
+            \Text[x=2.5,y=-2.0]{3}
+            \Text[x=2.5,y=2.0]{5}
+            \Vertex[x=4,y=1,opacity=0,size=0,Pseudo] {F};
+            \Vertex[x=4,y=-1,opacity=0,size=0,Pseudo] {B};
+            \matrix (mat1) [matrix of nodes,
+                nodes={box},
+                align=left,
+                right=3em of F,
+                column sep=-\pgflinewidth,
+                inner sep=0pt,
+                ampersand replacement=\&,
+            ]
+            {
+                Q \& P \\
+            };
+            \node[left=2mm of mat1-1-1]{$Q_{fwd}$};
+            \node[left=2mm of mat2-1-1](QBWD){$Q_{bwd}$};
+            \node[right=2mm of QBWD]{$\emptyset$};
+        \end{tikzpicture} &
+        \begin{tikzpicture}[
+                xscale=.8,yscale=.8,
+                box/.style = {draw, minimum size=6mm, inner sep=0pt, outer sep=0pt, anchor=south}
+            ]
+            \Text[position=left,distance=1cm]{(d)}
+            \Vertices{data/graphs/ex2/vertices.csv}
+            \Edges{data/graphs/ex2/edges.csv}
+            \Vertex[x=2,y=-1.5,color=black,fontcolor=white,label=Q]{Q}
+            \Vertex[x=2,y=1.5,color=black,fontcolor=white,label=P]{P}
+            \Vertex[x=0,y=0,opacity=0]{S}
+            \Vertex[x=4,y=0,opacity=0]{T}
+            \Edge[lw=5pt,color=gray,opacity=0.3](S)(Q)
+            \Edge[lw=5pt,color=gray,opacity=0.3](Q)(T)
+            \Text[x=1.5,y=2.0]{8}
+            \Text[x=1.5,y=-2.0]{9}
+            \Text[x=2.5,y=-2.0]{3}
+            \Text[x=2.5,y=2.0]{5}
+            \Vertex[x=4,y=1,opacity=0,size=0,Pseudo] {F};
+            \Vertex[x=4,y=-1,opacity=0,size=0,Pseudo] {B};
+            \matrix (mat1) [matrix of nodes,
+                nodes={box},
+                align=left,
+                right=3em of F,
+                column sep=-\pgflinewidth,
+                inner sep=0pt,
+                ampersand replacement=\&,
+            ]
+            {
+                P \& \\
+            };
+            \node[left=2mm of mat1-1-1]{$Q_{fwd}$};
+            \matrix (mat2) [matrix of nodes,
+                right=3em of B,
+                nodes={box},
+                column sep=-\pgflinewidth,
+                inner sep=0pt,
+                ampersand replacement=\&,
+            ]
+            {
+                \& \\
+            };
+            \node[left=2mm of mat2-1-1](QBWD){$Q_{bwd}$};
+            \node[right=2mm of QBWD]{$\emptyset$};
+        \end{tikzpicture} \\
+    \end{tblr}
+    \caption{Bidirektionale Suche von S nach T: In Schritt (a) und (b) wird zuerst Knoten Q und P von der
+        Rückwärtssuche relaxiert. In den Schritten (c) und (d) wird P und Q von der Vorwärtssuche
+        relaxiert. Obwohl P der erste Knoten  ist, der von beiden Suchen relaxiert wurde, ist der
+        Weg über Q am kürzesten.}
+    \label{fig:bidirectional_dijkstra}
+\end{figure}
+
+Der bidirektionale Dijkstra Algorithmus kann die Anzahl der untersuchten Knoten im Vergleich zum
+herkömmlichen Dijkstra reduzieren, insbesondere in großen Graphen. Durch die gleichzeitige Suche in
+beiden Richtungen kann er die Laufzeit verbessern, indem er die Anzahl der Expansionsschritte und
+die Anzahl der Knoten, die in Betracht gezogen werden, reduziert.
 \subsubsection{Hierarchisch}
 
 \subsection{OpenStreetMap}
