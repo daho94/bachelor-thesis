@@ -39,10 +39,6 @@
 \newcommand*{\dH}{d.\,h. } % Non-breaking d.h.
 \newcommand*{\ua}{u.\,a. } % Non-breaking u.a.
 
-% Ignore todo notes with tikzexternalize
-\makeatletter
-\renewcommand{\todo}[2][]{\tikzexternaldisable\@todo[#1]{#2}\tikzexternalenable}
-\makeatother
 
 % **************************************************
 % PDF Metadata
@@ -78,7 +74,6 @@
 \clearpage
 \lstlistoflistings
 
-\listoftodos
 
 \clearpage
 \include{pages/acronyms}
