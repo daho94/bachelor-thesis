@@ -55,12 +55,14 @@
 \usepackage{setspace}
 
 % Allow to draw figures
+\usepackage{tikz,pgfplots}
 \usepackage{tikz-network}
 \usetikzlibrary{
     % external,
     arrows.meta,
     matrix,
     positioning,
+    patterns,
 }
 % \tikzexternalize[prefix=cache/]
 
@@ -75,6 +77,13 @@
 \usepackage{subcaption}
 
 \usepackage{tabularray}
+
+% For proofs
+\usepackage{amsthm}
+\usepackage{amssymb}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
 
 
 % **************************************************
