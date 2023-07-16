@@ -248,16 +248,16 @@ illustriert.
           rekonstruiert werden.
 \end{enumerate}
 
+\SetVertexStyle[FillColor=white]
 \begin{figure}[H]
     \begin{tblr}{
         colspec = {X[c]X[c]},
-        rowspec = {Q[m]Q[c]},
+        rowspec = {Q[m]Q[m]},
         stretch = 0,
         rowsep = 4pt,
         hlines = {red5, 0pt},
         vlines = {red5, 0pt},
         }
-        \SetVertexStyle[FillColor=white]
         \begin{tikzpicture}[
                 xscale=.8,yscale=.8,
                 box/.style = {draw, minimum size=6mm, inner sep=0pt, outer sep=0pt, anchor=south}
@@ -310,17 +310,13 @@ illustriert.
             \Text[x=1.5,y=-2.0]{$\infty$}
             \Text[x=2.5,y=-2.0]{3}
             \Text[x=2.5,y=2.0,]{5}
-
             \Vertex[x=4,y=1,opacity=0,size=0,Pseudo] {F}
             \Vertex[x=4,y=-1,opacity=0,size=0,Pseudo] {B}
-
             \Vertex[x=0,y=0,style={pattern=horizontal lines},IdAsLabel=true] {S}
             \Vertex[x=4,y=0,style={pattern=vertical lines},IdAsLabel=true] {T}
             \Vertex[x=2,y=-1.5,style={pattern=horizontal lines},IdAsLabel=true] {Q}
             \Vertex[x=2,y=1.5,style={pattern=horizontal lines},IdAsLabel=true] {P}
-
             \Edges{data/graphs/ex2/edges.csv}
-
             \matrix (mat1) [matrix of nodes,
                 nodes={box},
                 align=left,
