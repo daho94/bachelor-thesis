@@ -40,6 +40,10 @@
 \newcommand*{\ua}{u.\,a. } % Non-breaking u.a.
 \newcommand*{\osmcr}{$\copyright$ OpenStreetMap contributors}
 
+% Create custom for each
+\algnewcommand\algorithmicforeach{\textbf{for each}}
+\algdef{S}[FOR]{ForEach}[1]{\algorithmicforeach\ #1\ \algorithmicdo}
+
 
 % **************************************************
 % PDF Metadata
@@ -58,7 +62,7 @@
 % Content
 % **************************************************
 
-\includeonly{chapters/02_foundations}
+% \includeonly{chapters/02_foundations}
 \begin{document}
 
 \include{pages/title}
