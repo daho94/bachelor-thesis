@@ -180,10 +180,10 @@ besucht wurde, werden die Kosten $dist(v)$ aktualisiert, falls der Weg über $u$
 Vorgänger $P(v)$ wird ebenfalls aktualisiert und der Knoten $v$ in die Warteschlange eingefügt. Der
 Algorithmus  terminiert, wenn alle Knoten besucht wurden.
 \begin{algorithm}[H]
-    \caption{Algorithmus nach Dijkstra}
+    \caption{DIJKSTRA(G,s)}
     \label{algo:dijkstra}
     \begin{algorithmic}
-        \Function{Dijkstra}{G, s}
+        % \Function{Dijkstra}{G, s}
         \State Kosten $dist$ für alle Knoten außer $s$ mit $\infty$ bewerten
         \State dist(s) = 0
         \State Besuchte Knoten $S = \emptyset$
@@ -202,7 +202,7 @@ Algorithmus  terminiert, wenn alle Knoten besucht wurden.
         \EndIf
         \EndFor
         \EndWhile
-        \EndFunction
+        % \EndFunction
     \end{algorithmic}
 \end{algorithm}
 Die Laufzeit des Algorithmus hängt hauptsächlich von der Implementierung der Prioritätswarteschlange
@@ -559,24 +559,24 @@ was zu schnellen Antwortzeiten führt. Der CH-Algorithmus lässt sich in zwei Ko
 
 
 \subsubsection{Vorverarbeitung}
-In dieser Phase wird der Graph $G = (V,E)$ um zusätzliche Abkürzungskanten erweitert. Der neu
-entstandene Graph wird als \emph{Overlaygraphh} $G^{*} = (V,E')$ bezeichnet, wobei $E'$ alle
-ursprünglichen sowie Abkürzungskanten enthält. Die Abkürzungskanten werden im Prozess der
-Knotenkontraktion (eng. Node Contraction) eingefügt. Wenn ein Knoten $v \in V$ \emph{kontraktiert}
-wird, dann wird er und alle Kanten die mit $v$ inzident sind aus dem Graphen entfernt. Wenn $v$ auf
-dem kürzesten Weg zwischen zwei benachbarten Knoten $u$ und $w$ liegt, dann wird eine
+In dieser Phase wird der Graph $G = (V,E)$ um zusätzliche Abkürzungskanten erweitert. Die
+Abkürzungskanten werden im Prozess der Knotenkontraktion (eng. Node Contraction) eingefügt. Wenn ein
+Knoten $v \in V$ \emph{kontraktiert} wird, dann wird er und alle Kanten die mit $v$ inzident sind
+aus dem Graphen entfernt. Der Zeitpunkt des Entfernens ist gleichzeitig das \emph{Level} des
+Knotens. Je später der Knoten entfernt wird, desto höher ist sein Level und damit seine Relevanz.
+Wenn $v$ auf dem kürzesten Weg zwischen zwei benachbarten Knoten $u$ und $w$ liegt, dann wird eine
 Abkürzungskante $e(u,w)$ mit $w(u,w) = w(u,v) + w(v,w)$ eingefügt, um den kürzesten Weg zu erhalten.
 
 Abbildung~\ref{fig:ex_contraction} demonstriert den Prozess: Knoten $v$ soll kontraktiert werden und
 damit er und seine inzidenten Kanten entfernt werden. Sei $U$ die Menge aller eingehenden Kanten und
 $W$ die Menge aller ausgehenden Kanten, dann muss für jedes Paar überprüft werden, ob $v$ auf dem
-kürzesten Weg <$u_i,v,w_j$>, $u \in U, w \in W$ zwischen zwei benachbarten Knoten $u_i$ und $w_j$
-liegt. Zum Beispiel ist dies zwischen $u_1$ und $w_2$ der Fall, denn es gibt keine andere
-Möglichkeit $w_2$ zu erreichen, als über $v$. Um den kürzesten Weg zu erhalten, wird eine
-Abkürzungskante $e(u_1,w_2)$ mit dem Gewicht $w(u_1,w_2)=w(u_1,v)+w(v,w_2)=1+1=2$ eingefügt. Das
-gleiche gilt für <$u_2,v,w_1$> und <$u_2,v,w_2$>. Der Weg von $u_1$ nach $w_1$ kann allerding über
-<$u_1,x,y,w_1$> schneller erreicht werden (Kosten 3 sind kleiner als 4) und es muss daher keine
-Abkürzungskante eingefügt werden.
+kürzesten Weg <$u,v,w$> zwischen zwei benachbarten Knoten $u \in U$ mit $Level(u) > Level(v)$ und $w
+    \in W$ mit $Level(w) > Level(v)$ liegt. Zum Beispiel ist dies zwischen $u_1$ und $w_2$ der Fall,
+denn es gibt keine andere Möglichkeit $w_2$ zu erreichen, als über $v$. Um den kürzesten Weg zu
+erhalten, wird eine Abkürzungskante $e(u_1,w_2)$ mit dem Gewicht
+$w(u_1,w_2)=w(u_1,v)+w(v,w_2)=1+1=2$ eingefügt. Das gleiche gilt für <$u_2,v,w_1$> und
+<$u_2,v,w_2$>. Der Weg von $u_1$ nach $w_1$ kann allerding über <$u_1,x,y,w_1$> schneller erreicht
+werden (Kosten 3 sind kleiner als 4) und es muss daher keine Abkürzungskante eingefügt werden.
 \begin{figure}[h]
     \centering
     \begin{subfigure}[b]{0.45\textwidth}
@@ -630,6 +630,85 @@ Abkürzungskante eingefügt werden.
     \label{fig:ex_contraction}
 \end{figure}
 
+Nachdem jeder Knoten kontraktiert wurde, erhält man einen neuen Graph  ${G^{*} = (V,E')}$, der als
+\emph{Overlaygraphh} bezeichnet wird. $E'$ enthält alle ursprünglichen Kanten sowie die neu
+hinzugefügten Abkürzungskanten (siehe Abbildung~\ref{fig:overlaygraph}).
+
+Algorithmus zur Erstellung einer \ac{CH}
+
+\begin{algorithm}[H]
+    \caption{RUN\_CONTRACTION(G)}
+    \label{algo:contraction}
+    \begin{algorithmic}
+        \ForEach{$v \in V$ geordnet nach Level}
+        \ForEach{$(u,v) \in E$ mit $Level(u) > Level(v)$}
+        \ForEach{$(v,w) \in E$ mit $Level(w) > Level(v)$}
+        \If{<u,v,w> ist kürzester Weg von $u$ nach $w$}
+        \State $E = E \cup \{e(u,w)\}$ mit Gewicht ${w(u,w) = w(u,v) + w(v,w)}$
+        \EndIf
+        \EndFor
+        \EndFor
+        \EndFor
+    \end{algorithmic}
+\end{algorithm}
+
+\textbf{Beweis: Kontraktion erhält kürzeste Wege}
+\begin{lemma}
+    Sei $G = (V,E)$ ein beliebiger Graph und $G' = (V',E')$ der Graph nach Kontratkion von einem
+    beliebigen Knoten $v \in V$ mit $V' = V - \{v\}$.\\
+    Dann gilt für alle $s,t \in V'$: ${dist_{G'}(s,t) = dist_{G}(s,t)}$.
+\end{lemma}
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed euismod, nisl quis tincidunt
+pellentesque, nunc nisl ultrices ipsum, quis aliquam nunc nisl ut nunc. Nulla facilisi. Nulla
+
+
+\SetVertexStyle[MinSize = 4.5mm]
+\SetLayerDistance{-7}
+\SetPlaneWidth{15}
+\SetPlaneHeight{7}
+\begin{figure}
+
+    \begin{tikzpicture}[multilayer=3d,xscale=.7,yscale=.7]
+        %
+        % Layer 2
+
+        % Background
+        \Plane[layer=2,x=1,y=1,NoBorder,InBG]
+
+        % Text
+        \Text[x=1.2,y=0.8,layer=2,anchor=north west,style={scale=2.0}]{Originalgraph $G$}
+
+        % Vertices
+        \Vertices[color=orange]{data/graphs/ex3/vertices.csv}
+
+        % Intra-layer edges in layer 2
+        \Edges[layer={2,2},NoLabel]{data/graphs/ex3/edges_with_shortcuts.csv}
+        \EdgesNotInBG
+
+        % Inter-layer edges between layer 1 and 2
+        \Edges[color=black,NoLabel,layer={1,2},style={dashed}]{data/graphs/ex3/edges_with_shortcuts.csv}
+
+        %%
+        % Layer 1
+
+        % Background
+        \Plane[x=1,y=1,NoBorder,color=orange]
+
+        % Text
+        \Text[x=1.2,y=0.8,layer=1,anchor=north west,style={scale=2.0}]{Overlaygraph $G^{*}$}
+
+        % Intra-layer edges in layer 1
+        \Edges[layer={1,1},NoLabel]{data/graphs/ex3/edges_with_shortcuts.csv}
+
+        % Vertices in layer 1
+        \Vertices[layer=1,color=blue]{data/graphs/ex3/vertices.csv}
+
+
+    \end{tikzpicture}
+    \caption[Overlaygraph]{Overlaygraph nach Kontraktionsprozess. Der Graph $G^{*}$ enthält alle
+        ursprünglichen Kanten sowie die neu hinzugefügten Abkürzungskanten.}
+    \label{fig:overlaygraph}
+\end{figure}
 
 \subsubsection{Suche}
 
