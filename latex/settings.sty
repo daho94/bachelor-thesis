@@ -55,7 +55,8 @@
 \usepackage{setspace}
 
 % Allow to draw figures
-% \usepackage{tikz,pgfplots}
+\usepackage{pgfplots}
+\pgfplotsset{compat=newest}
 \usepackage{tikz-network}
 \usetikzlibrary{
     % external,
@@ -64,7 +65,8 @@
     positioning,
     patterns,
 }
-% \tikzexternalize[prefix=cache/]
+% \tikzexternalize[prefix=./tikz/]
+% \tikzexternalize[prefix=tikz/,shell escape=-enable-write18]
 
 % Allows to draw complex tables or matrices
 \usepackage{blkarray}
@@ -91,7 +93,7 @@
 % **************************************************
 
 % Use biblatex with biber for bibliography
-\usepackage[backend=biber,style=numeric,sorting=none]{biblatex}
+\usepackage[backend=biber,style=numeric,sorting=anyt]{biblatex}
 
 % Add source for bibliographic database
 \addbibresource{bibliography.bib}
