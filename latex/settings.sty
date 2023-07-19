@@ -65,6 +65,7 @@
     positioning,
     patterns,
 }
+\usepackage{standalone}
 % \tikzexternalize[prefix=./tikz/]
 % \tikzexternalize[prefix=tikz/,shell escape=-enable-write18]
 
@@ -86,7 +87,8 @@
 
 \newtheorem{theorem}{Theorem}[section]
 \newtheorem{lemma}[theorem]{Lemma}
-
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
 
 % **************************************************
 % Bibliography
