@@ -1,0 +1,180 @@
+\documentclass{standalone}
+
+% pgfplots
+\usepackage{pgfplots}
+\pgfplotsset{compat=newest}
+\usepackage{xcolor}
+\usepackage{blkarray}
+\usepackage{tabularray}
+\usepackage{tabularx}
+\usepackage{tikz-network}
+\usetikzlibrary{
+    arrows.meta,
+    matrix,
+    positioning,
+    patterns,
+}
+\begin{document}
+\begin{tblr}{
+    colspec = {X[c]X[c]},
+    rowspec = {Q[m]Q[m]},
+    stretch = 0,
+    rowsep = 4pt,
+    hlines = {red5, 0pt},
+    vlines = {red5, 0pt},
+    }
+    \begin{tikzpicture}[
+            xscale=.8,yscale=.8,
+            box/.style = {draw, minimum size=6mm, inner sep=0pt, outer sep=0pt, anchor=south}
+        ]
+        \Text[position=left,distance=1cm]{(a)}
+        \Text[x=1.5,y=2.0]{$\infty$}
+        \Text[x=1.5,y=-2.0]{$\infty$}
+        \Text[x=2.5,y=-2.0]{3}
+        \Text[x=2.5,y=2.0]{$\infty$}
+        \Vertex[x=4,y=1,opacity=0,size=0,Pseudo] {F}
+        \Vertex[x=4,y=-1,opacity=0,size=0,Pseudo] {B}
+
+        \Vertex[x=0,y=0,style={pattern=horizontal lines},IdAsLabel=true] {S}
+        \Vertex[x=4,y=0,style={pattern=vertical lines},IdAsLabel=true] {T}
+        \Vertex[x=2,y=-1.5,style={pattern=horizontal lines},IdAsLabel=true] {Q}
+        \Vertex[x=2,y=1.5,IdAsLabel=true] {P}
+
+        \Edges{../data/graphs/ex2/edges.csv}
+
+        \matrix (mat1) [matrix of nodes,
+            nodes={box},
+            align=left,
+            right=3em of F,
+            column sep=-\pgflinewidth,
+            inner sep=0pt,
+            ampersand replacement=\&,
+        ]
+        {
+            P \& Q \\
+        };
+        \node[left=2mm of mat1-1-1]{$Q_{fwd}$};
+        \matrix (mat2) [matrix of nodes,
+            right=3em of B,
+            nodes={box},
+            column sep=-\pgflinewidth,
+            inner sep=0pt,
+            ampersand replacement=\&,
+        ]
+        {
+            Q \& P \\
+        };
+        \node[left=2mm of mat2-1-1]{$Q_{bwd}$};
+    \end{tikzpicture}  &
+    \begin{tikzpicture}[
+            xscale=.8,yscale=.8,
+            box/.style = {draw, minimum size=6mm, inner sep=0pt, outer sep=0pt, anchor=south}
+        ]
+        \Text[position=left,distance=1cm]{(b)}
+        \Text[x=1.5,y=2.0]{$\infty$}
+        \Text[x=1.5,y=-2.0]{$\infty$}
+        \Text[x=2.5,y=-2.0]{3}
+        \Text[x=2.5,y=2.0,]{5}
+        \Vertex[x=4,y=1,opacity=0,size=0,Pseudo] {F}
+        \Vertex[x=4,y=-1,opacity=0,size=0,Pseudo] {B}
+        \Vertex[x=0,y=0,style={pattern=horizontal lines},IdAsLabel=true] {S}
+        \Vertex[x=4,y=0,style={pattern=vertical lines},IdAsLabel=true] {T}
+        \Vertex[x=2,y=-1.5,style={pattern=horizontal lines},IdAsLabel=true] {Q}
+        \Vertex[x=2,y=1.5,style={pattern=horizontal lines},IdAsLabel=true] {P}
+        \Edges{../data/graphs/ex2/edges.csv}
+        \matrix (mat1) [matrix of nodes,
+            nodes={box},
+            align=left,
+            right=3em of F,
+            column sep=-\pgflinewidth,
+            inner sep=0pt,
+            ampersand replacement=\&,
+        ]
+        {
+            P \& Q \\
+        };
+        \node[left=2mm of mat1-1-1]{$Q_{fwd}$};
+        \matrix (mat2) [matrix of nodes,
+            right=3em of B,
+            nodes={box},
+            column sep=-\pgflinewidth,
+            inner sep=0pt,
+            ampersand replacement=\&,
+        ]
+        {
+            P \& \\
+        };
+        \node[left=2mm of mat2-1-1]{$Q_{bwd}$};
+    \end{tikzpicture} \\
+    \begin{tikzpicture}[
+            xscale=.8,yscale=.8,
+            box/.style = {draw, minimum size=6mm, inner sep=0pt, outer sep=0pt, anchor=south}
+        ]
+        \Text[position=left,distance=1cm]{(c)}
+        \Text[x=1.5,y=2.0]{8}
+        \Text[x=1.5,y=-2.0]{$\infty$}
+        \Text[x=2.5,y=-2.0]{3}
+        \Text[x=2.5,y=2.0]{5}
+        \Vertex[x=4,y=1,opacity=0,size=0,Pseudo] {F}
+        \Vertex[x=4,y=-1,opacity=0,size=0,Pseudo] {B}
+
+        \Vertex[x=0,y=0,style={pattern=horizontal lines},IdAsLabel=true] {S}
+        \Vertex[x=4,y=0,style={pattern=vertical lines},IdAsLabel=true] {T}
+        \Vertex[x=2,y=1.5,style={pattern=grid},IdAsLabel=true] {P}
+        \Vertex[x=2,y=-1.5,style={pattern=horizontal lines},IdAsLabel=true] {Q}
+
+        \Edges{../data/graphs/ex2/edges.csv}
+
+        \matrix (mat1) [matrix of nodes,
+            nodes={box},
+            align=left,
+            right=3em of F,
+            column sep=-\pgflinewidth,
+            inner sep=0pt,
+            ampersand replacement=\&,
+        ]
+        {
+            Q \& P \\
+        };
+        \node[left=2mm of mat1-1-1]{$Q_{fwd}$};
+        \node[left=2mm of mat2-1-1](QBWD){$Q_{bwd}$};
+        \node[right=2mm of QBWD]{$\emptyset$};
+    \end{tikzpicture} &
+    \begin{tikzpicture}[
+            xscale=.8,yscale=.8,
+            box/.style = {draw, minimum size=6mm, inner sep=0pt, outer sep=0pt, anchor=south}
+        ]
+        \Text[position=left,distance=1cm]{(d)}
+        \Text[x=1.5,y=2.0]{8}
+        \Text[x=1.5,y=-2.0]{9}
+        \Text[x=2.5,y=-2.0]{3}
+        \Text[x=2.5,y=2.0]{5}
+        \Vertex[x=4,y=1,opacity=0,size=0,Pseudo] {F}
+        \Vertex[x=4,y=-1,opacity=0,size=0,Pseudo] {B}
+
+        \Vertex[x=0,y=0,style={pattern=horizontal lines},IdAsLabel=true] {S}
+        \Vertex[x=4,y=0,style={pattern=vertical lines},IdAsLabel=true] {T}
+        \Vertex[x=2,y=1.5,style={pattern=grid},IdAsLabel=true] {P}
+        \Vertex[x=2,y=-1.5,style={pattern=grid},IdAsLabel=true] {Q}
+
+        \Edges{../data/graphs/ex2/edges.csv}
+        \Edge[lw=5pt,color=gray,opacity=0.3](S)(Q)
+        \Edge[lw=5pt,color=gray,opacity=0.3](Q)(T)
+
+        \matrix (mat1) [matrix of nodes,
+            nodes={box},
+            align=left,
+            right=3em of F,
+            column sep=-\pgflinewidth,
+            inner sep=0pt,
+            ampersand replacement=\&,
+        ]
+        {
+            P \& \\
+        };
+        \node[left=2mm of mat1-1-1]{$Q_{fwd}$};
+        \node[left=2mm of mat2-1-1](QBWD){$Q_{bwd}$};
+        \node[right=2mm of QBWD]{$\emptyset$};
+    \end{tikzpicture} \\
+\end{tblr}
+\end{document}
