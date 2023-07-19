@@ -249,168 +249,8 @@ illustriert.
 \end{enumerate}
 
 \begin{figure}[H]
-    \begin{tblr}{
-        colspec = {X[c]X[c]},
-        rowspec = {Q[m]Q[m]},
-        stretch = 0,
-        rowsep = 4pt,
-        hlines = {red5, 0pt},
-        vlines = {red5, 0pt},
-        }
-        \begin{tikzpicture}[
-                xscale=.8,yscale=.8,
-                box/.style = {draw, minimum size=6mm, inner sep=0pt, outer sep=0pt, anchor=south}
-            ]
-            \Text[position=left,distance=1cm]{(a)}
-            \Text[x=1.5,y=2.0]{$\infty$}
-            \Text[x=1.5,y=-2.0]{$\infty$}
-            \Text[x=2.5,y=-2.0]{3}
-            \Text[x=2.5,y=2.0]{$\infty$}
-            \Vertex[x=4,y=1,opacity=0,size=0,Pseudo] {F}
-            \Vertex[x=4,y=-1,opacity=0,size=0,Pseudo] {B}
-
-            \Vertex[x=0,y=0,style={pattern=horizontal lines},IdAsLabel=true] {S}
-            \Vertex[x=4,y=0,style={pattern=vertical lines},IdAsLabel=true] {T}
-            \Vertex[x=2,y=-1.5,style={pattern=horizontal lines},IdAsLabel=true] {Q}
-            \Vertex[x=2,y=1.5,IdAsLabel=true] {P}
-
-            \Edges{data/graphs/ex2/edges.csv}
-
-            \matrix (mat1) [matrix of nodes,
-                nodes={box},
-                align=left,
-                right=3em of F,
-                column sep=-\pgflinewidth,
-                inner sep=0pt,
-                ampersand replacement=\&,
-            ]
-            {
-                P \& Q \\
-            };
-            \node[left=2mm of mat1-1-1]{$Q_{fwd}$};
-            \matrix (mat2) [matrix of nodes,
-                right=3em of B,
-                nodes={box},
-                column sep=-\pgflinewidth,
-                inner sep=0pt,
-                ampersand replacement=\&,
-            ]
-            {
-                Q \& P \\
-            };
-            \node[left=2mm of mat2-1-1]{$Q_{bwd}$};
-        \end{tikzpicture} &
-        \begin{tikzpicture}[
-                xscale=.8,yscale=.8,
-                box/.style = {draw, minimum size=6mm, inner sep=0pt, outer sep=0pt, anchor=south}
-            ]
-            \Text[position=left,distance=1cm]{(b)}
-            \Text[x=1.5,y=2.0]{$\infty$}
-            \Text[x=1.5,y=-2.0]{$\infty$}
-            \Text[x=2.5,y=-2.0]{3}
-            \Text[x=2.5,y=2.0,]{5}
-            \Vertex[x=4,y=1,opacity=0,size=0,Pseudo] {F}
-            \Vertex[x=4,y=-1,opacity=0,size=0,Pseudo] {B}
-            \Vertex[x=0,y=0,style={pattern=horizontal lines},IdAsLabel=true] {S}
-            \Vertex[x=4,y=0,style={pattern=vertical lines},IdAsLabel=true] {T}
-            \Vertex[x=2,y=-1.5,style={pattern=horizontal lines},IdAsLabel=true] {Q}
-            \Vertex[x=2,y=1.5,style={pattern=horizontal lines},IdAsLabel=true] {P}
-            \Edges{data/graphs/ex2/edges.csv}
-            \matrix (mat1) [matrix of nodes,
-                nodes={box},
-                align=left,
-                right=3em of F,
-                column sep=-\pgflinewidth,
-                inner sep=0pt,
-                ampersand replacement=\&,
-            ]
-            {
-                P \& Q \\
-            };
-            \node[left=2mm of mat1-1-1]{$Q_{fwd}$};
-            \matrix (mat2) [matrix of nodes,
-                right=3em of B,
-                nodes={box},
-                column sep=-\pgflinewidth,
-                inner sep=0pt,
-                ampersand replacement=\&,
-            ]
-            {
-                P \& \\
-            };
-            \node[left=2mm of mat2-1-1]{$Q_{bwd}$};
-        \end{tikzpicture} \\
-        \begin{tikzpicture}[
-                xscale=.8,yscale=.8,
-                box/.style = {draw, minimum size=6mm, inner sep=0pt, outer sep=0pt, anchor=south}
-            ]
-            \Text[position=left,distance=1cm]{(c)}
-            \Text[x=1.5,y=2.0]{8}
-            \Text[x=1.5,y=-2.0]{$\infty$}
-            \Text[x=2.5,y=-2.0]{3}
-            \Text[x=2.5,y=2.0]{5}
-            \Vertex[x=4,y=1,opacity=0,size=0,Pseudo] {F}
-            \Vertex[x=4,y=-1,opacity=0,size=0,Pseudo] {B}
-
-            \Vertex[x=0,y=0,style={pattern=horizontal lines},IdAsLabel=true] {S}
-            \Vertex[x=4,y=0,style={pattern=vertical lines},IdAsLabel=true] {T}
-            \Vertex[x=2,y=1.5,style={pattern=grid},IdAsLabel=true] {P}
-            \Vertex[x=2,y=-1.5,style={pattern=horizontal lines},IdAsLabel=true] {Q}
-
-            \Edges{data/graphs/ex2/edges.csv}
-
-            \matrix (mat1) [matrix of nodes,
-                nodes={box},
-                align=left,
-                right=3em of F,
-                column sep=-\pgflinewidth,
-                inner sep=0pt,
-                ampersand replacement=\&,
-            ]
-            {
-                Q \& P \\
-            };
-            \node[left=2mm of mat1-1-1]{$Q_{fwd}$};
-            \node[left=2mm of mat2-1-1](QBWD){$Q_{bwd}$};
-            \node[right=2mm of QBWD]{$\emptyset$};
-        \end{tikzpicture} &
-        \begin{tikzpicture}[
-                xscale=.8,yscale=.8,
-                box/.style = {draw, minimum size=6mm, inner sep=0pt, outer sep=0pt, anchor=south}
-            ]
-            \Text[position=left,distance=1cm]{(d)}
-            \Text[x=1.5,y=2.0]{8}
-            \Text[x=1.5,y=-2.0]{9}
-            \Text[x=2.5,y=-2.0]{3}
-            \Text[x=2.5,y=2.0]{5}
-            \Vertex[x=4,y=1,opacity=0,size=0,Pseudo] {F}
-            \Vertex[x=4,y=-1,opacity=0,size=0,Pseudo] {B}
-
-            \Vertex[x=0,y=0,style={pattern=horizontal lines},IdAsLabel=true] {S}
-            \Vertex[x=4,y=0,style={pattern=vertical lines},IdAsLabel=true] {T}
-            \Vertex[x=2,y=1.5,style={pattern=grid},IdAsLabel=true] {P}
-            \Vertex[x=2,y=-1.5,style={pattern=grid},IdAsLabel=true] {Q}
-
-            \Edges{data/graphs/ex2/edges.csv}
-            \Edge[lw=5pt,color=gray,opacity=0.3](S)(Q)
-            \Edge[lw=5pt,color=gray,opacity=0.3](Q)(T)
-
-            \matrix (mat1) [matrix of nodes,
-                nodes={box},
-                align=left,
-                right=3em of F,
-                column sep=-\pgflinewidth,
-                inner sep=0pt,
-                ampersand replacement=\&,
-            ]
-            {
-                P \& \\
-            };
-            \node[left=2mm of mat1-1-1]{$Q_{fwd}$};
-            \node[left=2mm of mat2-1-1](QBWD){$Q_{bwd}$};
-            \node[right=2mm of QBWD]{$\emptyset$};
-        \end{tikzpicture} \\
-    \end{tblr}
+    \centering
+    \includestandalone[mode=buildnew]{tikz/figure_bidir_dijk}
     \caption[Bidirektionale Suche von s nach t]{Bidirektionale Suche von S nach T: In Schritt (a) und (b) wird zuerst Knoten Q und P von der
         Rückwärtssuche relaxiert. In den Schritten (c) und (d) wird P und Q von der Vorwärtssuche
         relaxiert. Obwohl P der erste Knoten  ist, der von beiden Suchen relaxiert wurde, ist der
@@ -530,10 +370,65 @@ etwa um die Hälfte reduziert (siehe Abbildung~\ref{fig:bidir_searchspace}): %TO
 Der \astar-Algorithmus ("`A-Stern"') nach \cite{Hart.1968} ist eine Erweiterung und
 Verallgemeinerung des Dijkstra-Algorithmus. Das Gewicht jeder Kante wird mit einer Potentialfunktion
 $\rho$ erweitert, die vom Ziel~$t$ abhängt, sodass gilt:
-\begin{equation}
-    \bar{w}(u,v)=w(u,v)-\rho(u)+\rho(v)
-\end{equation}
+\begin{definition}
+    $\bar{w}(u,v)=w(u,v)-\rho_t (u)+\rho_t (v)$
+\end{definition}
+Nachdem ein Potential gewählt wurde und alle Kanten neu gewichtet wurden, kann Dijkstra wie gewohnt
+auf dem neuen Graph ausgeführt werden. Durch ein gut gewähltes Potential wird die Suche in die
+Richtung des Ziels gelenkt und somit die Laufzeit verringert.\\
 
+Abbildung~\ref{fig:astar} zeigt einen Graphen, in dem das Potential jedes Knotens als Höhe
+dargestellt ist. Knoten die weg vom Ziel führen haben ein höheres Potential und sind schwerer zu
+erreichen, da mehr Arbeit aufgebracht werden muss. Durch die bevorzugte Bewegung nach unten, ist es
+wahrscheinlicher das Ziel $T$ füher zu treffen.
+
+\begin{figure}[h]
+    \centering
+    \includestandalone[mode=buildnew]{tikz/figure_astar}
+    \caption{Graph nach Hinzufügen der Potentialfunktion $\rho$. Kanten die nach "`oben"' verlaufen
+        besitzen ein höheres Gewicht als Kanten die nach "`unten"' verlaufen und sind dadurch
+        weniger attraktiv.}
+    \label{fig:astar}
+\end{figure}
+
+Da der Dijkstra-Algoritmus nur mit nicht negativen Kantengewichten umgehen kann, muss $\rho$ so
+gewählt sein, dass gilt:
+\begin{definition}
+    Für jede Kante $e(u,v) \in E$ gilt: $\rho_t (u) \le w(u,v) + \rho_t (v)$ und damit
+    ${\rho_t (u) \le w(u,t)}$.
+\end{definition}
+Die Potentialfunktion ist damit eine untere Schranke und schätzt den Weg von $u$ nach $t$
+immer kleiner oder gleich dem tatsächlichen kürzesten Weg ein.
+
+Da die Koordinaten der Knoten im Graphen eine Straßennetzes in der Regel bekannt sind, ist die
+euklidische bzw.~Großkreisdistanz als Potential eine gute Wahl:
+\begin{equation}
+    \rho_t(u) = \sqrt{(x_t - x_u)^2 + (y_t - y_u)^2}
+\end{equation}
+Der \astar-Algorithmus sieht damit folgendermaßen aus:
+\begin{algorithm}
+    \begin{algorithmic}
+        \Function{AStar}{$G=(V,E), s, t$}
+        \State $Q \gets \emptyset$
+        \State $dist(s) \gets 0$
+        \State $Q \gets Q \cup \{s\}$
+        \While{$Q \neq \emptyset$}
+        \State $u \gets \text{pop}(Q)$
+        \If{$u = t$}
+        \State \Return $dist(t)$
+        \EndIf
+        \For{$v \in \text{adj}(u)$}
+        \State $\bar{dist} \gets dist(u) + w(u,v) + \rho_t(u) - \rho_t(s)$
+        \If{$\bar{dist} < dist(v)$}
+        \State $dist(v) \gets \bar{dist}$
+        \State $prev(v) \gets u$
+        \State $Q \gets Q \cup \{v\}$
+        \EndIf
+        \EndFor
+        \EndWhile
+        \EndFunction
+    \end{algorithmic}
+\end{algorithm}
 
 \subsection{OpenStreetMap}
 OpenStreetMap (OSM) ist ein Projekt, das sich der Erstellung und Bereitstellung von freien
