@@ -44,96 +44,7 @@ eine Darstellung als Adjazenzmatrix.%\todo{Ref genaue Datenstruktur?}
 % \font\nullfont=cmr10
 \begin{figure}[H]
     \centering
-    \begin{subfigure}{1.0\textwidth}
-        \centering
-        \begin{tikzpicture}
-            \Vertices{data/graphs/ex1/vertices.csv}
-            \Edges{data/graphs/ex1/edges.csv}
-        \end{tikzpicture}
-        \caption{}
-    \end{subfigure}
-    \\[3ex]
-    \begin{subfigure}[b]{0.3\textwidth}
-        \centering
-        \begin{blockarray}{c|ccccc}
-            & A & B & C & D & E \\
-            \BAhline
-            \begin{block}{c|ccccc}
-                A & 0 & 3 & 5 & 0 & 3 \\
-                B & 3 & 0 & 3 & 0 & 0 \\
-                C & 0 & 0 & 0 & 2 & 0 \\
-                D & 0 & 0 & 2 & 0 & 3 \\
-                E & 3 & 0 & 0 & 3 & 0 \\
-            \end{block}
-        \end{blockarray}
-        \caption{}
-    \end{subfigure}
-    \hspace{3em}
-    \begin{subfigure}[b]{0.3\textwidth}
-        \centering
-        \begin{tikzpicture}[
-                node distance = 21mm and 7mm,
-                box/.style = {draw, minimum size=5mm, inner sep=0pt, outer sep=0pt, anchor=west},
-                pin edge = {Straight Barb-, shorten <=1mm,semithick}
-            ]
-            \matrix (mat1) [matrix of nodes,
-                nodes={box},
-                align=left,
-                column sep=-\pgflinewidth,
-                inner sep=0pt,
-                pin=180:A
-            ]
-            {
-                B & C & E \\
-            };
-            \matrix (mat2) [matrix of nodes,
-                below=1.5em of mat1-1-1.west,
-                anchor=west,
-                nodes={box},
-                column sep=-\pgflinewidth,
-                inner sep=0pt,
-                pin=180:B
-            ]
-            {
-                A & C \\
-            };
-            \matrix (mat3) [matrix of nodes,
-                below=1.5em of mat2-1-1.west,
-                anchor=west,
-                nodes={box},
-                column sep=-\pgflinewidth,
-                inner sep=0pt,
-                pin=180:C
-            ]
-            {
-                D \\
-            };
-            \matrix (mat4) [matrix of nodes,
-                below=1.5em of mat3-1-1.west,
-                anchor=west,
-                nodes={box},
-                column sep=-\pgflinewidth,
-                inner sep=0pt,
-                pin=180:D
-            ]
-            {
-                C & E \\
-            };
-            \matrix (mat5) [matrix of nodes,
-                below=1.5em of mat4-1-1.west,
-                anchor=west,
-                nodes={box},
-                column sep=-\pgflinewidth,
-                inner sep=0pt,
-                pin=180:E
-            ]
-            {
-                A & D \\
-            };
-        \end{tikzpicture}
-        \vspace{1em}
-        \caption{}
-    \end{subfigure}
+    \includestandalone[mode=buildnew]{tikz/figure_adj_rep}
     \caption[Graph als Adjazenzmatrix und Adjazenzliste]{Der oben gezeigte gerichtete Graph (a) dargestellt als Adjazenzmatrix(b) oder
         Adjazenzliste (c). Viele Einträge der Matrix sind 0, da der Graph dünn ist, \dH $|E|$
         um einiges kleiner ist als $|V^2|$.}
@@ -269,44 +180,7 @@ etwa um die Hälfte reduziert (siehe Abbildung~\ref{fig:bidir_searchspace}): %TO
 \end{align*}
 \begin{figure}[H]
     \centering
-    \begin{tikzpicture}[x=0.75pt,y=0.75pt,yscale=-1,xscale=1]
-        %uncomment if require: \path (0,300); %set diagram left start at 0, and has height of 300
-
-        %Shape: Circle [id:dp2556713988891337] 
-        \draw  [color={rgb, 255:red, 128; green, 128; blue, 128 }  ,draw opacity=1 ] (152.27,86.63) .. controls (152.27,42.65) and (187.92,7) .. (231.9,7) .. controls (275.88,7) and (311.53,42.65) .. (311.53,86.63) .. controls (311.53,130.61) and (275.88,166.27) .. (231.9,166.27) .. controls (187.92,166.27) and (152.27,130.61) .. (152.27,86.63) -- cycle ;
-        %Shape: Circle [id:dp971625170581321] 
-        \draw  [color={rgb, 255:red, 155; green, 155; blue, 155 }  ,draw opacity=1 ] (2,140.63) .. controls (2,96.65) and (37.65,61) .. (81.63,61) .. controls (125.61,61) and (161.27,96.65) .. (161.27,140.63) .. controls (161.27,184.61) and (125.61,220.27) .. (81.63,220.27) .. controls (37.65,220.27) and (2,184.61) .. (2,140.63) -- cycle ;
-        %Straight Lines [id:da2687055963027989] 
-        \draw    (81.63,231.63) -- (112.27,231.63) -- (240.9,231.63) ;
-        \draw [shift={(240.9,231.63)}, rotate = 180] [color={rgb, 255:red, 0; green, 0; blue, 0 }  ][line width=0.75]    (0,5.59) -- (0,-5.59)(10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
-        \draw [shift={(81.63,231.63)}, rotate = 0] [color={rgb, 255:red, 0; green, 0; blue, 0 }  ][line width=0.75]    (0,5.59) -- (0,-5.59)(10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
-        %Straight Lines [id:da8702160997421258] 
-        \draw    (81.63,256.63) -- (161.27,256.63) ;
-        \draw [shift={(161.27,256.63)}, rotate = 180] [color={rgb, 255:red, 0; green, 0; blue, 0 }  ][line width=0.75]    (0,5.59) -- (0,-5.59)(10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
-        \draw [shift={(81.63,256.63)}, rotate = 0] [color={rgb, 255:red, 0; green, 0; blue, 0 }  ][line width=0.75]    (0,5.59) -- (0,-5.59)(10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
-        %Curve Lines [id:da16293399530040098] 
-        \draw    (81.63,144.63) .. controls (110.71,107.87) and (112.96,163.37) .. (154.72,115.97) ;
-        \draw [shift={(156,114.5)}, rotate = 130.7] [color={rgb, 255:red, 0; green, 0; blue, 0 }  ][line width=0.75]    (10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
-        %Curve Lines [id:da09748735835977285] 
-        \draw    (231.9,90.63) .. controls (169.63,68.72) and (205.27,114.57) .. (157.47,114.52) ;
-        \draw [shift={(156,114.5)}, rotate = 1.15] [color={rgb, 255:red, 0; green, 0; blue, 0 }  ][line width=0.75]    (10.93,-3.29) .. controls (6.95,-1.4) and (3.31,-0.3) .. (0,0) .. controls (3.31,0.3) and (6.95,1.4) .. (10.93,3.29)   ;
-        %Shape: Circle [id:dp031726451488289786] 
-        \draw  [color={rgb, 255:red, 0; green, 0; blue, 0 }  ,draw opacity=0 ][fill={rgb, 255:red, 155; green, 155; blue, 155 }  ,fill opacity=1 ] (77.63,144.63) .. controls (77.63,142.42) and (79.42,140.63) .. (81.63,140.63) .. controls (83.84,140.63) and (85.63,142.42) .. (85.63,144.63) .. controls (85.63,146.84) and (83.84,148.63) .. (81.63,148.63) .. controls (79.42,148.63) and (77.63,146.84) .. (77.63,144.63) -- cycle ;
-        %Shape: Circle [id:dp451124097001081] 
-        \draw  [color={rgb, 255:red, 0; green, 0; blue, 0 }  ,draw opacity=0 ][fill={rgb, 255:red, 155; green, 155; blue, 155 }  ,fill opacity=1 ] (227.9,90.63) .. controls (227.9,88.42) and (229.69,86.63) .. (231.9,86.63) .. controls (234.11,86.63) and (235.9,88.42) .. (235.9,90.63) .. controls (235.9,92.84) and (234.11,94.63) .. (231.9,94.63) .. controls (229.69,94.63) and (227.9,92.84) .. (227.9,90.63) -- cycle ;
-        %Shape: Circle [id:dp23343805363870018] 
-        \draw  [color={rgb, 255:red, 0; green, 0; blue, 0 }  ,draw opacity=0 ][fill={rgb, 255:red, 155; green, 155; blue, 155 }  ,fill opacity=1 ] (152,114.5) .. controls (152,112.29) and (153.79,110.5) .. (156,110.5) .. controls (158.21,110.5) and (160,112.29) .. (160,114.5) .. controls (160,116.71) and (158.21,118.5) .. (156,118.5) .. controls (153.79,118.5) and (152,116.71) .. (152,114.5) -- cycle ;
-
-        % Text Node
-        \draw (161.01,242.13) node   [align=left] {r};
-        % Text Node
-        \draw (118.39,268.13) node   [align=left] {$\frac{r}{2}$};
-        % Text Node
-        \draw (231.9,83.63) node [anchor=south] [inner sep=0.75pt]   [align=left] {t};
-        % Text Node
-        \draw (81.63,137.63) node [anchor=south] [inner sep=0.75pt]   [align=left] {s};
-    \end{tikzpicture}
-
+    \includestandalone[mode=buildnew]{tikz/figure_bidir_searchspace}
     \caption[Suchraum einer bidirektionalen Suche]{Suchraum einer bidirektioanlen Suche. Die Anzahl der Knoten die untersucht werden
         müssen, halbiert sich.}
     \label{fig:bidir_searchspace}
@@ -406,9 +280,10 @@ euklidische bzw.~Großkreisdistanz als Potential eine gute Wahl:
     \rho_t(u) = \sqrt{(x_t - x_u)^2 + (y_t - y_u)^2}
 \end{equation}
 Der \astar-Algorithmus sieht damit folgendermaßen aus:
-\begin{algorithm}
+\begin{algorithm}[h]
+    \caption{AStar}{$G=(V,E), s, t, \rho_t$}
     \begin{algorithmic}
-        \Function{AStar}{$G=(V,E), s, t$}
+        % \Function{AStar}{$G=(V,E), s, t, \rho_t$}
         \State $Q \gets \emptyset$
         \State $dist(s) \gets 0$
         \State $Q \gets Q \cup \{s\}$
@@ -418,15 +293,15 @@ Der \astar-Algorithmus sieht damit folgendermaßen aus:
         \State \Return $dist(t)$
         \EndIf
         \For{$v \in \text{adj}(u)$}
-        \State $\bar{dist} \gets dist(u) + w(u,v) + \rho_t(u) - \rho_t(s)$
-        \If{$\bar{dist} < dist(v)$}
-        \State $dist(v) \gets \bar{dist}$
+        \State $dist_{pot} \gets dist(u) + w(u,v) + \rho_t(u)$ \Comment{Potential hinzufügen}
+        \If{$dist_{pot} < dist(v)$}
+        \State $dist(v) \gets dist_{pot}$
         \State $prev(v) \gets u$
         \State $Q \gets Q \cup \{v\}$
         \EndIf
         \EndFor
         \EndWhile
-        \EndFunction
+        % \EndFunction
     \end{algorithmic}
 \end{algorithm}
 

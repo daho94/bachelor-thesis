@@ -15,6 +15,7 @@
     patterns,
 }
 \begin{document}
+\SetVertexStyle[FillColor=white]
 \begin{tblr}{
     colspec = {X[c]X[c]},
     rowspec = {Q[m]Q[m]},
@@ -40,7 +41,7 @@
         \Vertex[x=2,y=-1.5,style={pattern=horizontal lines},IdAsLabel=true] {Q}
         \Vertex[x=2,y=1.5,IdAsLabel=true] {P}
 
-        \Edges{../data/graphs/ex2/edges.csv}
+        \Edges{data/graphs/ex2/edges.csv}
 
         \matrix (mat1) [matrix of nodes,
             nodes={box},
@@ -81,7 +82,7 @@
         \Vertex[x=4,y=0,style={pattern=vertical lines},IdAsLabel=true] {T}
         \Vertex[x=2,y=-1.5,style={pattern=horizontal lines},IdAsLabel=true] {Q}
         \Vertex[x=2,y=1.5,style={pattern=horizontal lines},IdAsLabel=true] {P}
-        \Edges{../data/graphs/ex2/edges.csv}
+        \Edges{data/graphs/ex2/edges.csv}
         \matrix (mat1) [matrix of nodes,
             nodes={box},
             align=left,
@@ -123,7 +124,7 @@
         \Vertex[x=2,y=1.5,style={pattern=grid},IdAsLabel=true] {P}
         \Vertex[x=2,y=-1.5,style={pattern=horizontal lines},IdAsLabel=true] {Q}
 
-        \Edges{../data/graphs/ex2/edges.csv}
+        \Edges{data/graphs/ex2/edges.csv}
 
         \matrix (mat1) [matrix of nodes,
             nodes={box},
@@ -157,7 +158,7 @@
         \Vertex[x=2,y=1.5,style={pattern=grid},IdAsLabel=true] {P}
         \Vertex[x=2,y=-1.5,style={pattern=grid},IdAsLabel=true] {Q}
 
-        \Edges{../data/graphs/ex2/edges.csv}
+        \Edges{data/graphs/ex2/edges.csv}
         \Edge[lw=5pt,color=gray,opacity=0.3](S)(Q)
         \Edge[lw=5pt,color=gray,opacity=0.3](Q)(T)
 
