@@ -245,38 +245,63 @@ etwa um die Hälfte reduziert (siehe Abbildung~\ref{fig:bidir_searchspace}): %TO
     dem kürzesten Weg liegt und einen Distanzwert von beiden Seiten erhalten hat.
 \end{proof}
 
-\subsubsection{\astar}
-Der \astar-Algorithmus ("`A-Stern"') nach \cite{Hart.1968} ist eine Erweiterung und
-Verallgemeinerung des Dijkstra-Algorithmus. Das Gewicht jeder Kante wird mit einer Potentialfunktion
-$\rho$ neu definiert, die vom Ziel~$t$ abhängt, sodass gilt:
+\subsubsection{Zielorientierte Suche}
+Die Technik der Zielorientierten Suche (engl. Goal-Directed Search) wurde erstmals in
+\cite{Hart.1968} vorgestellt und ist im allgemeinen als \astar-Algorithmus ("`A-Stern"') bekannt.
+Hier wird jeder vorläufigen Distanz $dist(u)$ ein zusätzliches Potential $\rho_t: V \rightarrow
+    \mathbb{R}_0^+$ (auch Heuristik genannt) hinzugefügt. Die Priorität eines Knotens in der
+Prioritätswarteschlange ergibt sich damit aus der Summe ${dist(u) + \rho_t(u)}$. Das Potential hat
+den Effekt, dass Knoten die in Richtung Ziel führen bevorzugt werden, da sie einen niedrigeren
+$\rho$-Wert besitzen.\\
+Das Verändern der Prioritätswerte kann auch als Veränderung der Kantengewichte verstanden werden.
+Jede Kante $e(u,v) \in E$ wird neu gewichtet, sodass gilt:
 \begin{definition}
     $\bar{w}(u,v)=w(u,v)-\rho_t (u)+\rho_t (v)$
+    \label{def:edge_weight}
 \end{definition}
 Kanten, die vom Ziel wegführen werden länger und Kanten die zum Ziel führen werden kürzer. Nachdem
 ein Potential gewählt wurde und alle Kanten neu gewichtet wurden, kann Dijkstra wie gewohnt auf dem
 neuen Graph ausgeführt werden. Durch ein gut gewähltes Potential wird die Suche in die Richtung des
 Ziels gelenkt und somit die Laufzeit verringert.\\
 
-Abbildung~\ref{fig:astar} zeigt einen Graphen, in dem das Potential jedes Knotens als Höhe
-dargestellt ist. Knoten die weg vom Ziel führen haben ein höheres Potential und sind schwerer zu
-erreichen, da mehr Arbeit aufgebracht werden muss, um nach oben zu klettern. Da die Bewegung nach
-unten bevorzugt wird, ist es daher wahrscheinlicher das Ziel früher zu treffen.
-
+Abbildung~\ref{fig:astar} zeigt einen $\bar{G}$, in dem alle Kantengewichte neu gewichtet wurden.
+Knoten die weg vom Ziel führen haben ein höheres Potential und sind schwerer zu erreichen, da mehr
+Arbeit aufgebracht werden muss, um nach oben zu klettern. Da die Bewegung nach unten bevorzugt wird,
+ist es daher wahrscheinlicher das Ziel $T$ früher zu treffen.\\
 \begin{figure}[h]
     \centering
-    \includestandalone[mode=buildnew]{tikz/figure_astar}
-    \caption{Graph nach Hinzufügen der Potentialfunktion $\rho$. Kanten die nach "`oben"' verlaufen
-        besitzen ein höheres Gewicht als Kanten die nach "`unten"' verlaufen und sind dadurch
-        weniger attraktiv.}
+    \begin{subfigure}[b]{\textwidth}
+        \centering
+        \includestandalone[mode=buildnew]{tikz/figure_astar_before}
+        \caption{Graph vor Neugewichtung der Kanten}
+    \end{subfigure}
+    \\[1em]
+    \begin{subfigure}[b]{\textwidth}
+        \centering
+        \includegraphics{figures/figure_astar_after_pp.pdf}
+        \caption{Graph nach Neugewichtung der Kanten}
+    \end{subfigure}
+    \caption{Graph vor (a) und nach (b) Neugewichtung der Kantengewichte. Das Potential $\rho$ ist
+        als Höhe dargestellt. Kanten die nach "`oben"' verlaufen sind schwerer zu erreichen
+        als Kanten die nach "`unten"' verlaufen.}
     \label{fig:astar}
 \end{figure}
 
-Da der Dijkstra-Algoritmus nur mit nicht negativen Kantengewichten umgehen kann, muss $\rho$ so
-gewählt sein, dass gilt:
+Der kürzeste Weg von $S$ nach $T$ bleibt erhalten:
+\begin{align*}
+    dist_{G}(S,T)       & = w(S,Z) + w(Z,T)                         & = 3.0 + 2.3       & = 5.3 \\
+    dist_{\bar{G}}(S,T) & = \rho_t(S) + \bar{w}(S,Z) + \bar{w}(Z,T) & = 5.0 + 0.0 + 0.3 & = 5.3
+\end{align*}
+
+Da nach Definition~\ref{def:edge_weight} die Längen der Kanten bzw.~ die Gewichte umgeschrieben
+werden, ist es naheliegend, dass bei einem schlecht gewählten Potential Kantengewichte negativ
+werden können. Wenn dies passiert, kann Dijkstra nicht mehr ausgeführt werden, da der Algorithmus
+nur für nicht-negative Kanten definiert ist. Um dies zu verhindern, muss das Potential so gewählt
+werden, dass gilt:
 \begin{definition}
-    In einem gewichteten Graph $G=(V,E)$ ist ein Potential $\rho_t$ möglich, bei dem jede Kante
-    $e(u,v) \in E$ die Bedingung $\rho_t (u) \le w(u,v) + \rho_t (v)$ erfüllt. Damit wird außerdem
-    für jeden Knoten $u \in V$ die Voraussetzung ${\rho_t (u) \le dist(u,t)}$ impliziert.
+    In einem gewichteten Graph $G=(V,E)$ muss ein Potential $\rho_t$ so gewählt werden, dass
+    $w(u,v) - \rho_t(u) + \rho_t (v) \le 0$ für alle $e(u,v) \in E$ . Die Bedingung ist erfüllt, wenn
+    ${\rho_t (u) \le dist(u,t)}$ für jeden Knoten $u \in V$.
 \end{definition}
 Die Potentialfunktion ist damit eine optimistische Schätzung und untere Schranke. Sie schätzt den
 Weg von $u$ nach $t$ immer kleiner oder gleich dem tatsächlichen kürzesten Weg ein und verhindert
@@ -289,9 +314,9 @@ euklidische bzw.~Großkreisdistanz als Potential eine gute Wahl:
 \end{equation}
 Der einzige Unterschied zu Dijkstra findet sich in Zeile 7 (\ref{algo:astar}) wieder. Hier wird
 nicht mehr das Element mit der niedrigsten Distanz extrahiert sonder das Element mit der niedrigsten
-Distanz plus dem Potential. Wenn für Potential die Nullheuristik gewählt wird, dann ist der
-Algorithmus identisch zu Dijkstra.\\
-\begin{algorithm}[h]
+Distanz plus dem Potential. Wenn für Potential die Nullheuristik gewählt wird, dann ist \astar
+identisch zu Dijkstra.\\
+\begin{algorithm}[H]
     \caption{AStar Implementierung}
     \label{algo:astar}
     \begin{algorithmic}[1]
@@ -301,7 +326,7 @@ Algorithmus identisch zu Dijkstra.\\
         \State $dist(s) \gets 0$
         \State $Q \gets Q \cup \{s\}$
         \While{$Q \neq \emptyset$}
-        \State $u \gets \text{node in Q minimizing } dist(node) + \rho_t(node)$ \Comment{Potential berüclsichtigen}
+        \State $u \gets \text{node in Q minimizing } dist(node) + \rho_t(node)$ \Comment{Potential berücksichtigen}
         \If{$u = t$}
         \State \Return $shortest_path(P,t)$
         \EndIf
