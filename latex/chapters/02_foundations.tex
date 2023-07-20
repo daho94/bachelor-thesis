@@ -69,51 +69,56 @@ $\theta(1)\sim$ und für das Entfernen von $\theta(\log n)$.
 Grundsätzlich arbeiten kürzeste-Wege-Algorithmen daran, den kürzesten Weg zwischen einem Startknoten
 $s$ und einem Zielknoten $t$ in einem gewichteten Graph zu finden. Der kürzeste Weg $P$ bezieht sich
 dabei auf den Weg mit dem geringsten Gesamtgewicht $dist(s,t)$, der sich aus der Summe der Kosten
-zum Überqueren der einzelnen Kanten ergibt. Neben dem Punkt-zu-Punkt-kürzeste-Wege-Problem
-existieren noch weitere Varianten, wie das Eins-zu-Viele-Problem, bei dem der kürzeste Weg von einem
-Knoten $s$ zu allen anderen Knoten im Graphen gesucht wird, oder das Viele-zu-Viele-Problem, bei dem
+zum Überqueren der einzelnen Kanten ergibt. Neben dem Point-to-Point-kürzeste-Wege-Problem
+existieren noch weitere Varianten, wie das One-to-Many-Problem, bei dem der kürzeste Weg von einem
+Knoten $s$ zu allen anderen Knoten im Graphen gesucht wird, oder das Many-to-Many-Problem, bei dem
 jeder kürzeste Weg zwischen einer Knotenmenge $S$ und einer Knotenmenge $T$ gesucht wird
-\cite{Bast.20.04.2015}. In dieser Arbeit wird sich hauptsächlich auf das Punkt-zu-Punk-Problem
+\cite{Bast.20.04.2015}. In dieser Arbeit wird sich hauptsächlich auf das Point-to-Point-Problem
 fokusiert.\\
 
 \subsubsection{Grundlegende Technik}
-Der Algorithmus von Dijkstra löst das Eins-zu-Viele-Problem auf einem gewichteten gerichten Graphen.
+Der Algorithmus von Dijkstra löst das One-to-Many-Problem auf einem gewichteten gerichten Graphen.
 Dabei ist zu beachten dass alle Kanten $e \in E$ nicht-negativ gewichtet sind, also $e(u,v) \geq 0$.
 
 Der Algorithmus besteht aus einer Initialisierungsphase, in der die Kosten $dist$ für alle Knoten
-auf den Wert $\infty$ gesetzt werden. Bereits besuchte Knoten werden in der Menge $S$ gespeichert,
-um zu verhindern, dass Knoten doppelte besucht werden. Um am Ende nicht nur die Kosten, sondern auch
-den Weg zu erhalten wird zusätzlich der Vorgänger $P$ für jeden Knoten gespeichert. In folgender
-Implementierung wird eine Min-Vorrangwarteschlange $Q$ verwendet, in der zu Beginn der Startknoten
-$s$ mit Kosten 0 eingefügt wird. In der Hauptschleife wird nun solange ein Knoten $u \in V - S$ aus
-der Warteschlange entnommen, bis diese leer ist. Wenn ein Nachbarknoten $v$ von $u$ noch nicht
-besucht wurde, werden die Kosten $dist(v)$ aktualisiert, falls der Weg über $u$ kürzer ist. Der
-Vorgänger $P(v)$ wird ebenfalls aktualisiert und der Knoten $v$ in die Warteschlange eingefügt. Der
-Algorithmus  terminiert, wenn alle Knoten besucht wurden.
+auf den Wert $\infty$ gesetzt werden. Um am Ende nicht nur die Kosten, sondern auch den Weg zu
+erhalten wird zusätzlich der direkte Vorgängerknoten für jeden Knoten in $P$ gespeichert. In
+folgender Implementierung wird eine Min-Vorrangwarteschlange $Q$ verwendet, in der zu Beginn der
+Startknoten $s$ mit Kosten 0 eingefügt wird. In der Hauptschleife wird nun solange ein Knoten $u \in
+    V - S$ aus der Warteschlange entnommen, bis diese leer ist oder der Zielknoten erreicht wurde. Wenn
+ein Nachbarknoten $v$ von $u$ noch nicht besucht wurde, werden die Kosten $dist(v)$ aktualisiert,
+falls der Weg über $u$ kürzer ist. Der Vorgänger $P(v)$ wird ebenfalls aktualisiert und der Knoten
+$v$ in die Warteschlange eingefügt. Wenn der Zielknoten gefunden wurde, dann wird der kürzeste Weg
+mithilfe der gemerkten Vorgängerknoten ausgehend von $t$ rekonstruiert und zurückgegeben. Durch
+Weglassen des Abbruchskrieterium in Zeile 8--10 kann der Algorithmsu von einer Point-to-Point suche
+zu einer One-to-Many Suche erweitert werden, sodass jeder Knoten im Graph traversiert wird.
 \begin{algorithm}[H]
-    \caption{DIJKSTRA(G,s)}
+    \caption{Dijkstra Point-To-Point}
     \label{algo:dijkstra}
-    \begin{algorithmic}
-        % \Function{Dijkstra}{G, s}
-        \State Kosten $dist$ für alle Knoten außer $s$ mit $\infty$ bewerten
+    \begin{algorithmic}[1]
+        \Function{Dijkstra}{G=(V,E), s,t}
+        \State $Q \gets \emptyset$
         \State dist(s) = 0
-        \State Besuchte Knoten $S = \emptyset$
-        \State Vorgänger $P = \emptyset$
-        \State Q.push(s)
+        % \State $S \gets \emptyset$ \Comment{Besuchte Knoten}
+        \State $P \gets \emptyset$ \Comment{Vorgängerknoten für Pfadrekonstruktion}
+        \State $Q \gets Q \cup \{s\}$ \Comment{Prioritätswarteschlange}
 
         \While{$Q \ne \emptyset$}
-        \State u = Q.pop()
-        \State $M = M \cup \{u\}$
+        \State $u = \gets \text{pop(Q)}$
+        \If{$u = t$}
+        \State \Return shortest\_path(P,t)
+        \EndIf
 
-        \For{alle ausgehenden Kanten $e(u,v) \in$ Adj[u]}
-        \If{v $\notin S$ und dist(u) + w(u,v) < dist(v)}
-        \State dist(v) = dist(u) + w(u,v)
-        \State P(v) = u
-        \State Q.push(v)
+        \ForEach{ausgehende Kante $e(u,v) \in$ Adj[u]}
+        \State $tentative\_distance \gets dist(u) + w(u,v)$
+        \If{$tentative\_distance < dist(v)$}
+        \State $dist(v) \gets tentative\_distance$
+        \State $P(v) \gets u$
+        \State $Q \gets Q \cup \{v\}$
         \EndIf
         \EndFor
         \EndWhile
-        % \EndFunction
+        \EndFunction
     \end{algorithmic}
 \end{algorithm}
 Die Laufzeit des Algorithmus hängt hauptsächlich von der Implementierung der Prioritätswarteschlange
@@ -243,18 +248,19 @@ etwa um die Hälfte reduziert (siehe Abbildung~\ref{fig:bidir_searchspace}): %TO
 \subsubsection{\astar}
 Der \astar-Algorithmus ("`A-Stern"') nach \cite{Hart.1968} ist eine Erweiterung und
 Verallgemeinerung des Dijkstra-Algorithmus. Das Gewicht jeder Kante wird mit einer Potentialfunktion
-$\rho$ erweitert, die vom Ziel~$t$ abhängt, sodass gilt:
+$\rho$ neu definiert, die vom Ziel~$t$ abhängt, sodass gilt:
 \begin{definition}
     $\bar{w}(u,v)=w(u,v)-\rho_t (u)+\rho_t (v)$
 \end{definition}
-Nachdem ein Potential gewählt wurde und alle Kanten neu gewichtet wurden, kann Dijkstra wie gewohnt
-auf dem neuen Graph ausgeführt werden. Durch ein gut gewähltes Potential wird die Suche in die
-Richtung des Ziels gelenkt und somit die Laufzeit verringert.\\
+Kanten, die vom Ziel wegführen werden länger und Kanten die zum Ziel führen werden kürzer. Nachdem
+ein Potential gewählt wurde und alle Kanten neu gewichtet wurden, kann Dijkstra wie gewohnt auf dem
+neuen Graph ausgeführt werden. Durch ein gut gewähltes Potential wird die Suche in die Richtung des
+Ziels gelenkt und somit die Laufzeit verringert.\\
 
 Abbildung~\ref{fig:astar} zeigt einen Graphen, in dem das Potential jedes Knotens als Höhe
 dargestellt ist. Knoten die weg vom Ziel führen haben ein höheres Potential und sind schwerer zu
-erreichen, da mehr Arbeit aufgebracht werden muss. Durch die bevorzugte Bewegung nach unten, ist es
-wahrscheinlicher das Ziel $T$ füher zu treffen.
+erreichen, da mehr Arbeit aufgebracht werden muss, um nach oben zu klettern. Da die Bewegung nach
+unten bevorzugt wird, ist es daher wahrscheinlicher das Ziel früher zu treffen.
 
 \begin{figure}[h]
     \centering
@@ -268,40 +274,47 @@ wahrscheinlicher das Ziel $T$ füher zu treffen.
 Da der Dijkstra-Algoritmus nur mit nicht negativen Kantengewichten umgehen kann, muss $\rho$ so
 gewählt sein, dass gilt:
 \begin{definition}
-    Für jede Kante $e(u,v) \in E$ gilt: $\rho_t (u) \le w(u,v) + \rho_t (v)$ und damit
-    ${\rho_t (u) \le w(u,t)}$.
+    In einem gewichteten Graph $G=(V,E)$ ist ein Potential $\rho_t$ möglich, bei dem jede Kante
+    $e(u,v) \in E$ die Bedingung $\rho_t (u) \le w(u,v) + \rho_t (v)$ erfüllt. Damit wird außerdem
+    für jeden Knoten $u \in V$ die Voraussetzung ${\rho_t (u) \le dist(u,t)}$ impliziert.
 \end{definition}
-Die Potentialfunktion ist damit eine untere Schranke und schätzt den Weg von $u$ nach $t$
-immer kleiner oder gleich dem tatsächlichen kürzesten Weg ein.
+Die Potentialfunktion ist damit eine optimistische Schätzung und untere Schranke. Sie schätzt den
+Weg von $u$ nach $t$ immer kleiner oder gleich dem tatsächlichen kürzesten Weg ein und verhindert
+damit, dass Kanten negative Gewichte erhalten können.
 
 Da die Koordinaten der Knoten im Graphen eine Straßennetzes in der Regel bekannt sind, ist die
 euklidische bzw.~Großkreisdistanz als Potential eine gute Wahl:
 \begin{equation}
     \rho_t(u) = \sqrt{(x_t - x_u)^2 + (y_t - y_u)^2}
 \end{equation}
-Der \astar-Algorithmus sieht damit folgendermaßen aus:
+Der einzige Unterschied zu Dijkstra findet sich in Zeile 7 (\ref{algo:astar}) wieder. Hier wird
+nicht mehr das Element mit der niedrigsten Distanz extrahiert sonder das Element mit der niedrigsten
+Distanz plus dem Potential. Wenn für Potential die Nullheuristik gewählt wird, dann ist der
+Algorithmus identisch zu Dijkstra.\\
 \begin{algorithm}[h]
-    \caption{AStar}{$G=(V,E), s, t, \rho_t$}
-    \begin{algorithmic}
-        % \Function{AStar}{$G=(V,E), s, t, \rho_t$}
+    \caption{AStar Implementierung}
+    \label{algo:astar}
+    \begin{algorithmic}[1]
+        \Function{AStar}{$G=(V,E), s, t, \rho_t$}
         \State $Q \gets \emptyset$
+        \State $P \gets \emptyset$ \Comment{Vorgängerknoten für Pfadrekonstruktion}
         \State $dist(s) \gets 0$
         \State $Q \gets Q \cup \{s\}$
         \While{$Q \neq \emptyset$}
-        \State $u \gets \text{pop}(Q)$
+        \State $u \gets \text{node in Q minimizing } dist(node) + \rho_t(node)$ \Comment{Potential berüclsichtigen}
         \If{$u = t$}
-        \State \Return $dist(t)$
+        \State \Return $shortest_path(P,t)$
         \EndIf
         \For{$v \in \text{adj}(u)$}
-        \State $dist_{pot} \gets dist(u) + w(u,v) + \rho_t(u)$ \Comment{Potential hinzufügen}
-        \If{$dist_{pot} < dist(v)$}
-        \State $dist(v) \gets dist_{pot}$
-        \State $prev(v) \gets u$
+        \State $tentative\_distance \gets dist(u) + w(u,v)$
+        \If{$tentative\_distance < dist(v)$}
+        \State $dist(v) \gets tentative\_distance$
+        \State $P(v) \gets u$
         \State $Q \gets Q \cup \{v\}$
         \EndIf
         \EndFor
         \EndWhile
-        % \EndFunction
+        \EndFunction
     \end{algorithmic}
 \end{algorithm}
 
