@@ -6,30 +6,10 @@
 \usepackage{xcolor}
 
 \usepackage{tikz-network}
-% % Uncommenting does not generates error
-% \usetikzlibrary{external}
-
-% \tikzexternalize[% added <<<<<<<<<<<
-% % up to date check={simple},
-% prefix=./tikz/]
-
-% \tikzset{external/system call={% added <<<<<<<<<<<<<<
-%         lualatex \tikzexternalcheckshellescape
-%         -halt-on-error -shell-escape -interaction=batchmode
-%         -jobname "\image" "\texsource"}}
-
-
-% \pgfplotsset{
-%     compat       = newest,
-%     % width        = 10cm,    % width
-%     % height       =  7cm,    % height
-%     samples      = 10,
-% }
-
 \begin{document}
 \SetCoordinates[xAngle = -5]
 \SetVertexStyle[MinSize = 4.5mm,LineOpacity=1,LineColor=black,LineWidth=.5pt]
-\SetEdgeStyle[TextFillOpacity=0,TextFillColor=black,TextFont=\tiny]
+\SetEdgeStyle[TextFillOpacity=0,TextFillColor=black,TextFont=\scriptsize]
 \SetPlaneWidth{11}
 \SetPlaneHeight{6}
 \SetLayerDistance{-1.5}
@@ -52,7 +32,7 @@
     \Edges[NoLabel,layer={3,5},style={dashed}]{data/graphs/ex4/edges.csv}
     \Vertex[x=6,y=0,layer=4,Pseudo] {Z}
     \Vertex[x=6,y=0,layer=5,Pseudo] {ZP}
-    \Edge[lw=1,color=black,style=dashed](Z)(ZP)
+    \Edge[lw=1,color=black,style=dashed,Math,label=\rho(Z)=2](Z)(ZP)
 
     % Coordinate system
     \SetEdgeStyle[TextFillOpacity=1]

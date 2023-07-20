@@ -1,0 +1,17 @@
+\documentclass[tikz]{standalone}
+
+% pgfplots
+\usepackage{pgfplots}
+\pgfplotsset{compat=newest}
+\usepackage{xcolor}
+
+\usepackage{tikz-network}
+\begin{document}
+\SetVertexStyle[MinSize = 4.5mm,LineOpacity=1,LineColor=black,LineWidth=.5pt,FillColor=white]
+\SetEdgeStyle[Color=black]
+\begin{tikzpicture}[xscale=.7,yscale=.7]
+    \Vertices[color=white]{data/graphs/ex4/vertices_before.csv}
+    \Edges[color=black]{data/graphs/ex4/edges_before.csv}
+\end{tikzpicture}
+
+\end{document}
