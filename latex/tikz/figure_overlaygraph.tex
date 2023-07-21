@@ -1,0 +1,52 @@
+\documentclass[tikz]{standalone}
+
+% pgfplots
+\usepackage{pgfplots}
+\pgfplotsset{compat=newest}
+\usepackage{xcolor}
+
+\usepackage{tikz-network}
+\begin{document}
+\SetVertexStyle[MinSize = 4.5mm]
+\SetLayerDistance{-7}
+\SetPlaneWidth{15}
+\SetPlaneHeight{7}
+\begin{tikzpicture}[multilayer=3d,xscale=.5,yscale=.5]
+    %
+    % Layer 2
+
+    % Background
+    \Plane[layer=2,x=1,y=1,NoBorder,InBG]
+
+    % Text
+    \Text[x=1.2,y=0.8,layer=2,anchor=north west,style={scale=2.0}]{Originalgraph $G$}
+
+    % Vertices
+    \Vertices[color=orange]{data/graphs/ex3/vertices.csv}
+
+    % Intra-layer edges in layer 2
+    \Edges[layer={2,2},NoLabel]{data/graphs/ex3/edges_with_shortcuts.csv}
+    \EdgesNotInBG
+
+    % Inter-layer edges between layer 1 and 2
+    \Edges[color=black,NoLabel,layer={1,2},style={dashed}]{data/graphs/ex3/edges_with_shortcuts.csv}
+
+    %%
+    % Layer 1
+
+    % Background
+    \Plane[x=1,y=1,NoBorder,color=orange]
+
+    % Text
+    \Text[x=1.2,y=0.8,layer=1,anchor=north west,style={scale=2.0}]{Overlaygraph $G^{*}$}
+
+    % Intra-layer edges in layer 1
+    \Edges[layer={1,1},NoLabel]{data/graphs/ex3/edges_with_shortcuts.csv}
+
+    % Vertices in layer 1
+    \Vertices[layer=1,color=blue]{data/graphs/ex3/vertices.csv}
+
+
+\end{tikzpicture}
+
+\end{document}
