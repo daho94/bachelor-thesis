@@ -37,13 +37,13 @@ ausreichend für sehr große Graphen.
 
 Viele weitere Techniken basieren auf einer starken
 Vorverarbeitung des Graphen. So wurde 2008 von Geisberger, Sanders, Schultes, und Delling
-vorgestellt \cite{geisberger.workshop}, die als \ac{CHs} bezeichnet wird. Sie basiert auf einer
+vorgestellt \cite{geisberger.workshop}, die als \acp{CH} bezeichnet wird. Sie basiert auf einer
 Vorverarbeitung des Graphen, bei der ausgenutzt wird, dass Straßennetzwerke bereits eine natürliche
 Hierarchie besitzen. Während der Vorverarbeitung werden dem Graph zusätzliche Informationen
 hinzugefügt, die dann zur Laufzeit während der Suche ausgenutzt werden, was zu erheblich schnelleren
 Berechnung der Route führt. Da diese Technik als Sprungbrett für viele neue erweiterte
 Routenplanungstechniken gilt, soll sie im Rahmen dieser Arbeit genauer untersucht werden. Dazu soll
-ein Prototyp erstellt werden, der die Funktionsweise von \ac{CHs} durch eine konkrete
+ein Prototyp erstellt werden, der die Funktionsweise von \acp{CH} durch eine konkrete
 Implementierung demonstriert. Als Eingangsdaten werden die frei nutzbaren Geodaten des
 OpenStreetMap-Projekts (Open Data) %\todo{Add ref}%
 verwendet, um die Ergebnisse an realen Daten zu
@@ -72,17 +72,17 @@ ein aktiver Forschungsbereich ist, der sich ständig weiterentwickelt, um den Be
 und modernen Anwendungen gerecht zu werden.
 
 \subsection{Beitrag der Arbeit}
-Im Rahmen dieser Arbeit wird die Implementierung der \ac{CHs}-Technik in der Programmiersprache
+Im Rahmen dieser Arbeit wird die Implementierung der \acp{CH}-Technik in der Programmiersprache
 \emph{Rust} untersucht. Rust ist eine moderne, systemsprachenorientierte Programmiersprache, die auf
 Performance, Sicherheit und Nebenläufigkeit abzielt \cite{rust.book}. Die Wahl von Rust als
 Implementierungssprache bietet die Möglichkeit, die Vorteile dieser Sprache in Bezug auf
 Geschwindigkeit, Speichersicherheit und Thread-Sicherheit in der Routenplanung zu erforschen.
 
-Das Hauptziel dieser Arbeit ist, die Implementierung von \ac{CHs} detailliert zu beschreiben und
+Das Hauptziel dieser Arbeit ist, die Implementierung von \acp{CH} detailliert zu beschreiben und
 anschließend eine umfassende Leistungsanalyse durchzuführen, indem die Ergebnisse mit herkömmlichen
 Algorithmen wie dem Dijkstra-Algorithmus und dem A*-Algorithmus verglichen werden. Die Evaluierung
 erfolgt anhand verschiedener Metriken wie Laufzeit, Vorverarbeitungszeit und Speicherbedarf.
-Durch diesen Vergleich wird ein tieferes Verständnis für die Leistungsfähigkeit von \ac{CHs}
+Durch diesen Vergleich wird ein tieferes Verständnis für die Leistungsfähigkeit von \acp{CH}
 gewonnen und die verbundenen Vor- und Nachteile im Vergleich zu herkömmlichen Algorithmen ermittelt.
 
 Die Ergebnisse dieser Arbeit können wichtige Erkenntnisse liefern, die zur
