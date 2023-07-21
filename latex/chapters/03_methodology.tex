@@ -1,17 +1,107 @@
 \section{Methodik}
+Dieses Kapitel beschreibt die Methodik der Arbeit. Zunächst wird die verwendete Datenbasis erläutert
+und die Datenbeschaffung beschrieben. Anschließend wird die verwendete Methode zur Berechnung der
+kürzesten Wege vorgestellt.
 
 \subsection{Datenbeschaffung und -aufbereitung}
 
+\subsection{Datenformat}
+Das \ac{OSM}-Datenformat ist ein XML-basiertes Format, das aus drei verschiedenen Elementen besteht:
+\begin{itemize}
+    \item Knoten (Nodes): Knoten repräsentieren einzelne Punkte im Raum und werden durch ihre
+          Längen- und Breitengrade (Geokoordinaten) definiert. Sie können Attribute wie Tags
+          (Schlüssel-Wert-Paare) enthalten, um Sachdaten über den Punkt zu speichern, \zB den
+          Namen, die Art des Ortes oder andere Eigenschaften.
+
+    \item Wege (Ways): Wege bestehen aus einer geordneten Liste von Knoten und repräsentieren
+          Linienzüge. In der Regel werden Straßen, Flüsse und Grenzen als Wege dargestellt. Wege
+          können auch Tags enthalten, um zusätzliche Informationen über den Linienzug zu speichern,
+          z. B. den Straßentyp oder die Geschwindigkeitsbegrenzung.
+
+    \item Relationen (Relations): Relationen bestehen aus ein oder mehreren Attributen und einer
+          sortierten Liste von Datenelementen (Wege, Knoten, Relationen), wobei  jedem Datenelement
+          eine Rolle zugewiesen wird. Sie werden verwendet, um logische oder geometrische
+          Zusammenhänge zwischen anderen Elementen zu beschreiben.
+\end{itemize}
+Grundsätzlich können beliebige Tags gesetzt werden, es haben sich jedoch zwei Arten von Tags
+etabliert:
+
+\emph{Klassifizierende} Tags haben einen von wenigen Schlüsseln, für jeden der wenigen Schlüssel
+gibt es nur eine begrenzte Anzahl von Werten. Abweichende Werte werden als Fehler betrachtet. So
+wird das gesamte öffentliche Straßennetz für Kraftfahrzeuge mit dem Schlüssel \emph{highway} und
+einem von wenigen gemeinsamen Werten identifiziert. Für Gebäude ist in den meisten Fällen nur
+\emph{building} mit dem Wert \emph{yes} definiert.
+
+Im Gegensatz dazu haben die \emph{beschreibenden} Tags nur feste Schlüssel, während der Wert ein
+freier Text ist, der in Groß- und Kleinbuchstaben geschrieben werden kann und auch Sonderzeichen
+enthalten kann. Der Hauptanwendungsfall sind Namen. Dazu können Beschreibungen, Bezeichner oder auch
+Größenangaben kommen.
+
+Für diese Arbeit sind vorallem die Elemente \emph{Node} und \emph{Way} relevant, sowie der Tag
+\emph{highway}. Abbildung~\ref{fig:osm_xml} zeigt ein Beispiel eines OSM-Dokuments. Es enthält drei
+Knoten und einen Weg. Der Weg referenziert die drei Knoten über die \texttt{ref}-Attribute. Die
+Straße ist vom Typ "`residential"', also eine Straße für Anlieger. Die weiteren Tags geben
+außerdem die Information, dass die Straße eine Einbahnstraße ist und dass maximal 30 km/h
+erlaubt sind.
+
+\begin{figure}[h]
+    % \begin{lstlisting}[language=xml, caption=Hello World in Java, captionpos=b]
+    \begin{lstlisting}[language=xml]
+<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6" upload="true" generator="OpenStreetMap server">
+  <bounds minlat="51.5073601795557" minlon="-0.108157396316528" maxlat="51.5076406454029" maxlon="-0.107599496841431"/>
+  <node id="1" lat="51.5074089" lon="-0.1080108" timestamp="1970-01-01T00:00:01Z" user="matt" visible="true" version="1"/>
+  <node id="2" lat="51.5074343" lon="-0.1080123" timestamp="1970-01-01T00:00:01Z" user="snsn1" visible="true" version="1"/>
+  <node id="3" lat="51.5075933" lon="-0.1076109" timestamp="1970-01-01T00:00:01Z" user="snsn1" visible="true" version="1"/>
+  <way id="12" action="modify" timestamp="1970-01-01T00:00:01Z" visible="true" version="3">
+    <nd ref="1" />
+    <nd ref="2" />
+    <nd ref="3" />
+    <tag k="highway" v="residential" />
+    <tag k="oneway" v="false" /> 
+    <tag k="maxspeed" v="30"/>
+    <tag k="name" v="Amselweg"/>
+  </way>
+</osm>
+\end{lstlisting}
+    \caption[OSM-XML-Beispiel]{Beispiel eines OSM-XML-Dokuments. Es enthält drei Knoten und einen
+        Weg. Hierbei handelt es sich um eine Anliegerstraße (erkennbar am
+        Tag \texttt{highway=residential}) mit erlaubter Höchstgeschwindigkeit von 30 km/h.}
+    \label{fig:osm_xml}
+\end{figure}
+
+Es gibt keine klaren Vorgaben zum Taggen von Objekten nur Empfehlungen. Daher ist eine große
+Variation an Tags zu erwarten, die ensprechend behandelt werden müssen.
+
+
+\subsubsection{Datenextraktion}
+Die erste Aufgabe besteht darin, die relevanten Daten aus dem OpenStreetMap-Datensatz zu
+extrahieren. Hierzu gibt es zahlreiche Möglichkeiten und Werkzeuge. Die Geofabrik GmbH Karlsruhe
+(Mitglied der \ac{OSM}-Foundation) bietet \ua ein Service an, bei dem sich bereits vorgefertigte
+Regionen (hierarchisch unterteilt in Kontinente, Länder, Bundesländer, etc.) direkt herunterladen
+lassen. Die Datensätze werden in der Regel täglich aktualisiert und sind als OSM- oder
+PBF-Format\footnote{PBF: ("`Protocolbuffer Binary Format"') ist eine Alternative zum XML Format, die
+    OSM-Rohdaten speichereffizient in Blöcken abspeichert \cite{osm.pbf}).} verfügbar
+\cite{osm.geofabrik}.
+
+Eine weitere Möglichkeit ist die Verwendung von \acp{API} wie \zB der
+Overpass-\ac{API}\footnote{\url{https://overpass-api.de/}}, eine kostenlose Schnittstelle mit der
+sich gezielt \ac{OSM}-Daten extrahieren lassen. Die Abfragen werden in der Overpass Query Language
+(kurz: Overpass QL) erstellt, mit der sich Daten \ua nach bestimmten Tags filtern lassen, \zB nach
+bestimmten Straßentypen oder Straßennamen \cite{osm.overpass}.
+
+Beide Ansätze können verwendet werden,
+
 \subsection{Contraction Hierarchies}
 \subsubsection{Überblick}
-Straßennetzwerke weisen eine sehr hierarchische Struktur auf. Es gibt "`wichtigere"' Straßen wie \zB Autobahnen
-und "`unwichtigere"' Straßen wie \zB Straßen in Wohnsiedlungen (siehe
+Straßennetzwerke weisen eine sehr hierarchische Struktur auf. Es gibt "`wichtigere"' Straßen wie \zB
+Autobahnen und "`unwichtigere"' Straßen wie \zB Straßen in Wohnsiedlungen (siehe
 Abbildung~\ref{fig:road_hierarchy}). Um von einem entfernten Ort zu einem anderen zu gelangen, ist
-es daher nur sinvoll, sich über Straßen mit zunehmender Wichtigkeit zu bewegen. Bei einer Suche könnte die
-Information des Straßentyps und der damit verbundenen Wichtigkeit als Heuristik verwendet werden, um
-bestimmte Kanten, die auf weniger wichtige Straßen führen,  zu ignorieren und damit die Suche zu
-beschleunigen. Das Problem hierbei ist allerding, dass mit dieser Methode keine Garantie besteht,
-dass der gefundene Weg auch wirklich der \emph{exakt} kürzeste Weg ist.
+es daher nur sinvoll, sich über Straßen mit zunehmender Wichtigkeit zu bewegen. Bei einer Suche
+könnte die Information des Straßentyps und der damit verbundenen Wichtigkeit als Heuristik verwendet
+werden, um bestimmte Kanten, die auf weniger wichtige Straßen führen,  zu ignorieren und damit die
+Suche zu beschleunigen. Das Problem hierbei ist allerding, dass mit dieser Methode keine Garantie
+besteht, dass der gefundene Weg auch wirklich der \emph{exakt} kürzeste Weg ist.
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.5\textwidth]{figures/road_hierarchy.png}
@@ -112,9 +202,10 @@ hinzugefügten Abkürzungskanten (siehe Abbildung~\ref{fig:overlaygraph}).
 Algorithmus zur Erstellung einer \ac{CH}
 
 \begin{algorithm}[H]
-    \caption{RUN\_CONTRACTION(G)}
+    \caption{Highlevel-Algorithmus der Knotenkontraktion}
     \label{algo:contraction}
     \begin{algorithmic}
+        \Function{Nodecontraction}{$G = (V,E)$}
         \ForEach{$v \in V$ geordnet nach Level}
         \ForEach{$(u,v) \in E$ mit $Level(u) > Level(v)$}
         \ForEach{$(v,w) \in E$ mit $Level(w) > Level(v)$}
@@ -124,6 +215,7 @@ Algorithmus zur Erstellung einer \ac{CH}
         \EndFor
         \EndFor
         \EndFor
+        \EndFunction
     \end{algorithmic}
 \end{algorithm}
 
@@ -137,49 +229,9 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed euismod, nisl quis 
 pellentesque, nunc nisl ultrices ipsum, quis aliquam nunc nisl ut nunc. Nulla facilisi. Nulla
 
 
-\SetVertexStyle[MinSize = 4.5mm]
-\SetLayerDistance{-7}
-\SetPlaneWidth{15}
-\SetPlaneHeight{7}
 \begin{figure}
     \centering
-    \begin{tikzpicture}[multilayer=3d,xscale=.5,yscale=.5]
-        %
-        % Layer 2
-
-        % Background
-        \Plane[layer=2,x=1,y=1,NoBorder,InBG]
-
-        % Text
-        \Text[x=1.2,y=0.8,layer=2,anchor=north west,style={scale=2.0}]{Originalgraph $G$}
-
-        % Vertices
-        \Vertices[color=orange]{data/graphs/ex3/vertices.csv}
-
-        % Intra-layer edges in layer 2
-        \Edges[layer={2,2},NoLabel]{data/graphs/ex3/edges_with_shortcuts.csv}
-        \EdgesNotInBG
-
-        % Inter-layer edges between layer 1 and 2
-        \Edges[color=black,NoLabel,layer={1,2},style={dashed}]{data/graphs/ex3/edges_with_shortcuts.csv}
-
-        %%
-        % Layer 1
-
-        % Background
-        \Plane[x=1,y=1,NoBorder,color=orange]
-
-        % Text
-        \Text[x=1.2,y=0.8,layer=1,anchor=north west,style={scale=2.0}]{Overlaygraph $G^{*}$}
-
-        % Intra-layer edges in layer 1
-        \Edges[layer={1,1},NoLabel]{data/graphs/ex3/edges_with_shortcuts.csv}
-
-        % Vertices in layer 1
-        \Vertices[layer=1,color=blue]{data/graphs/ex3/vertices.csv}
-
-
-    \end{tikzpicture}
+    \includestandalone[mode=buildnew]{tikz/figure_overlaygraph}
     \caption[Overlaygraph]{Overlaygraph nach Kontraktionsprozess. Der Graph $G^{*}$ enthält alle
         ursprünglichen Kanten sowie die neu hinzugefügten Abkürzungskanten.}
     \label{fig:overlaygraph}

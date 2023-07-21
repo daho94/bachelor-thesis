@@ -259,10 +259,10 @@ Jede Kante $e(u,v) \in E$ wird neu gewichtet, sodass gilt:
     $\bar{w}(u,v)=w(u,v)-\rho_t (u)+\rho_t (v)$
     \label{def:edge_weight}
 \end{definition}
-Kanten, die vom Ziel wegführen werden länger und Kanten die zum Ziel führen werden kürzer. Nachdem
-ein Potential gewählt wurde und alle Kanten neu gewichtet wurden, kann Dijkstra wie gewohnt auf dem
-neuen Graph ausgeführt werden. Durch ein gut gewähltes Potential wird die Suche in die Richtung des
-Ziels gelenkt und somit die Laufzeit verringert.\\
+Kanten, die vom Ziel wegführen werden länger und Kanten die in Richtung Ziel führen werden kürzer.
+Nachdem ein Potential gewählt wurde und alle Kanten neu gewichtet wurden, kann Dijkstra wie gewohnt
+auf dem neuen Graph ausgeführt werden. Durch ein gut gewähltes Potential wird die Suche in die
+Richtung des Ziels gelenkt und somit die Laufzeit verringert \cite{wagner}.\\
 
 Abbildung~\ref{fig:astar} zeigt einen $\bar{G}$, in dem alle Kantengewichte neu gewichtet wurden.
 Knoten die weg vom Ziel führen haben ein höheres Potential und sind schwerer zu erreichen, da mehr
@@ -312,21 +312,24 @@ euklidische bzw.~Großkreisdistanz als Potential eine gute Wahl:
 \begin{equation}
     \rho_t(u) = \sqrt{(x_t - x_u)^2 + (y_t - y_u)^2}
 \end{equation}
-Der einzige Unterschied zu Dijkstra findet sich in Zeile 7 (\ref{algo:astar}) wieder. Hier wird
-nicht mehr das Element mit der niedrigsten Distanz extrahiert sonder das Element mit der niedrigsten
-Distanz plus dem Potential. Wenn für Potential die Nullheuristik gewählt wird, dann ist \astar
-identisch zu Dijkstra.\\
-\begin{algorithm}[H]
+Der Ansatz mit einer kompletten Neugewichtung aller Kanten ist zwar intuitiv, aber in der Praxis
+nicht sinnvoll, da es aufwendig ist jede Kante neu zu berechnen. Stattdessen erfolgt die
+\astar-Implementierung analog zu Dijkstra (siehe~\ref{algo:dijkstra}). Der einzige Unterschied des
+Algorithmus (siehe~\ref{algo:astar}) findet sich in Zeile 7 wieder. Hier wird nicht mehr das Element
+mit der niedrigsten Distanz extrahiert sonder das Element mit der niedrigsten Distanz plus der
+Heuristik~$\lambda$. Wenn für die Heuristik die Nullheuristik $\lambda_0:V \rightarrow 0$ gewählt
+wird, dann verhält sich \astar identisch zu Dijkstra.\\
+\begin{algorithm}[h]
     \caption{AStar Implementierung}
     \label{algo:astar}
     \begin{algorithmic}[1]
-        \Function{AStar}{$G=(V,E), s, t, \rho_t$}
+        \Function{AStar}{$G=(V,E), s, t, \lambda$}
         \State $Q \gets \emptyset$
         \State $P \gets \emptyset$ \Comment{Vorgängerknoten für Pfadrekonstruktion}
         \State $dist(s) \gets 0$
         \State $Q \gets Q \cup \{s\}$
         \While{$Q \neq \emptyset$}
-        \State $u \gets \text{node in Q minimizing } dist(node) + \rho_t(node)$ \Comment{Potential berücksichtigen}
+        \State $u \gets \text{node in Q minimizing } dist(node) + \lambda(node)$ \Comment{Heuristik berücksichtigen}
         \If{$u = t$}
         \State \Return $shortest_path(P,t)$
         \EndIf
