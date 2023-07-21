@@ -90,7 +90,12 @@ sich gezielt \ac{OSM}-Daten extrahieren lassen. Die Abfragen werden in der Overp
 (kurz: Overpass QL) erstellt, mit der sich Daten \ua nach bestimmten Tags filtern lassen, \zB nach
 bestimmten Straßentypen oder Straßennamen \cite{osm.overpass}.
 
-Beide Ansätze können verwendet werden,
+Beide Ansätze können verwendet werden, in der Arbeit werden aber hauptsächlich vorgefertigte Daten
+im PBF-Format verwendet und verarbeitet. Zur Untersuchung von kleinen Gebieten wird die
+Pyhtonbibliothek \emph{OSMNX} verwendet, die es ermöglicht, \ac{OSM}-Daten über eine
+Highlevel-\ac{API} (intern: Overpass) abzufragen, zu verarbeiten und zu visualisieren.
+
+\subsubsection{Datenverarbeitung}
 
 \subsection{Contraction Hierarchies}
 \subsubsection{Überblick}
