@@ -46,7 +46,7 @@ erlaubt sind.
 
 \begin{figure}[h]
     % \begin{lstlisting}[language=xml, caption=Hello World in Java, captionpos=b]
-    \begin{lstlisting}[language=xml]
+    \begin{lstlisting}
 <?xml version="1.0" encoding="UTF-8"?>
 <osm version="0.6" upload="true" generator="OpenStreetMap server">
   <bounds minlat="51.5073601795557" minlon="-0.108157396316528" maxlat="51.5076406454029" maxlon="-0.107599496841431"/>
@@ -90,12 +90,42 @@ sich gezielt \ac{OSM}-Daten extrahieren lassen. Die Abfragen werden in der Overp
 (kurz: Overpass QL) erstellt, mit der sich Daten \ua nach bestimmten Tags filtern lassen, \zB nach
 bestimmten Straßentypen oder Straßennamen \cite{osm.overpass}.
 
-Beide Ansätze können verwendet werden, in der Arbeit werden aber hauptsächlich vorgefertigte Daten
-im PBF-Format verwendet und verarbeitet. Zur Untersuchung von kleinen Gebieten wird die
-Pyhtonbibliothek \emph{OSMNX} verwendet, die es ermöglicht, \ac{OSM}-Daten über eine
+In der Arbeit werden hauptsächlich vorgefertigte Daten im PBF-Format verwendet und verarbeitet. Zur Untersuchung von kleinen Gebieten wird die
+Pyhtonbibliothek OSMnx \cite{osmnx} verwendet, die es ermöglicht, \ac{OSM}-Daten über eine
 Highlevel-\ac{API} (intern: Overpass) abzufragen, zu verarbeiten und zu visualisieren.
 
 \subsubsection{Datenverarbeitung}
+Zunächst wird die \emph{PBF}-Datei eingelesen und geparst. Ein Problem der Rohdaten ist, dass viele
+Elemente der Daten für die Routenplanung nicht relevant sind. Dazu zählen alle Elemente, die keine
+Straßen sind (\zB Gebäude, Flüsse, etc.) sowie alle Straßen, die nicht für den Autoverkehr
+zugelassen sind (\zB Fußgängerzonen, Radwege, etc.). Diese Elemente werden daher während des Parsens
+der Datei gefiltert und aus dem Graphen entfernt, sodass ein Netzwerk wie in
+Abbildung~\ref{fig:osm_filtered} übrigt bleibt.\\
+
+\begin{figure}[h]
+    \centering
+    \begin{subfigure}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/roads_unfiltered.png}
+        \caption{Ungefiltertes Straßennetzwerk}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/roads_filtered.png}
+        \caption{Gefiltertes Straßennetzwerk}
+    \end{subfigure}
+    \caption[Straßennetzwerk gefiltert und ungefiltert]{Straßennetzwerk gefiltert und ungefiltert.
+        Das ungefilterte Netzwerk (a) enthält alle Straßen und Wege, die in der \ac{OSM}-Datei enthalten sind.
+        Das gefilterte Netzwerk (b) enthält nur Straßen, die für den Autoverkehr zugelassen sind.}
+    \label{fig:osm_filtered}
+\end{figure}
+
+
+Anschließend wird der Graph vereinfacht,
+indem Knoten entfernt werden die nicht für die Topologie des Graphen relevant sind.\\
+
+
+
 
 \subsection{Contraction Hierarchies}
 \subsubsection{Überblick}
