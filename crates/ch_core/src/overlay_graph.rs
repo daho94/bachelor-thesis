@@ -75,16 +75,32 @@ impl OverlayGraph {
         &self.g.edges[edge_idx.index()]
     }
 
-    pub fn edges_fwd(&self, node: NodeIndex) -> impl Iterator<Item = (EdgeIndex, &Edge)> {
+    pub fn edges_fwd(&self, node: NodeIndex) -> impl Iterator<Item = (EdgeIndex, Edge)> + '_ {
         self.edges_fwd[node.index()]
             .iter()
-            .map(|edge_idx| (*edge_idx, &self.g.edges[edge_idx.index()]))
+            // .map(|edge_idx| (*edge_idx, &self.g.edges[edge_idx.index()]))
+            .map(move |edge_idx| {
+                let edge = &self.g.edges[edge_idx.index()];
+                if edge.source == node {
+                    (*edge_idx, edge.clone())
+                } else {
+                    (*edge_idx, edge.reverse())
+                }
+            })
     }
 
-    pub fn edges_bwd(&self, node: NodeIndex) -> impl Iterator<Item = (EdgeIndex, &Edge)> {
+    pub fn edges_bwd(&self, node: NodeIndex) -> impl Iterator<Item = (EdgeIndex, Edge)> + '_ {
         self.edges_bwd[node.index()]
             .iter()
-            .map(|edge_idx| (*edge_idx, &self.g.edges[edge_idx.index()]))
+            // .map(|edge_idx| (*edge_idx, &self.g.edges[edge_idx.index()]))
+            .map(move |edge_idx| {
+                let edge = &self.g.edges[edge_idx.index()];
+                if edge.target == node {
+                    (*edge_idx, edge.clone())
+                } else {
+                    (*edge_idx, edge.reverse())
+                }
+            })
     }
 
     /// Recursively unpacks shortcut edges. Used to reconstruct the original path after the shortest path calculation.

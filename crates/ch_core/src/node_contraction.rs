@@ -264,26 +264,54 @@ impl<'a> NodeContractor<'a> {
     pub(crate) fn neighbors_outgoing(
         &self,
         node_idx: NodeIndex,
-    ) -> impl Iterator<Item = (EdgeIndex, &Edge)> {
+    ) -> impl Iterator<Item = (EdgeIndex, Edge)> + '_ {
         self.g.edges_out[node_idx.index()]
             .iter()
-            .filter(move |edge_idx| {
-                !self.nodes_contracted[self.g.edges[edge_idx.index()].target.index()]
+            .filter_map(move |edge_idx| {
+                let edge = &self.g.edges[edge_idx.index()];
+                let edge = if edge.source == node_idx {
+                    edge.clone()
+                } else {
+                    edge.reverse()
+                };
+
+                if !self.nodes_contracted[self.g.edges[edge_idx.index()].target.index()] {
+                    Some((*edge_idx, edge))
+                } else {
+                    None
+                }
             })
-            .map(|edge_idx| (*edge_idx, &self.g.edges[edge_idx.index()]))
+        // .filter(move |edge_idx| {
+        //     !self.nodes_contracted[self.g.edges[edge_idx.index()].target.index()]
+        // })
+        // .map(|edge_idx| (*edge_idx, &self.g.edges[edge_idx.index()]))
     }
 
     /// Iterator over all incoming edges of a node v excluding edges to already contracted nodes
     pub(crate) fn neighbors_incoming(
         &self,
         node_idx: NodeIndex,
-    ) -> impl Iterator<Item = (EdgeIndex, &Edge)> {
+    ) -> impl Iterator<Item = (EdgeIndex, Edge)> + '_ {
         self.g.edges_in[node_idx.index()]
             .iter()
-            .filter(move |edge_idx| {
-                !self.nodes_contracted[self.g.edges[edge_idx.index()].source.index()]
+            // .filter(move |edge_idx| {
+            //     !self.nodes_contracted[self.g.edges[edge_idx.index()].source.index()]
+            // })
+            // .map(|edge_idx| (*edge_idx, &self.g.edges[edge_idx.index()]))
+            .filter_map(move |edge_idx| {
+                let edge = &self.g.edges[edge_idx.index()];
+                let edge = if edge.target == node_idx {
+                    edge.clone()
+                } else {
+                    edge.reverse()
+                };
+
+                if !self.nodes_contracted[edge.source.index()] {
+                    Some((*edge_idx, edge))
+                } else {
+                    None
+                }
             })
-            .map(|edge_idx| (*edge_idx, &self.g.edges[edge_idx.index()]))
     }
 
     /// Returns (E, S) the number of removed edges and added shortcuts
@@ -297,15 +325,11 @@ impl<'a> NodeContractor<'a> {
         let mut added_shortcuts = 0;
         let mut removed_edges = 0;
 
-        let edges_in: Vec<(EdgeIndex, Edge)> = self
-            .neighbors_incoming(v)
-            .map(|(i, e)| (i, e.clone()))
-            .collect();
+        let edges_in: Vec<(EdgeIndex, Edge)> =
+            self.neighbors_incoming(v).map(|(i, e)| (i, e)).collect();
 
-        let edges_out: Vec<(EdgeIndex, Edge)> = self
-            .neighbors_outgoing(v)
-            .map(|(i, e)| (i, e.clone()))
-            .collect();
+        let edges_out: Vec<(EdgeIndex, Edge)> =
+            self.neighbors_outgoing(v).map(|(i, e)| (i, e)).collect();
 
         removed_edges += edges_in.len();
         removed_edges += edges_out.len();

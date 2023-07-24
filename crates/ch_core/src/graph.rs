@@ -158,6 +158,8 @@ pub struct Edge<Idx = DefaultIdx> {
     pub source: NodeIndex<Idx>,
     pub target: NodeIndex<Idx>,
     pub weight: Weight,
+    #[serde(default = "Default::default")]
+    pub is_bidir: bool,
 }
 
 impl Edge {
@@ -170,6 +172,29 @@ impl Edge {
             source,
             target,
             weight,
+            is_bidir: false,
+        }
+    }
+
+    pub fn new_bidir(
+        source: NodeIndex<DefaultIdx>,
+        target: NodeIndex<DefaultIdx>,
+        weight: Weight,
+    ) -> Self {
+        Edge {
+            source,
+            target,
+            weight,
+            is_bidir: true,
+        }
+    }
+
+    pub(crate) fn reverse(&self) -> Self {
+        Edge {
+            source: self.target,
+            target: self.source,
+            weight: self.weight,
+            is_bidir: self.is_bidir,
         }
     }
 }
@@ -242,6 +267,12 @@ impl Graph {
 
         self.edges_out[edge.source.index()].push(edge_idx);
         self.edges_in[edge.target.index()].push(edge_idx);
+
+        if edge.is_bidir {
+            self.edges_out[edge.target.index()].push(edge_idx);
+            self.edges_in[edge.source.index()].push(edge_idx);
+        }
+
         self.edges.push(edge);
 
         edge_idx
@@ -293,22 +324,38 @@ impl Graph {
     pub fn neighbors_outgoing(
         &self,
         node_idx: NodeIndex,
-    ) -> impl Iterator<Item = (EdgeIndex, &Edge)> {
+    ) -> impl Iterator<Item = (EdgeIndex, Edge)> + '_ {
         // Ignore shortcuts
         self.edges_out[node_idx.index()]
             .iter()
             // .filter(|edge_idx| edge_idx.index() < self.edges.len() - self.num_shortcuts)
-            .map(|edge_idx| (*edge_idx, &self.edges[edge_idx.index()]))
+            // .map(|edge_idx| (*edge_idx, self.edges[edge_idx.index()]))
+            .map(move |edge_idx| {
+                let edge = &self.edges[edge_idx.index()];
+                if edge.source == node_idx {
+                    (*edge_idx, edge.clone())
+                } else {
+                    (*edge_idx, edge.reverse())
+                }
+            })
     }
 
     pub fn neighbors_incoming(
         &self,
         node_idx: NodeIndex,
-    ) -> impl Iterator<Item = (EdgeIndex, &Edge)> {
+    ) -> impl Iterator<Item = (EdgeIndex, Edge)> + '_ {
         // Ignore shortcuts
         self.edges_in[node_idx.index()]
             .iter()
-            .map(|edge_idx| (*edge_idx, &self.edges[edge_idx.index()]))
+            // .map(|edge_idx| (*edge_idx, &self.edges[edge_idx.index()]))
+            .map(move |edge_idx| {
+                let edge = &self.edges[edge_idx.index()];
+                if edge.target == node_idx {
+                    (*edge_idx, edge.clone())
+                } else {
+                    (*edge_idx, edge.reverse())
+                }
+            })
     }
 
     pub fn print_info(&self) {
@@ -377,13 +424,29 @@ impl Graph {
             source,
             target,
             weight,
+            is_bidir,
         } in road_graph.get_arcs()
         {
-            let edge: Edge = Edge::new(
-                NodeIndex::new(node_index[source]),
-                NodeIndex::new(node_index[target]),
-                *weight,
-            );
+            // let edge = Edge::new(
+            //     NodeIndex::new(node_index[source]),
+            //     NodeIndex::new(node_index[target]),
+            //     *weight,
+            // );
+            // g.add_edge(edge);
+            // if *is_bidir {
+            //     let edge = Edge::new(
+            //         NodeIndex::new(node_index[target]),
+            //         NodeIndex::new(node_index[source]),
+            //         *weight,
+            //     );
+            //     g.add_edge(edge);
+            // }
+            let edge: Edge = Edge {
+                source: NodeIndex::new(node_index[source]),
+                target: NodeIndex::new(node_index[target]),
+                weight: *weight,
+                is_bidir: *is_bidir,
+            };
             g.add_edge(edge);
         }
 
@@ -416,6 +479,14 @@ impl Graph {
                 edge.target.index().to_string(),
                 edge.weight.to_string(),
             ])?;
+
+            if edge.is_bidir {
+                wtr.write_record(&[
+                    edge.target.index().to_string(),
+                    edge.source.index().to_string(),
+                    edge.weight.to_string(),
+                ])?;
+            }
         }
 
         wtr.flush()?;
@@ -459,6 +530,8 @@ macro_rules! node {
 
 #[cfg(test)]
 mod tests {
+    use crate::util::test_graphs::graph_vaterstetten;
+
     use super::*;
 
     #[test]
@@ -496,5 +569,16 @@ mod tests {
 
         assert_eq!(g.edges.len(), 1);
         assert_eq!(g.edges[edge1.index()].weight, 1.0);
+    }
+
+    #[test]
+    fn read_vaterstetten() {
+        let mut g = graph_vaterstetten();
+
+        assert_eq!(g.nodes.len(), 2196);
+
+        // 4831 edges without bidir optimization
+        //
+        assert_eq!(g.edges.len(), 9);
     }
 }

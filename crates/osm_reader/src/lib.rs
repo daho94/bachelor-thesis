@@ -9,14 +9,16 @@ pub struct Arc {
     pub source: i64,
     pub target: i64,
     pub weight: f64,
+    pub is_bidir: bool,
 }
 
 impl Arc {
-    fn new(source: i64, target: i64, weight: f64) -> Self {
+    fn new(source: i64, target: i64, weight: f64, is_bidir: bool) -> Self {
         Self {
             source,
             target,
             weight,
+            is_bidir,
         }
     }
 }
@@ -38,8 +40,8 @@ impl RoadGraph {
         self.nodes.insert(id, [lat, lon]);
     }
 
-    pub fn add_arc(&mut self, from: i64, to: i64, weight: f64) {
-        self.arcs.push(Arc::new(from, to, weight));
+    pub fn add_arc(&mut self, from: i64, to: i64, weight: f64, is_bidir: bool) {
+        self.arcs.push(Arc::new(from, to, weight, is_bidir));
     }
 
     pub fn get_nodes(&self) -> &FxHashMap<i64, [f64; 2]> {
@@ -108,7 +110,7 @@ impl RoadGraph {
                     // }
                 });
 
-                ways.push((node_ids, road_type, is_oneway));
+                ways.push((node_ids, road_type, !is_oneway));
             }
             Element::Node(node) => {
                 // graph.add_node(node.id(), node.lat(), node.lon());
@@ -122,7 +124,7 @@ impl RoadGraph {
         })?;
 
         graph.arcs = Vec::with_capacity(ways.len() * 2);
-        for (node_ids, road_type, is_oneway) in ways {
+        for (node_ids, road_type, is_bidir) in ways {
             let nodes_to_keep: Vec<usize> = {
                 if node_ids.len() == 2 {
                     // Always keeep start and end node of a way
@@ -161,11 +163,11 @@ impl RoadGraph {
                     total_weight += weight(distance, &road_type);
                 }
 
-                graph.add_arc(node_ids[from], node_ids[to], total_weight);
+                graph.add_arc(node_ids[from], node_ids[to], total_weight, is_bidir);
                 // If bidirectional add reverse edge
-                if !is_oneway {
-                    graph.add_arc(node_ids[to], node_ids[from], total_weight);
-                }
+                // if is_bidir {
+                //     graph.add_arc(node_ids[to], node_ids[from], total_weight, false);
+                // }
             }
         }
 
@@ -215,12 +217,12 @@ impl RoadGraph {
                     let from = node_ids[i];
                     let to = node_ids[i + 1];
 
-                    edges.push((from, to, road_type));
+                    edges.push((from, to, road_type, !is_oneway));
 
                     // If bidirectional add reverse edge
-                    if !is_oneway {
-                        edges.push((to, from, road_type));
-                    }
+                    // if !is_oneway {
+                    //     edges.push((to, from, road_type));
+                    // }
                 }
             }
             Element::Node(node) => {
@@ -234,13 +236,13 @@ impl RoadGraph {
 
         // Calculate weights and add arcs to graph
         graph.arcs = Vec::new();
-        for (from, to, road_type) in edges {
+        for (from, to, road_type, is_bidir) in edges {
             let [from_lat, from_lon] = graph.nodes.get(&from).unwrap();
             let [to_lat, to_lon] = graph.nodes.get(&to).unwrap();
 
             let distance = haversine_distance(*from_lat, *from_lon, *to_lat, *to_lon);
 
-            graph.add_arc(from, to, weight(distance, &road_type));
+            graph.add_arc(from, to, weight(distance, &road_type), is_bidir);
         }
 
         Ok(graph)
@@ -265,9 +267,14 @@ impl RoadGraph {
             weight,
             source,
             target,
+            is_bidir,
         } in self.arcs.iter()
         {
             let _ = edges_writer.write(format!("{},{},{}\n", source, target, weight).as_bytes())?;
+            if *is_bidir {
+                let _ =
+                    edges_writer.write(format!("{},{},{}\n", target, source, weight).as_bytes())?;
+            }
         }
         edges_writer.flush()?;
 

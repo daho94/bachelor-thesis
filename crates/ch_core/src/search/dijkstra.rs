@@ -114,7 +114,10 @@ impl<'a> Dijkstra<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::search::{assert_no_path, assert_path};
+    use crate::{
+        search::{assert_no_path, assert_path},
+        util::test_graphs::graph_vaterstetten,
+    };
 
     use super::*;
 

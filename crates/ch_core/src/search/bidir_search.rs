@@ -148,8 +148,8 @@ impl<'a> BiDirSearch<'a> {
             }
         }
 
-        debug!("Intersection node: {:?}", intersect_node);
-        debug!("min {{ dist(s,v) + dist(t,v) | v in I }} = {}", min_dist);
+        info!("Intersection node: {:?}", intersect_node);
+        info!("min {{ dist(s,v) + dist(t,v) | v in I }} = {}", min_dist);
 
         self.stats.finish();
 
@@ -160,16 +160,34 @@ impl<'a> BiDirSearch<'a> {
             let path_fwd = (|| {
                 let mut path = vec![];
 
-                let mut previous_node = v;
+                let mut prev_node = v;
 
-                while let Some(prev_edge) = self.data_fwd.get(&previous_node)?.1 {
-                    let unpacked = self.g.unpack_edge(prev_edge);
+                while let Some(prev_edge_idx) = self.data_fwd.get(&prev_node)?.1 {
+                    let unpacked = self.g.unpack_edge(prev_edge_idx);
 
+                    let mut n = prev_node;
                     for edge_idx in unpacked.iter().rev() {
-                        path.push(self.g.edge(*edge_idx).target);
+                        let edge = self.g.edge(*edge_idx);
+
+                        if edge.target == n {
+                            path.push(edge.target);
+                            n = edge.source;
+                        } else {
+                            path.push(edge.source);
+                            n = edge.target;
+                        }
+
+                        // path.push(self.g.edge(*edge_idx).target);
                     }
 
-                    previous_node = self.g.edge(prev_edge).source;
+                    // previous_node = self.g.edge(prev_edge_idx).source;
+
+                    let prev_edge = self.g.edge(prev_edge_idx);
+                    prev_node = if prev_edge.target == prev_node {
+                        prev_edge.source
+                    } else {
+                        prev_edge.target
+                    }
                 }
                 path.push(source);
                 path.reverse();
@@ -177,29 +195,47 @@ impl<'a> BiDirSearch<'a> {
                 Some(path)
             })()
             .unwrap_or(vec![source]);
-            debug!("Path fwd: {:?}", &path_fwd);
+            info!("Path fwd: {:?}", &path_fwd);
 
             // Add the backward path and weight
             let path_bwd = (|| {
                 let mut path = vec![];
 
-                let mut previous_node = v;
+                let mut prev_node = v;
 
-                while let Some(prev_edge) = self.data_bwd.get(&previous_node)?.1 {
-                    let unpacked = self.g.unpack_edge(prev_edge);
+                while let Some(prev_edge_idx) = self.data_bwd.get(&prev_node)?.1 {
+                    let unpacked = self.g.unpack_edge(prev_edge_idx);
 
+                    let mut n = prev_node;
                     for edge_idx in unpacked.iter() {
-                        path.push(self.g.edge(*edge_idx).target);
+                        let edge = self.g.edge(*edge_idx);
+
+                        if edge.source == n {
+                            path.push(edge.target);
+                            n = edge.target;
+                        } else {
+                            path.push(edge.source);
+                            n = edge.source;
+                        }
+
+                        // path.push(self.g.edge(*edge_idx).target);
                     }
 
-                    previous_node = self.g.edge(prev_edge).target;
+                    // prev_node = self.g.edge(prev_edge_idx).target;
+
+                    let prev_edge = self.g.edge(prev_edge_idx);
+                    prev_node = if prev_edge.source == prev_node {
+                        prev_edge.target
+                    } else {
+                        prev_edge.source
+                    }
                 }
 
                 Some(path)
             })()
             .unwrap_or(Vec::<NodeIndex>::new());
 
-            debug!("Path bwd: {:?}", &path_bwd);
+            info!("Path bwd: {:?}", &path_bwd);
             let path = [path_fwd, path_bwd].concat();
 
             info!("{}, weight: {}", self.stats, weight);
@@ -366,6 +402,8 @@ mod tests {
         init_log();
         let mut g = graph_vaterstetten();
 
+        let num_nodes = g.nodes.len();
+
         let mut contractor = NodeContractor::new(&mut g);
 
         let overlay_graph = contractor.run();
@@ -373,7 +411,7 @@ mod tests {
         let mut runner = proptest::test_runner::TestRunner::default();
 
         runner
-            .run(&(0..4500usize, 0..4500usize), |(a, b)| {
+            .run(&(0..num_nodes, 0..num_nodes), |(a, b)| {
                 test_search(&overlay_graph, a, b);
                 Ok(())
             })
