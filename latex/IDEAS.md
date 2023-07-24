@@ -1,3 +1,0 @@
-- Overlaygraph
-  - https://github.com/hackl/tikz-network/blob/master/examples/multilayer/ex_multilayer_01.pdf
-- Referance to graphhopper as famous open source implementation
