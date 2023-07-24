@@ -366,6 +366,8 @@ mod tests {
         init_log();
         let mut g = graph_vaterstetten();
 
+        let num_nodes = g.nodes.len();
+
         let mut contractor = NodeContractor::new(&mut g);
 
         let overlay_graph = contractor.run();
@@ -373,7 +375,7 @@ mod tests {
         let mut runner = proptest::test_runner::TestRunner::default();
 
         runner
-            .run(&(0..4500usize, 0..4500usize), |(a, b)| {
+            .run(&(0..num_nodes, 0..num_nodes), |(a, b)| {
                 test_search(&overlay_graph, a, b);
                 Ok(())
             })
