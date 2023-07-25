@@ -82,7 +82,7 @@ impl Default for PriorityParams {
 
 pub struct NodeContractor<'a> {
     g: &'a mut Graph,
-    node_ranks: Vec<usize>,
+    node_ranks: Vec<usize>, // TODO: rename to levels to match thesis
     nodes_contracted: Vec<bool>,
     contracted_neighbors: Vec<usize>,
     num_nodes: usize,
