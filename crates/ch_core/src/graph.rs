@@ -434,7 +434,7 @@ impl Default for Graph {
 ///
 /// edge!(0 , 1, 3.0) Returns edge in both directions
 ///
-/// edge!(0 ==> 1, 3.0) Returns directed edge
+/// edge!(0 => 1, 3.0) Returns directed edge
 #[macro_export]
 macro_rules! edge {
     ($source:expr => $target:expr, $weight:expr) => {
