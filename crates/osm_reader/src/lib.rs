@@ -116,6 +116,7 @@ impl RoadGraph {
         })?;
 
         graph.arcs = Vec::with_capacity(ways.len() * 2);
+        // Split ways, but only keep nodes that are referenced more than once
         for (node_ids, road_type, is_oneway) in ways {
             let mut nodes_to_keep = vec![];
             (0..node_ids.len()).for_each(|i| {
