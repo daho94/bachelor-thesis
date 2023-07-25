@@ -95,27 +95,21 @@ impl RoadGraph {
 
                 (0..node_ids.len()).for_each(|i| {
                     let from = node_ids[i];
-                    // let to = node_ids[i + 1];
 
-                    // Increase ref count for from node
-                    *refs_count.entry(from).or_insert(0) += 1;
-
-                    // edges.push((from, to, road_type));
-
-                    // If bidirectional add reverse edge
-                    // if !is_oneway {
-                    //     edges.push((to, from, road_type));
-                    // }
+                    if i == 0 || i == node_ids.len() - 1 {
+                        // Start and End of a road should always be included
+                        *refs_count.entry(from).or_insert(0) += 2;
+                    } else {
+                        *refs_count.entry(from).or_insert(0) += 1;
+                    }
                 });
 
                 ways.push((node_ids, road_type, is_oneway));
             }
             Element::Node(node) => {
-                // graph.add_node(node.id(), node.lat(), node.lon());
                 nodes.insert(node.id(), [node.lat(), node.lon()]);
             }
             Element::DenseNode(dense_node) => {
-                // graph.add_node(dense_node.id(), dense_node.lat(), dense_node.lon());
                 nodes.insert(dense_node.id(), [dense_node.lat(), dense_node.lon()]);
             }
             Element::Relation(_) => {}
@@ -123,23 +117,13 @@ impl RoadGraph {
 
         graph.arcs = Vec::with_capacity(ways.len() * 2);
         for (node_ids, road_type, is_oneway) in ways {
-            let nodes_to_keep: Vec<usize> = {
-                if node_ids.len() == 2 {
-                    // Always keeep start and end node of a way
-                    vec![0, 1]
-                } else {
-                    // Only keep nodes in between start and end node if they are referenced more than once by another way
-                    let mut nodes_to_keep = vec![0];
-                    (1..node_ids.len() - 1).for_each(|i| {
-                        let node_id = node_ids[i];
-                        if refs_count.get(&node_id).unwrap() > &1 {
-                            nodes_to_keep.push(i);
-                        }
-                    });
-                    nodes_to_keep.push(node_ids.len() - 1);
-                    nodes_to_keep
+            let mut nodes_to_keep = vec![];
+            (0..node_ids.len()).for_each(|i| {
+                let node_id = node_ids[i];
+                if refs_count.get(&node_id).unwrap() > &1 {
+                    nodes_to_keep.push(i);
                 }
-            };
+            });
 
             // Add nodes to graph
             for i in nodes_to_keep.iter() {
