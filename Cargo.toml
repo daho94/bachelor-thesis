@@ -7,6 +7,7 @@ members = [
     "crates/ch_core",
     "crates/repl",
     "crates/graph_viz_macroquad",
+    "crates/ggez-test",
 ]
 
 [profile.release]
