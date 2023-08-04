@@ -6,4 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ggez = "*"
+ggez = { version = "0.9.3", default-features = false, features = [
+  "zip-compression",
+  "gamepad",
+] }
+osm_reader = { path = "../osm_reader" }
