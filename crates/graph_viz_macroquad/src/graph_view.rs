@@ -12,7 +12,10 @@ use std::{
     f32::{MAX, MIN},
 };
 
-use crate::widgets::debug::{DebugInfo, NodeInfo};
+use crate::{
+    widgets::debug::{DebugInfo, NodeInfo},
+    COLOR_THEME,
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct SearchResult {
@@ -211,7 +214,7 @@ impl<'a> GraphView<'a> {
                         to.x,
                         to.y,
                         1.0,
-                        Color::from_rgba(0, 255, 255, 125),
+                        COLOR_THEME.lock().unwrap().graph_up_color(),
                     );
                 }
             }
@@ -243,7 +246,7 @@ impl<'a> GraphView<'a> {
                         from.x,
                         from.y,
                         1.0,
-                        Color::from_rgba(255, 255, 0, 125),
+                        COLOR_THEME.lock().unwrap().graph_down_color(),
                     );
                 }
             }
@@ -368,9 +371,11 @@ impl<'a> GraphView<'a> {
                 to.y,
                 1.0,
                 if idx > self.g.edges.len() - self.g.num_shortcuts {
-                    Color::from_rgba(255, 20, 20, 125)
+                    // Color::from_rgba(255, 20, 20, 125)
+                    COLOR_THEME.lock().unwrap().shortcut_color()
                 } else {
-                    Color::from_rgba(128, 128, 128, 255)
+                    // Color::from_rgba(128, 128, 128, 255)
+                    COLOR_THEME.lock().unwrap().line_color()
                 },
             );
         }
@@ -380,7 +385,7 @@ impl<'a> GraphView<'a> {
         let scale = self.scale();
 
         for node in self.g.nodes() {
-            self.draw_node(node, scale, 2.0, WHITE);
+            self.draw_node(node, scale, 2.0, COLOR_THEME.lock().unwrap().node_color());
         }
     }
 

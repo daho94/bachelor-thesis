@@ -3,7 +3,10 @@ use crossbeam_channel::{Receiver, Sender};
 use egui::{CollapsingHeader, Context, Window};
 use macroquad::prelude::{is_key_pressed, KeyCode};
 
-use crate::graph_view::{GraphViewOptions, SearchResult};
+use crate::{
+    graph_view::{GraphViewOptions, SearchResult},
+    COLOR_THEME,
+};
 
 pub(crate) struct UserInputWidget<'g> {
     source_text: String,
@@ -20,6 +23,7 @@ pub(crate) struct UserInputWidget<'g> {
     tx_search: Sender<(Option<NodeIndex>, Option<NodeIndex>)>,
 
     options: GraphViewOptions,
+    dark_theme: bool,
 }
 
 impl<'g> UserInputWidget<'g> {
@@ -43,6 +47,8 @@ impl<'g> UserInputWidget<'g> {
             options: Default::default(),
             rx_search,
             tx_search,
+
+            dark_theme: true,
         }
     }
 }
@@ -72,6 +78,12 @@ impl<'g> super::MyWidget for UserInputWidget<'g> {
             }
         }
 
+        if self.dark_theme {
+            COLOR_THEME.lock().unwrap().set_dark_theme();
+        } else {
+            COLOR_THEME.lock().unwrap().set_light_theme();
+        }
+
         Window::new("User Input").show(ctx, |ui| {
             CollapsingHeader::new("Graph Options").show(ui, |ui| {
                 ui.checkbox(&mut self.options.draw_shortcuts, "Draw shortcuts");
@@ -79,10 +91,11 @@ impl<'g> super::MyWidget for UserInputWidget<'g> {
                 ui.checkbox(&mut self.options.draw_shortest_path, "Draw Shortest Path");
                 ui.checkbox(&mut self.options.draw_graph_upward, "Draw Graph Up");
                 ui.checkbox(&mut self.options.draw_graph_downward, "Draw Graph Down");
-                ui.checkbox(
-                    &mut self.options.draw_top_important_nodes,
-                    "Draw Most Important Nodes",
-                );
+                // ui.checkbox(
+                //     &mut self.options.draw_top_important_nodes,
+                //     "Draw Most Important Nodes",
+                // );
+                ui.checkbox(&mut self.dark_theme, "Dark Theme");
             });
 
             ui.add_space(10.);
