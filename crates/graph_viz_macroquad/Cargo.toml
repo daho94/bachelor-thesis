@@ -13,3 +13,4 @@ ch_core = { path = "../ch_core" }
 log = "0.4.17"
 env_logger = "0.10.0"
 crossbeam-channel = "0.5"
+once_cell = "1.18.0"

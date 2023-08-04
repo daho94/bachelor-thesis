@@ -1,12 +1,18 @@
+use std::sync::Mutex;
+
 use ch_core::{
     graph::{node_index, Graph},
     node_contraction::NodeContractor,
     util::test_graphs::generate_complex_graph,
 };
+use color_theme::ActiveTheme;
 use crossbeam_channel::bounded;
+use egui::{Style, Visuals};
 use macroquad::prelude::*;
+use once_cell::sync::Lazy;
 use widgets::MyWidget;
 
+mod color_theme;
 mod graph_view;
 mod widgets;
 
@@ -59,6 +65,8 @@ impl Draggable {
         }
     }
 }
+
+static COLOR_THEME: Lazy<Mutex<ActiveTheme>> = Lazy::new(|| Mutex::new(ActiveTheme::default()));
 
 #[macroquad::main(window_conf)]
 async fn main() {
@@ -118,7 +126,8 @@ async fn main() {
         widgets::interaction::UserInputWidget::new(&overlay_graph, tx_graph, rx_search, tx_search);
 
     loop {
-        clear_background(Color::from_rgba(27, 27, 27, 255));
+        // clear_background(Color::from_rgba(27, 27, 27, 255));
+        clear_background(COLOR_THEME.lock().unwrap().bg_color());
 
         draggable.update(&mut pan, zoom);
 
@@ -151,6 +160,15 @@ async fn main() {
         }
 
         egui_macroquad::ui(|egui_ctx| {
+            let style = egui::Style {
+                visuals: if COLOR_THEME.lock().unwrap().is_dark_theme {
+                    Visuals::dark()
+                } else {
+                    Visuals::light()
+                },
+                ..Style::default()
+            };
+            egui_ctx.set_style(style);
             debug_widget.update(egui_ctx);
             user_input.update(egui_ctx);
         });
