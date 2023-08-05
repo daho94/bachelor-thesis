@@ -6,7 +6,7 @@ members = [
     "crates/frontend/src-tauri",
     "crates/ch_core",
     "crates/repl",
-    "crates/graph_viz_macroquad",
+    "crates/graph_viz",
 ]
 
 [profile.release]
