@@ -1,0 +1,17 @@
+[package]
+name = "graph_viz"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+egui = "0.22.0"
+egui-macroquad = { git = "https://github.com/Habitbreaker/egui-macroquad.git", branch = "master" }
+macroquad = "0.3.26"
+ch_core = { path = "../ch_core" }
+log = "0.4.17"
+env_logger = "0.10.0"
+crossbeam-channel = "0.5"
+once_cell = "1.18.0"
+egui_logger = "0.3.1"
