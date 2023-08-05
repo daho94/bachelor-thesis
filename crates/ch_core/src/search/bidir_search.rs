@@ -66,6 +66,7 @@ impl<'a> BiDirSearch<'a> {
         // Find the set `I` of nodes settled in both dijkstras
         let intersect = self.settled_fwd.intersection(&self.settled_bwd);
         let mut intersect_node = None;
+
         // Find
         // dist(s,t) = min { dist(s,v) + dist(v,t) | v in I}
         // and remember intersect node `v`
@@ -98,8 +99,9 @@ impl<'a> BiDirSearch<'a> {
         );
 
         std::thread::scope(|s| {
+            // Run forward search on separate thread
             let handle_fwd = s.spawn(|| {
-                info!("Start forward search");
+                debug!("Start forward search");
                 let mut nodes_settled = 0;
                 let mut queue_fwd = BinaryHeap::new();
                 queue_fwd.push(Candidate::new(source, 0.0));
@@ -136,60 +138,57 @@ impl<'a> BiDirSearch<'a> {
                         settled_fwd.insert(cand.node_idx);
                     }
                 }
-                info!("Finished forward search");
+                debug!("Finished forward search");
                 (data_fwd, settled_fwd, nodes_settled)
             });
-            let handle_bwd = s.spawn(|| {
-                info!("Start backward search");
-                let mut nodes_settled = 0;
-                let mut queue_bwd = BinaryHeap::new();
-                queue_bwd.push(Candidate::new(target, 0.0));
+            // Run the backward search on main thread
+            debug!("Start backward search");
+            let mut nodes_settled_bwd = 0;
+            let mut queue_bwd = BinaryHeap::new();
+            queue_bwd.push(Candidate::new(target, 0.0));
 
-                let mut data_bwd = FxHashMap::default();
-                let mut settled_bwd = FxHashSet::default();
+            let mut data_bwd = FxHashMap::default();
+            let mut settled_bwd = FxHashSet::default();
 
-                data_bwd.insert(target, (0.0, None));
+            data_bwd.insert(target, (0.0, None));
 
-                'outer: while !queue_bwd.is_empty() {
-                    if let Some(cand) = queue_bwd.pop() {
-                        // Stall on demand optimization
-                        for (_, edge) in self.g.edges_fwd(cand.node_idx) {
-                            if let Some((dist, _)) = data_bwd.get(&edge.source) {
-                                if *dist + edge.weight < cand.weight {
-                                    continue 'outer;
-                                }
+            'outer: while !queue_bwd.is_empty() {
+                if let Some(cand) = queue_bwd.pop() {
+                    // Stall on demand optimization
+                    for (_, edge) in self.g.edges_fwd(cand.node_idx) {
+                        if let Some((dist, _)) = data_bwd.get(&edge.source) {
+                            if *dist + edge.weight < cand.weight {
+                                continue 'outer;
                             }
                         }
-
-                        for (edge_idx, edge) in self.g.edges_bwd(cand.node_idx) {
-                            let new_distance = cand.weight + edge.weight;
-                            if new_distance
-                                < data_bwd
-                                    .get(&edge.source)
-                                    .unwrap_or(&(std::f64::INFINITY, None))
-                                    .0
-                            {
-                                data_bwd.insert(edge.source, (new_distance, Some(edge_idx)));
-                                queue_bwd.push(Candidate::new(edge.source, new_distance));
-                            }
-                        }
-                        nodes_settled += 1;
-                        settled_bwd.insert(cand.node_idx);
                     }
-                }
 
-                info!("Finished backward search");
-                (data_bwd, settled_bwd, nodes_settled)
-            });
-            let (data_fwd, settled_fwd, nodes_settled_fwd) = handle_fwd.join().unwrap();
-            let (data_bwd, settled_bwd, nodes_settled_bwd) = handle_bwd.join().unwrap();
+                    for (edge_idx, edge) in self.g.edges_bwd(cand.node_idx) {
+                        let new_distance = cand.weight + edge.weight;
+                        if new_distance
+                            < data_bwd
+                                .get(&edge.source)
+                                .unwrap_or(&(std::f64::INFINITY, None))
+                                .0
+                        {
+                            data_bwd.insert(edge.source, (new_distance, Some(edge_idx)));
+                            queue_bwd.push(Candidate::new(edge.source, new_distance));
+                        }
+                    }
+                    nodes_settled_bwd += 1;
+                    settled_bwd.insert(cand.node_idx);
+                }
+            }
+            debug!("Finished backward search");
 
             self.data_bwd = data_bwd;
+            self.settled_bwd = settled_bwd;
+
+            // Wait for forward search to finish
+            let (data_fwd, settled_fwd, nodes_settled_fwd) = handle_fwd.join().unwrap();
             self.data_fwd = data_fwd;
             self.settled_fwd = settled_fwd;
-            self.settled_bwd = settled_bwd;
             self.stats.nodes_settled = nodes_settled_fwd + nodes_settled_bwd;
-            self.stats.finish();
         });
 
         // Find the set `I` of nodes settled in both dijkstras
@@ -213,6 +212,8 @@ impl<'a> BiDirSearch<'a> {
 
         debug!("Intersection node: {:?}", intersect_node);
         debug!("min {{ dist(s,v) + dist(t,v) | v in I }} = {}", min_dist);
+
+        self.stats.finish();
 
         self.reconstruct_shortest_path(intersect_node, source)
     }
