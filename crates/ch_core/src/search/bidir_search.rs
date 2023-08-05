@@ -153,6 +153,14 @@ impl<'a> BiDirSearch<'a> {
 
         self.stats.finish();
 
+        self.reconstruct_shortest_path(intersect_node, source)
+    }
+
+    fn reconstruct_shortest_path(
+        &mut self,
+        intersect_node: Option<NodeIndex>,
+        source: NodeIndex,
+    ) -> Option<ShortestPath> {
         if let Some(v) = intersect_node {
             // Reconstruct the path by backtracking and unpacking shortcuts
             let weight = self.data_fwd.get(&v)?.0 + self.data_bwd.get(&v)?.0;
