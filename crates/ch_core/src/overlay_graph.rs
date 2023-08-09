@@ -92,9 +92,9 @@ impl OverlayGraph {
         let mut unpacked = Vec::new();
 
         match self.shortcuts.get(&edge_idx) {
-            Some([first, second]) => {
-                unpacked.append(&mut self.unpack_edge(*first));
-                unpacked.append(&mut self.unpack_edge(*second));
+            Some([incoming, outgoing]) => {
+                unpacked.append(&mut self.unpack_edge(*incoming));
+                unpacked.append(&mut self.unpack_edge(*outgoing));
             }
             None => unpacked.push(edge_idx),
         }
