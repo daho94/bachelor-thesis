@@ -139,7 +139,7 @@ impl<Idx: IndexType> EdgeIndex<Idx> {
     }
 }
 
-/// Represents OSM Node type (https://wiki.openstreetmap.org/wiki/Node)
+/// Represents OSM Node type <https://wiki.openstreetmap.org/wiki/Node>
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Node {
     pub id: OSMId,
