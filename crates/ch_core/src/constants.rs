@@ -1,3 +1,4 @@
-pub type OsmId = usize;
+/// Edge weight type
 pub type Weight = f64;
-pub type OSMId = usize; // From https://wiki.openstreetmap.org/wiki/Node
+/// Type which represents a OpenStreetMap ID (<https://wiki.openstreetmap.org/wiki/Node>)
+pub type OSMId = usize;

@@ -1,4 +1,5 @@
-use crate::constants::{OSMId, OsmId, Weight};
+//! (Preperation-) Graph module. The directed graph is represented as an adjacency lists and used for node contraction.
+use crate::constants::{OSMId, Weight};
 use anyhow::{Context, Ok};
 use log::{debug, info};
 use osm_reader::*;
@@ -139,7 +140,7 @@ impl<Idx: IndexType> EdgeIndex<Idx> {
     }
 }
 
-/// Represents OSM Node type <https://wiki.openstreetmap.org/wiki/Node>
+/// Represents OSM Node type (<https://wiki.openstreetmap.org/wiki/Node>)
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Node {
     pub id: OSMId,
@@ -148,11 +149,12 @@ pub struct Node {
 }
 
 impl Node {
-    pub fn new(id: OsmId, lat: f64, lon: f64) -> Self {
+    pub fn new(id: OSMId, lat: f64, lon: f64) -> Self {
         Node { id, lat, lon }
     }
 }
 
+/// A weighted `Edge` which connects a `source` and a `target` node.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Edge<Idx = DefaultIdx> {
     pub source: NodeIndex<Idx>,
@@ -174,9 +176,12 @@ impl Edge {
     }
 }
 
+/// A directed graph G = (V,E) stored as adjacency lists.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Graph<Idx = DefaultIdx> {
+    /// Adjancency lists for fast lookup of incoming edges of a node
     pub edges_in: Vec<Vec<EdgeIndex<Idx>>>,
+    /// Adjancency lists for fast lookup of outgoing edges of a node
     pub edges_out: Vec<Vec<EdgeIndex<Idx>>>,
     pub nodes: Vec<Node>,
     pub edges: Vec<Edge<Idx>>,
@@ -184,6 +189,7 @@ pub struct Graph<Idx = DefaultIdx> {
 }
 
 impl Graph {
+    /// Creates a new empty graph
     pub fn new() -> Self {
         Self {
             edges_in: Vec::new(),
@@ -194,6 +200,7 @@ impl Graph {
         }
     }
 
+    /// Creates a new empty graph with preallocated memory for `num_nodes` nodes and `num_edges` edges
     pub fn with_capacity(num_nodes: usize, num_edges: usize) -> Self {
         Self {
             edges_in: Vec::with_capacity(num_nodes),
@@ -247,6 +254,7 @@ impl Graph {
         edge_idx
     }
 
+    /// Add multiple `edges` to the graph.
     pub fn add_edges(&mut self, edges: Vec<Edge>) {
         for edge in edges {
             self.add_edge(edge);
@@ -272,6 +280,7 @@ impl Graph {
         node_idx
     }
 
+    /// Returns node with the given index if it exists
     pub fn node(&self, node_idx: NodeIndex) -> Option<&Node> {
         self.nodes.get(node_idx.index())
     }
@@ -281,6 +290,7 @@ impl Graph {
         self.nodes.iter()
     }
 
+    /// Returns an mutable iterator over all nodes of the graph
     pub fn nodes_mut(&mut self) -> impl Iterator<Item = &mut Node> {
         self.nodes.iter_mut()
     }
@@ -290,6 +300,7 @@ impl Graph {
         self.edges.iter()
     }
 
+    /// Returns an iterator over all outgoing edges of `node_idx`
     pub fn neighbors_outgoing(
         &self,
         node_idx: NodeIndex,
@@ -301,6 +312,7 @@ impl Graph {
             .map(|edge_idx| (*edge_idx, &self.edges[edge_idx.index()]))
     }
 
+    /// Returns an iterator over all incoming edges of `node_idx`
     pub fn neighbors_incoming(
         &self,
         node_idx: NodeIndex,
@@ -311,6 +323,7 @@ impl Graph {
             .map(|edge_idx| (*edge_idx, &self.edges[edge_idx.index()]))
     }
 
+    /// Prints some information about the graph
     pub fn print_info(&self) {
         println!(
             "InputGraph:\t#Nodes: {}, #Edges: {}, #Shortcuts: {}",
@@ -355,6 +368,7 @@ impl Graph {
         Ok(g)
     }
 
+    /// Parses a pbf file and returns a graph
     pub fn from_pbf(path_to_pbf: &Path) -> anyhow::Result<Self> {
         info!("Parsing pbf file: {:?}", path_to_pbf);
 
@@ -396,6 +410,7 @@ impl Graph {
         Ok(g)
     }
 
+    /// Writes all nodes as `nodes.csv` and edges as `edges.csv` to the current directory
     pub fn export_csv(&self) -> anyhow::Result<()> {
         let mut wtr = csv::Writer::from_path("nodes.csv")?;
 

@@ -1,3 +1,21 @@
+//! Module to build contraction hierarchies from a given [`Graph`].
+//!
+//! # Examples
+//! ```
+//! use rustc_hash::FxHashMap;
+//! use crate::util::test_graphs::generate_simple_graph;
+//!
+//! // Create a new graph
+//! let mut g = generate_simple_graph();
+//!
+//! // Create a new NodeContractor instance with required parameters
+//! let mut contractor = NodeContractor::new(&mut g);
+//!
+//! // Run the contraction algorithm
+//! let overlay_graph = contractor.run();
+//!
+//!```
+//! [`Graph`]: crate::graph::Graph
 use std::{
     cmp::{max, Reverse},
     time::Instant,
@@ -80,6 +98,32 @@ impl Default for PriorityParams {
     }
 }
 
+/// A struct representing a NodeContractor used for graph contraction.
+///
+/// This struct holds information and data structures used during the process of contracting nodes
+/// in a graph. It is used to optimize graph operations and represent graph nodes and their relationships.
+///
+/// # Fields
+/// - `g`: A mutable reference to the graph that the NodeContractor operates on.
+/// - `node_ranks`: A vector of usize values representing node ranks or levels. It is also known as
+///   "levels" in some contexts.
+/// - `nodes_contracted`: A vector of boolean values indicating whether nodes have been contracted.
+/// - `contracted_neighbors`: A vector of usize values representing the contracted neighbors of nodes.
+/// - `num_nodes`: The total number of nodes in the graph.
+/// - `shortcuts`: A hash map used to store shortcut information between edge indices.
+/// - `priority_params`: A set of priority parameters used for optimizing contraction order.
+///
+/// # Examples
+/// ```
+/// use rustc_hash::FxHashMap;
+/// use crate::util::test_graphs::generate_simple_graph;
+///
+/// // Create a new graph
+/// let mut g = generate_simple_graph();
+/// // Create a new NodeContractor instance with required parameters
+/// let mut contractor = NodeContractor::new(&mut g);
+///
+///```
 pub struct NodeContractor<'a> {
     g: &'a mut Graph,
     node_ranks: Vec<usize>, // TODO: rename to levels to match thesis
