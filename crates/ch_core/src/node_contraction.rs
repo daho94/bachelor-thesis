@@ -207,7 +207,8 @@ impl<'a> NodeContractor<'a> {
             match strategy {
                 CHStrategy::LazyUpdateSelfAndNeighbors | CHStrategy::LazyUpdateSelf => {
                     // Lazy Update node: If the priority of the node is worse (higher), it will be updated instead of contracted
-                    let importance = self.calc_priority(node, 0, 50, self.priority_params);
+                    // let importance = self.calc_priority(node, 0, 50, self.priority_params);
+                    let importance = self.calc_priority_alt(node, 0, 50);
 
                     if importance > priority {
                         queue.push(node, Reverse(importance));
@@ -243,12 +244,14 @@ impl<'a> NodeContractor<'a> {
                 match strategy {
                     CHStrategy::LazyUpdateSelfAndNeighbors | CHStrategy::LazyUpdateNeighbors => {
                         // Linear combination of heuristics
-                        let importance = self.calc_priority(
-                            neighbor,
-                            levels[neighbor.index()],
-                            25,
-                            self.priority_params,
-                        );
+                        // let importance = self.calc_priority(
+                        //     neighbor,
+                        //     levels[neighbor.index()],
+                        //     25,
+                        //     self.priority_params,
+                        // );
+                        let importance =
+                            self.calc_priority_alt(neighbor, levels[neighbor.index()], 25);
 
                         if let Some(Reverse(old_value)) =
                             queue.change_priority(&neighbor, Reverse(importance))
@@ -478,21 +481,22 @@ impl<'a> NodeContractor<'a> {
         max_nodes_settled_limit: usize,
     ) -> i32 {
         let (removed_edges, added_edges) =
-            self.handle_contract_node(v, max_nodes_settled_limit, true);
+            self.handle_contract_node(v, max_nodes_settled_limit, true); // A(x), D(x)
 
         let sum_hops_removed = removed_edges
             .iter()
-            .map(|e| self.hops.get(&e).unwrap_or(&1))
-            .sum::<usize>();
+            .map(|e| self.hops.get(e).unwrap_or(&1))
+            .sum::<usize>(); // sum(hops in A(x))
         let sum_hops_added = added_edges
             .iter()
-            .map(|e| self.hops.get(&e).unwrap_or(&1))
-            .sum::<usize>();
+            .map(|e| self.hops.get(e).unwrap_or(&1))
+            .sum::<usize>(); // sum(hops in D(x))
 
-        let importance =
-            level + added_edges.len() / removed_edges.len() + sum_hops_added / sum_hops_removed;
+        let importance = level as f32
+            + (added_edges.len() as f32 + 1.0) / (removed_edges.len() as f32 + 1.0)
+            + (sum_hops_added as f32 + 1.0) / (sum_hops_removed as f32 + 1.0);
 
-        importance as i32
+        (importance * 1000.0) as i32
     }
 
     /// ED = Shortcuts - Removed edges
