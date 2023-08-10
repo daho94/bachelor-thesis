@@ -27,11 +27,13 @@ use rustc_hash::FxHashSet;
 
 use crate::{
     contraction_strategy::CHStrategy,
-    graph::{node_index, Edge, EdgeIndex, Graph, NodeIndex},
+    graph::{node_index, DefaultIdx, Edge, EdgeIndex, Graph, NodeIndex},
     overlay_graph::OverlayGraph,
     witness_search::WitnessSearch,
 };
 
+type AddedEdges = Vec<EdgeIndex>;
+type RemovedEdges = Vec<EdgeIndex>;
 const STEP_SIZE: f64 = 5.0;
 
 /// Parameters for the priority function
@@ -131,6 +133,9 @@ pub struct NodeContractor<'a> {
     contracted_neighbors: Vec<usize>,
     num_nodes: usize,
     shortcuts: rustc_hash::FxHashMap<EdgeIndex, [EdgeIndex; 2]>,
+    /// Stores how many hops a shortcut represents
+    hops: rustc_hash::FxHashMap<EdgeIndex, usize>,
+
     priority_params: PriorityParams,
 }
 
@@ -148,6 +153,7 @@ impl<'a> NodeContractor<'a> {
                 num_edges,
                 Default::default(),
             ),
+            hops: rustc_hash::FxHashMap::with_capacity_and_hasher(num_edges, Default::default()),
             priority_params: Default::default(),
         }
     }
@@ -165,6 +171,7 @@ impl<'a> NodeContractor<'a> {
                 num_edges,
                 Default::default(),
             ),
+            hops: rustc_hash::FxHashMap::with_capacity_and_hasher(num_edges, Default::default()),
             priority_params,
         }
     }
@@ -337,9 +344,9 @@ impl<'a> NodeContractor<'a> {
         v: NodeIndex,
         max_nodes_settled_limit: usize,
         is_simulation: bool,
-    ) -> (usize, usize) {
-        let mut added_shortcuts = 0;
-        let mut removed_edges = 0;
+    ) -> (RemovedEdges, AddedEdges) {
+        // let mut added_shortcuts = 0;
+        // let mut removed_edges = 0;
 
         let edges_in: Vec<(EdgeIndex, Edge)> = self
             .neighbors_incoming(v)
@@ -351,8 +358,9 @@ impl<'a> NodeContractor<'a> {
             .map(|(i, e)| (i, e.clone()))
             .collect();
 
-        removed_edges += edges_in.len();
-        removed_edges += edges_out.len();
+        // removed_edges += edges_in.len();
+        // removed_edges += edges_out.len();
+        let mut added_edges = Vec::new();
 
         for (uv_idx, uv) in edges_in.iter() {
             let mut max_weight = 0.0;
@@ -391,18 +399,32 @@ impl<'a> NodeContractor<'a> {
                 let shortcut = Edge::new(uv.source, vw.target, weight);
 
                 if !is_simulation {
-                    self.add_shortcut(shortcut, [*uv_idx, *vw_idx]);
+                    let edge_idx = self.add_shortcut(shortcut, [*uv_idx, *vw_idx]);
+                    added_edges.push(edge_idx);
+
+                    let hops_uv = self.hops.get(uv_idx).unwrap_or(&1);
+                    let hops_vw = self.hops.get(vw_idx).unwrap_or(&1);
+
+                    self.hops.insert(edge_idx, hops_uv + hops_vw);
+                } else {
+                    // Add some value for counting
+                    added_edges.push(EdgeIndex::end());
                 }
-                added_shortcuts += 1;
+                // added_shortcuts += 1;
             }
         }
 
         if !is_simulation {
             self.disconnect_node(v);
         }
+        let removed_edges: Vec<EdgeIndex> = [edges_in, edges_out]
+            .concat()
+            .iter()
+            .map(|(edge_idx, _)| *edge_idx)
+            .collect();
 
-        debug!("{v:?}: ({removed_edges},{added_shortcuts})");
-        (removed_edges, added_shortcuts)
+        debug!("{v:?}: ({},{})", removed_edges.len(), added_edges.len());
+        (removed_edges, added_edges)
     }
 
     fn contract_node(&mut self, v: NodeIndex) {
@@ -447,6 +469,32 @@ impl<'a> NodeContractor<'a> {
             + contracted_neighbors as i32 * params.contracted_neighbors_coeff
     }
 
+    /// Implementation according to <https://doi.org/10.1145/2886843>
+    /// I(x) = L(x) + |A(x)| / |D(x)| + sum(hops in A(x)) / sum(hops in D(x))
+    fn calc_priority_alt(
+        &mut self,
+        v: NodeIndex,
+        level: usize, //L(x)
+        max_nodes_settled_limit: usize,
+    ) -> i32 {
+        let (removed_edges, added_edges) =
+            self.handle_contract_node(v, max_nodes_settled_limit, true);
+
+        let sum_hops_removed = removed_edges
+            .iter()
+            .map(|e| self.hops.get(&e).unwrap_or(&1))
+            .sum::<usize>();
+        let sum_hops_added = added_edges
+            .iter()
+            .map(|e| self.hops.get(&e).unwrap_or(&1))
+            .sum::<usize>();
+
+        let importance =
+            level + added_edges.len() / removed_edges.len() + sum_hops_added / sum_hops_removed;
+
+        importance as i32
+    }
+
     /// ED = Shortcuts - Removed edges
     fn calc_edge_difference(
         &mut self,
@@ -455,7 +503,7 @@ impl<'a> NodeContractor<'a> {
     ) -> i32 {
         let (removed_edges, added_shortcuts) =
             self.handle_contract_node(v, max_nodes_settled_limit, true);
-        added_shortcuts as i32 - removed_edges as i32
+        added_shortcuts.len() as i32 - removed_edges.len() as i32
     }
 }
 
@@ -527,6 +575,7 @@ mod tests {
     #[test]
     // https://jlazarsfeld.github.io/ch.150.project/sections/8-contraction/
     fn contract_complex_graph_with_order() {
+        init_log();
         let mut g = generate_complex_graph();
 
         // [B, E, I, K, D, G, C, J, H, F, A]
@@ -545,7 +594,10 @@ mod tests {
         ];
 
         let mut contractor = NodeContractor::new(&mut g);
-        contractor.run_with_order(&node_order);
+        let overlay_graph = contractor.run_with_order(&node_order);
+
+        info!("Hops: {:#?}", &contractor.hops);
+        info!("Shortcuts: {:#?}", &overlay_graph.shortcuts);
 
         assert_eq!(3 * 2, contractor.g.num_shortcuts);
     }
@@ -581,7 +633,9 @@ mod tests {
         let mut g = generate_complex_graph();
 
         let mut contractor = NodeContractor::new(&mut g);
-        contractor.run_with_strategy(CHStrategy::LazyUpdateSelfAndNeighbors);
+        let overlay_graph = contractor.run_with_strategy(CHStrategy::LazyUpdateSelfAndNeighbors);
+        info!("Hops: {:#?}", &contractor.hops);
+        info!("Shortcuts: {:#?}", &overlay_graph.shortcuts);
     }
 
     #[ignore = "Takes too long"]
