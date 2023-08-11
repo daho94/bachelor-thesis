@@ -32,8 +32,8 @@ use crate::{
     witness_search::WitnessSearch,
 };
 
-type AddedEdges = Vec<EdgeIndex>;
-type RemovedEdges = Vec<EdgeIndex>;
+type AddedEdges = (Vec<EdgeIndex>, usize);
+type RemovedEdges = (Vec<EdgeIndex>, usize);
 const STEP_SIZE: f64 = 5.0;
 
 /// Parameters for the priority function
@@ -45,6 +45,7 @@ pub struct PriorityParams {
     edge_difference_coeff: i32,
     contracted_neighbors_coeff: i32,
     search_space_coeff: i32,
+    original_edges_coeff: i32,
 }
 
 impl PriorityParams {
@@ -52,11 +53,13 @@ impl PriorityParams {
         edge_difference_coeff: i32,
         contracted_neighbors_coeff: i32,
         search_space_coeff: i32,
+        original_edges_coeff: i32,
     ) -> Self {
         PriorityParams {
             edge_difference_coeff,
             contracted_neighbors_coeff,
             search_space_coeff,
+            original_edges_coeff,
         }
     }
 
@@ -74,28 +77,39 @@ impl PriorityParams {
         self.search_space_coeff = coeff;
         self
     }
+
+    pub fn original_edges_coeff(mut self, coeff: i32) -> Self {
+        self.original_edges_coeff = coeff;
+        self
+    }
 }
 
 // From Diploma thesis Contraction Hierarchies - Geisberger
 // edge_difference_coeff: 190,
 // contracted_neighbors_coeff: 120,
 // search_space_coeff: 1,
+// original_edges_coeff: 70,
 //
 // From Raster Search - Vaterstetten:
 // edge_difference_coeff: 101,
 // contracted_neighbors_coeff: 101,
 // search_space_coeff: 6,
+// original_edges_coeff: 70,
 //
 // From Raster Search - Saarland:
-// edge_difference_coeff: 401,
-// contracted_neighbors_coeff: 301,
-// search_space_coeff: 2,
+// Best aggressive params: PriorityParams {
+//     edge_difference_coeff: 501,
+//     contracted_neighbors_coeff: 401,
+//     search_space_coeff: 7,
+//     original_edges_coeff: 201,
+// } with averagy query time: 75 μs
 impl Default for PriorityParams {
     fn default() -> Self {
         PriorityParams {
             edge_difference_coeff: 101,
             contracted_neighbors_coeff: 101,
             search_space_coeff: 6,
+            original_edges_coeff: 70,
         }
     }
 }
@@ -207,8 +221,8 @@ impl<'a> NodeContractor<'a> {
             match strategy {
                 CHStrategy::LazyUpdateSelfAndNeighbors | CHStrategy::LazyUpdateSelf => {
                     // Lazy Update node: If the priority of the node is worse (higher), it will be updated instead of contracted
-                    // let importance = self.calc_priority(node, 0, 50, self.priority_params);
-                    let importance = self.calc_priority_alt(node, 0, 50);
+                    let importance = self.calc_priority(node, 0, 50, self.priority_params);
+                    // let importance = self.calc_priority_alt(node, 0, 50);
 
                     if importance > priority {
                         queue.push(node, Reverse(importance));
@@ -244,14 +258,14 @@ impl<'a> NodeContractor<'a> {
                 match strategy {
                     CHStrategy::LazyUpdateSelfAndNeighbors | CHStrategy::LazyUpdateNeighbors => {
                         // Linear combination of heuristics
-                        // let importance = self.calc_priority(
-                        //     neighbor,
-                        //     levels[neighbor.index()],
-                        //     25,
-                        //     self.priority_params,
-                        // );
-                        let importance =
-                            self.calc_priority_alt(neighbor, levels[neighbor.index()], 25);
+                        let importance = self.calc_priority(
+                            neighbor,
+                            levels[neighbor.index()],
+                            25,
+                            self.priority_params,
+                        );
+                        // let importance =
+                        //     self.calc_priority_alt(neighbor, levels[neighbor.index()], 25);
 
                         if let Some(Reverse(old_value)) =
                             queue.change_priority(&neighbor, Reverse(importance))
@@ -365,6 +379,8 @@ impl<'a> NodeContractor<'a> {
         // removed_edges += edges_out.len();
         let mut added_edges = Vec::new();
 
+        let mut sum_hops_added = 0;
+
         for (uv_idx, uv) in edges_in.iter() {
             let mut max_weight = 0.0;
             let mut target_nodes = Vec::new();
@@ -400,13 +416,13 @@ impl<'a> NodeContractor<'a> {
                 }
 
                 let shortcut = Edge::new(uv.source, vw.target, weight);
+                let hops_uv = *self.hops.get(uv_idx).unwrap_or(&1);
+                let hops_vw = *self.hops.get(vw_idx).unwrap_or(&1);
+                sum_hops_added += hops_uv + hops_vw;
 
                 if !is_simulation {
                     let edge_idx = self.add_shortcut(shortcut, [*uv_idx, *vw_idx]);
                     added_edges.push(edge_idx);
-
-                    let hops_uv = self.hops.get(uv_idx).unwrap_or(&1);
-                    let hops_vw = self.hops.get(vw_idx).unwrap_or(&1);
 
                     self.hops.insert(edge_idx, hops_uv + hops_vw);
                 } else {
@@ -420,14 +436,23 @@ impl<'a> NodeContractor<'a> {
         if !is_simulation {
             self.disconnect_node(v);
         }
+
         let removed_edges: Vec<EdgeIndex> = [edges_in, edges_out]
             .concat()
             .iter()
             .map(|(edge_idx, _)| *edge_idx)
             .collect();
 
+        let sum_hops_removed = removed_edges
+            .iter()
+            .map(|e| self.hops.get(e).unwrap_or(&1))
+            .sum::<usize>(); // sum(hops in A(x))
+
         debug!("{v:?}: ({},{})", removed_edges.len(), added_edges.len());
-        (removed_edges, added_edges)
+        (
+            (removed_edges, sum_hops_removed),
+            (added_edges, sum_hops_added),
+        )
     }
 
     fn contract_node(&mut self, v: NodeIndex) {
@@ -464,34 +489,43 @@ impl<'a> NodeContractor<'a> {
         max_nodes_settled_limit: usize,
         params: PriorityParams,
     ) -> i32 {
-        let edge_difference = self.calc_edge_difference(v, max_nodes_settled_limit);
+        // let edge_difference = self.calc_edge_difference(v, max_nodes_settled_limit);
+        let ((removed_edges, sum_hops_removed), (added_edges, sum_hops_added)) =
+            self.handle_contract_node(v, max_nodes_settled_limit, true); // A(x), D(x)
+
+        let edge_difference = added_edges.len() as i32 - removed_edges.len() as i32;
         let contracted_neighbors = self.contracted_neighbors[v.index()];
+        let original_edges_replaced = sum_hops_added;
 
         edge_difference * params.edge_difference_coeff
             + level as i32 * params.search_space_coeff
             + contracted_neighbors as i32 * params.contracted_neighbors_coeff
+            + original_edges_replaced as i32 * params.original_edges_coeff
     }
 
     /// Implementation according to <https://doi.org/10.1145/2886843>
     /// I(x) = L(x) + |A(x)| / |D(x)| + sum(hops in A(x)) / sum(hops in D(x))
+    #[allow(dead_code)]
     fn calc_priority_alt(
         &mut self,
         v: NodeIndex,
         level: usize, //L(x)
         max_nodes_settled_limit: usize,
     ) -> i32 {
-        let (removed_edges, added_edges) =
+        let ((removed_edges, sum_hops_removed), (added_edges, sum_hops_added)) =
             self.handle_contract_node(v, max_nodes_settled_limit, true); // A(x), D(x)
 
-        let sum_hops_removed = removed_edges
-            .iter()
-            .map(|e| self.hops.get(e).unwrap_or(&1))
-            .sum::<usize>(); // sum(hops in A(x))
-        let sum_hops_added = added_edges
-            .iter()
-            .map(|e| self.hops.get(e).unwrap_or(&1))
-            .sum::<usize>(); // sum(hops in D(x))
-
+        // let sum_hops_removed = removed_edges
+        //     .iter()
+        //     .map(|e| self.hops.get(e).unwrap_or(&1))
+        //     .sum::<usize>(); // sum(hops in A(x))
+        // let sum_hops_added = added_edges
+        //     .iter()
+        //     .map(|e| self.hops.get(e).unwrap_or(&1))
+        //     .sum::<usize>(); // sum(hops in D(x))
+        // let sum_hops_removed = removed_edges.iter().map(|(_, hops)| hops).sum::<usize>();
+        // let sum_hops_added = added_edges.iter().map(|(_, hops)| hops).sum::<usize>();
+        dbg!(sum_hops_removed, sum_hops_added);
         let importance = level as f32
             + (added_edges.len() as f32 + 1.0) / (removed_edges.len() as f32 + 1.0)
             + (sum_hops_added as f32 + 1.0) / (sum_hops_removed as f32 + 1.0);
@@ -505,7 +539,7 @@ impl<'a> NodeContractor<'a> {
         v: NodeIndex,
         max_nodes_settled_limit: usize, /*ws: WitnessSearch*/
     ) -> i32 {
-        let (removed_edges, added_shortcuts) =
+        let ((removed_edges, _), (added_shortcuts, _)) =
             self.handle_contract_node(v, max_nodes_settled_limit, true);
         added_shortcuts.len() as i32 - removed_edges.len() as i32
     }
