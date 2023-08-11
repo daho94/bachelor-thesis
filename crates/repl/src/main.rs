@@ -2,7 +2,7 @@
 use std::path::{Path, PathBuf};
 
 use ch_core::{
-    constants::OsmId,
+    constants::OSMId,
     graph::{node_index, DefaultIdx, Graph},
     node_contraction::NodeContractor,
     overlay_graph::OverlayGraph,
@@ -78,10 +78,10 @@ fn save_graph(args: ArgMatches, context: &mut Context) -> Result<Option<String>>
 
 //     // Select n random start and end nodes
 //     let mut rng = rand::thread_rng();
-//     let src_nodes: Vec<OsmId> = (0..n)
+//     let src_nodes: Vec<OSMId> = (0..n)
 //         .map(|_| rng.gen_range(0..context.graph.nodes.len()))
 //         .collect();
-//     let dst_nodes: Vec<OsmId> = (0..n)
+//     let dst_nodes: Vec<OSMId> = (0..n)
 //         .map(|_| rng.gen_range(0..context.graph.nodes.len()))
 //         .collect();
 
@@ -116,12 +116,12 @@ impl Context {
 }
 
 trait Runnable {
-    fn run(&mut self, src: OsmId, dst: OsmId) -> Option<ShortestPath>;
+    fn run(&mut self, src: OSMId, dst: OSMId) -> Option<ShortestPath>;
     fn stats(&self) -> &ch_core::statistics::Stats;
 }
 
 impl Runnable for Dijkstra<'_> {
-    fn run(&mut self, src: OsmId, dst: OsmId) -> Option<ShortestPath> {
+    fn run(&mut self, src: OSMId, dst: OSMId) -> Option<ShortestPath> {
         self.search(node_index(src), node_index(dst))
     }
 
@@ -131,7 +131,7 @@ impl Runnable for Dijkstra<'_> {
 }
 
 impl Runnable for AStar<'_> {
-    fn run(&mut self, src: OsmId, dst: OsmId) -> Option<ShortestPath> {
+    fn run(&mut self, src: OSMId, dst: OSMId) -> Option<ShortestPath> {
         self.search(node_index(src), node_index(dst), straight_line)
     }
 
@@ -141,7 +141,7 @@ impl Runnable for AStar<'_> {
 }
 
 impl Runnable for BiDirSearch<'_> {
-    fn run(&mut self, src: OsmId, dst: OsmId) -> Option<ShortestPath> {
+    fn run(&mut self, src: OSMId, dst: OSMId) -> Option<ShortestPath> {
         self.search(node_index(src), node_index(dst))
     }
 
