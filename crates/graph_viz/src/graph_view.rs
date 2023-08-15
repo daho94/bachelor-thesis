@@ -30,8 +30,6 @@ pub(crate) struct GraphViewOptions {
     pub draw_graph_downward: bool,
     pub draw_shortest_path: bool,
     pub search_result: Option<SearchResult>,
-
-    pub draw_top_important_nodes: bool,
 }
 
 impl Default for GraphViewOptions {
@@ -43,8 +41,6 @@ impl Default for GraphViewOptions {
             draw_graph_downward: false,
             draw_shortest_path: true,
             search_result: None,
-
-            draw_top_important_nodes: false,
         }
     }
 }
@@ -151,38 +147,6 @@ impl<'a> GraphView<'a> {
             }
         }
 
-        // Draw start and target node
-        if let Some(node_idx) = self.start_node {
-            self.draw_node(self.g.node(node_idx).unwrap(), self.scale(), 3.5, PINK);
-        }
-        if let Some(node_idx) = self.target_node {
-            self.draw_node(self.g.node(node_idx).unwrap(), self.scale(), 3.5, PINK);
-        }
-
-        if self.options.draw_top_important_nodes {
-            // TODO: FIX
-            // Draw top 10% of most important nodes
-            // let scale = self.scale();
-            // for node in self
-            //     .overlay_graph
-            //     .node_ranks
-            //     .iter()
-            //     .rev()
-            //     .take(((0.1 * self.g.nodes.len() as f32) as usize).min(1000))
-            // {
-            //     let pos = node_to_vec(&self.g.nodes[*node]);
-
-            //     let pos = (pos - self.rect.point()) * scale;
-
-            //     // Only render lines where from or to point is inside screen
-            //     if pos.x < 0.0 || pos.x > screen_width() || pos.y < 0.0 || pos.y > screen_height() {
-            //         continue;
-            //     }
-
-            //     draw_circle(pos.x, pos.y, 2.0, GREEN);
-            // }
-        }
-
         // Draw shortest path, Upward and Downward graph
         if let Some(SearchResult { sp }) = &self.options.search_result {
             let scale = self.scale();
@@ -273,6 +237,17 @@ impl<'a> GraphView<'a> {
                 }
             }
         }
+        // Draw start and target node
+        if let Some(node_idx) = self.start_node {
+            let mut color = COLOR_THEME.lock().unwrap().graph_up_color();
+            color.a = 1.0;
+            self.draw_node(self.g.node(node_idx).unwrap(), self.scale(), 3.5, color);
+        }
+        if let Some(node_idx) = self.target_node {
+            let mut color = COLOR_THEME.lock().unwrap().graph_down_color();
+            color.a = 1.0;
+            self.draw_node(self.g.node(node_idx).unwrap(), self.scale(), 3.5, color);
+        }
     }
 
     pub(crate) fn reset(&mut self) {
@@ -326,6 +301,10 @@ impl<'a> GraphView<'a> {
             }
         }
 
+        if is_key_pressed(KeyCode::R) {
+            self.selected_node = None;
+        }
+
         if is_key_pressed(KeyCode::Q) {
             // Set start node
             if let Some((node_idx, _)) = self.closest_node() {
@@ -350,7 +329,10 @@ impl<'a> GraphView<'a> {
             self.g.edges.len() - self.g.num_shortcuts
         };
 
+        let mut rendered_edges = 0;
+
         for (idx, edge) in self.g.edges().take(num_elements).enumerate() {
+            rendered_edges += 1;
             let from = node_to_vec(self.g.node(edge.source).unwrap());
             let to = node_to_vec(self.g.node(edge.target).unwrap());
 
@@ -379,6 +361,7 @@ impl<'a> GraphView<'a> {
                 },
             );
         }
+        log::debug!("Rendered edges: {}", rendered_edges);
     }
 
     fn draw_nodes(&self) {
@@ -453,7 +436,6 @@ fn spherical_to_cartesian(lat: f64, lon: f64) -> (f32, f32) {
 }
 
 fn node_to_vec(node: &Node) -> Vec2 {
-    // let (x, y) = spherical_to_cartesian(node.lat, node.lon);
     let (y, x) = (-node.lat, node.lon);
     vec2(x as f32, y as f32)
 }
@@ -462,7 +444,7 @@ fn draw_line_with_arrow(x1: f32, y1: f32, x2: f32, y2: f32, thickness: f32, colo
     draw_line(x1, y1, x2, y2, thickness, color);
 
     // Draw arrow at the 0.9 end of the line
-    let arrow_length = 10.0;
+    let arrow_length = 5.0;
     let arrow_angle = (y2 - y1).atan2(x2 - x1);
 
     let line_length = ((x2 - x1).powi(2) + (y2 - y1).powi(2)).sqrt();

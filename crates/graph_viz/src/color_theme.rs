@@ -1,35 +1,25 @@
-use macroquad::prelude::Color;
+use macroquad::{
+    color_u8,
+    prelude::{Color, GRAY, WHITE},
+};
 
-mod dark_theme {
-    use macroquad::prelude::Color;
-    use macroquad::{color::colors::*, color_u8};
+pub const DARK_THEME: ColorTheme = ColorTheme {
+    bg_color: color_u8!(27, 27, 27, 255),
+    line_color: color_u8!(128, 128, 128, 255),
+    shortcut_color: color_u8!(255, 20, 20, 125),
+    node_color: WHITE,
+    graph_up_color: color_u8!(0, 255, 255, 125),
+    graph_down_color: color_u8!(255, 255, 0, 125),
+};
 
-    use super::ColorTheme;
-
-    pub const DARK_THEME: ColorTheme = ColorTheme {
-        bg_color: color_u8!(27, 27, 27, 255),
-        line_color: color_u8!(128, 128, 128, 255),
-        shortcut_color: color_u8!(255, 20, 20, 125),
-        node_color: WHITE,
-        graph_up_color: color_u8!(0, 255, 255, 125),
-        graph_down_color: color_u8!(255, 255, 0, 125),
-    };
-}
-mod light_theme {
-    use macroquad::prelude::Color;
-    use macroquad::{color::colors::*, color_u8};
-
-    use super::ColorTheme;
-
-    pub const LIGHT_THEME: ColorTheme = ColorTheme {
-        bg_color: WHITE,
-        line_color: color_u8!(64, 64, 64, 255),
-        shortcut_color: color_u8!(255, 20, 20, 125),
-        node_color: GRAY,
-        graph_up_color: color_u8!(65, 133, 65, 185),
-        graph_down_color: color_u8!(63, 70, 191, 185),
-    };
-}
+pub const LIGHT_THEME: ColorTheme = ColorTheme {
+    bg_color: WHITE,
+    line_color: color_u8!(64, 64, 64, 128),
+    shortcut_color: color_u8!(255, 20, 20, 125),
+    node_color: GRAY,
+    graph_down_color: color_u8!(63, 70, 191, 185),
+    graph_up_color: color_u8!(0, 249, 4, 185),
+};
 
 pub struct ColorTheme {
     pub bg_color: Color,
@@ -48,7 +38,7 @@ pub struct ActiveTheme {
 impl Default for ActiveTheme {
     fn default() -> Self {
         ActiveTheme {
-            theme: dark_theme::DARK_THEME,
+            theme: DARK_THEME,
             is_dark_theme: true,
         }
     }
@@ -56,11 +46,11 @@ impl Default for ActiveTheme {
 
 impl ActiveTheme {
     pub fn set_dark_theme(&mut self) {
-        self.theme = dark_theme::DARK_THEME;
+        self.theme = DARK_THEME;
         self.is_dark_theme = true;
     }
     pub fn set_light_theme(&mut self) {
-        self.theme = light_theme::LIGHT_THEME;
+        self.theme = LIGHT_THEME;
         self.is_dark_theme = false;
     }
 
