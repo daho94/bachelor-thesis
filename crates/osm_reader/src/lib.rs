@@ -1,3 +1,4 @@
+use log::info;
 use osmpbf::{Element, IndexedReader};
 use rustc_hash::FxHashMap;
 use std::{collections::HashMap, fs::File, io::BufWriter, path::Path, str::FromStr};
@@ -66,6 +67,8 @@ impl RoadGraph {
 
         let mut nodes: FxHashMap<i64, [f64; 2]> = Default::default();
 
+        let now = std::time::Instant::now();
+        info!("BEGIN parsing {}", pbf_path.display());
         reader.read_ways_and_deps(road_filter, |element| match element {
             Element::Way(way) => {
                 let node_ids = way.refs().collect::<Vec<_>>();
@@ -114,6 +117,10 @@ impl RoadGraph {
             }
             Element::Relation(_) => {}
         })?;
+        info!("FINISHED parsing. Took {:?}", now.elapsed());
+
+        let now = std::time::Instant::now();
+        info!("BEGIN simplyfing graph");
 
         graph.arcs = Vec::with_capacity(ways.len() * 2);
         // Split ways, but only keep nodes that are referenced more than once
@@ -153,6 +160,7 @@ impl RoadGraph {
                 }
             }
         }
+        info!("FINISHED simplyfing graph. Took {:?}", now.elapsed());
 
         Ok(graph)
     }
@@ -169,6 +177,8 @@ impl RoadGraph {
 
         let mut edges = Vec::new();
 
+        let now = std::time::Instant::now();
+        info!("BEGIN parsing {}", pbf_path.display());
         reader.read_ways_and_deps(road_filter, |element| match element {
             Element::Way(way) => {
                 let node_ids = way.refs().collect::<Vec<_>>();
@@ -228,6 +238,7 @@ impl RoadGraph {
             graph.add_arc(from, to, weight(distance, &road_type));
         }
 
+        info!("FINISHED parsing. Took {:?}", now.elapsed());
         Ok(graph)
     }
 
