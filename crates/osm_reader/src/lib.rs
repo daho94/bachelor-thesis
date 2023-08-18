@@ -51,7 +51,7 @@ impl RoadGraph {
         &self.arcs
     }
 
-    pub fn from_pbf_without_geometry(pbf_path: &Path) -> anyhow::Result<RoadGraph> {
+    pub fn from_pbf_with_simplification(pbf_path: &Path) -> anyhow::Result<RoadGraph> {
         let mut graph = RoadGraph::new();
 
         let mut reader = IndexedReader::from_path(pbf_path)?;
@@ -322,7 +322,7 @@ mod tests {
     fn graph_from_pbf_without_geometry_works() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("test_data/node_refs.osm.pbf");
 
-        let graph = RoadGraph::from_pbf_without_geometry(&path).unwrap();
+        let graph = RoadGraph::from_pbf_with_simplification(&path).unwrap();
 
         assert_eq!(graph.nodes.len(), 8);
         assert_eq!(graph.arcs.len(), 14);
