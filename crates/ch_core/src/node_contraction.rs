@@ -191,6 +191,8 @@ impl<'a> NodeContractor<'a> {
     }
 
     pub fn run_with_strategy(&mut self, strategy: CHStrategy) -> OverlayGraph {
+        info!("BEGIN contracting nodes");
+        info!("Progress: {:.2}%", 0.0 * 100.0);
         let now = Instant::now();
         let mut edges_fwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); self.num_nodes];
         let mut edges_bwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); self.num_nodes];
@@ -296,7 +298,7 @@ impl<'a> NodeContractor<'a> {
             }
         }
 
-        info!("Contracting nodes took {:?}", now.elapsed());
+        info!("FINISHED contracting nodes. Took {:?}", now.elapsed());
         info!("Added shortcuts: {}", self.g.num_shortcuts);
 
         self.g.edges.shrink_to_fit();
