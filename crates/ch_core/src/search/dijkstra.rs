@@ -3,7 +3,7 @@ use std::collections::BinaryHeap;
 use crate::constants::Weight;
 use crate::graph::*;
 use crate::search::shortest_path::ShortestPath;
-use crate::statistics::Stats;
+use crate::statistics::SearchStats;
 use log::{debug, info};
 use rustc_hash::FxHashMap;
 
@@ -43,7 +43,7 @@ impl Ord for Candidate {
 }
 
 pub struct Dijkstra<'a, Idx = DefaultIdx> {
-    pub stats: Stats,
+    pub stats: SearchStats,
     g: &'a Graph<Idx>,
 }
 
@@ -51,7 +51,7 @@ impl<'a> Dijkstra<'a> {
     pub fn new(graph: &'a Graph) -> Self {
         Dijkstra {
             g: graph,
-            stats: Stats::default(),
+            stats: SearchStats::default(),
         }
     }
 

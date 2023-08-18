@@ -5,7 +5,11 @@ use log::{debug, info};
 use osm_reader::*;
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
-use std::{fmt, hash::Hash, path::Path};
+use std::{
+    fmt,
+    hash::Hash,
+    path::{Path, PathBuf},
+};
 
 /// Default integer typer for node and edge indices
 /// Needs to be increased vor very large graphs > u32::max
@@ -331,6 +335,14 @@ impl Graph {
             self.edges.len() - self.num_shortcuts,
             self.num_shortcuts
         );
+        println!(
+            "Avg. In-Degree: {:.3}",
+            crate::statistics::average_in_degree(self)
+        );
+        println!(
+            "Avg. Out-Degree: {:.3}",
+            crate::statistics::average_out_degree(self)
+        );
     }
 
     pub fn from_csv(path_to_nodes: &Path, path_to_edges: &Path) -> anyhow::Result<Self> {
@@ -372,42 +384,18 @@ impl Graph {
     pub fn from_pbf(path_to_pbf: &Path) -> anyhow::Result<Self> {
         info!("Parsing pbf file: {:?}", path_to_pbf);
 
-        let road_graph = RoadGraph::from_pbf_without_geometry(path_to_pbf)
+        let road_graph = RoadGraph::from_pbf(path_to_pbf).context("Could not parse pbf file")?;
+
+        parse_road_graph(road_graph)
+    }
+
+    pub fn from_pbf_with_simplification(path_to_pbf: &Path) -> anyhow::Result<Self> {
+        info!("Parsing pbf file: {:?}", path_to_pbf);
+
+        let road_graph = RoadGraph::from_pbf_with_simplification(path_to_pbf)
             .context("Could not parse pbf file")?;
-        // let road_graph = RoadGraph::from_pbf(path_to_pbf).context("Could not parse pbf file")?;
 
-        let mut node_index: FxHashMap<i64, usize> =
-            FxHashMap::with_capacity_and_hasher(road_graph.get_nodes().len(), Default::default());
-
-        let mut g = Graph::with_capacity(road_graph.get_nodes().len(), road_graph.get_arcs().len());
-
-        for (i, (id, [lat, lon])) in road_graph.get_nodes().iter().enumerate() {
-            let node = Node::new(*id as usize, *lat, *lon);
-            node_index.insert(*id, i);
-            g.add_node(node);
-        }
-
-        for Arc {
-            source,
-            target,
-            weight,
-        } in road_graph.get_arcs()
-        {
-            let edge: Edge = Edge::new(
-                NodeIndex::new(node_index[source]),
-                NodeIndex::new(node_index[target]),
-                *weight,
-            );
-            g.add_edge(edge);
-        }
-
-        info!("Finished parsing pbf file");
-        info!(
-            "Graph has {} nodes and {} edges",
-            g.nodes.len(),
-            g.edges.len()
-        );
-        Ok(g)
+        parse_road_graph(road_graph)
     }
 
     /// Writes all nodes as `nodes.csv` and edges as `edges.csv` to the current directory
@@ -437,6 +425,41 @@ impl Graph {
         debug!("FINISHED writing edges");
         Ok(())
     }
+}
+
+fn parse_road_graph(road_graph: RoadGraph) -> Result<Graph, anyhow::Error> {
+    let mut node_index: FxHashMap<i64, usize> =
+        FxHashMap::with_capacity_and_hasher(road_graph.get_nodes().len(), Default::default());
+
+    let mut g = Graph::with_capacity(road_graph.get_nodes().len(), road_graph.get_arcs().len());
+
+    for (i, (id, [lat, lon])) in road_graph.get_nodes().iter().enumerate() {
+        let node = Node::new(*id as usize, *lat, *lon);
+        node_index.insert(*id, i);
+        g.add_node(node);
+    }
+
+    for Arc {
+        source,
+        target,
+        weight,
+    } in road_graph.get_arcs()
+    {
+        let edge: Edge = Edge::new(
+            NodeIndex::new(node_index[source]),
+            NodeIndex::new(node_index[target]),
+            *weight,
+        );
+        g.add_edge(edge);
+    }
+
+    info!("Finished parsing pbf file");
+    info!(
+        "Graph has {} nodes and {} edges",
+        g.nodes.len(),
+        g.edges.len()
+    );
+    Ok(g)
 }
 
 impl Default for Graph {

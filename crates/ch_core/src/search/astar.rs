@@ -6,13 +6,13 @@ use rustc_hash::FxHashMap;
 use crate::{
     constants::Weight,
     graph::{DefaultIdx, Graph, Node, NodeIndex},
-    statistics::Stats,
+    statistics::SearchStats,
 };
 
 use super::shortest_path::ShortestPath;
 
 pub struct AStar<'a, Idx = DefaultIdx> {
-    pub stats: Stats,
+    pub stats: SearchStats,
     g: &'a Graph<Idx>,
 }
 
@@ -59,7 +59,7 @@ impl<'a> AStar<'a> {
     pub fn new(g: &'a Graph) -> Self {
         AStar {
             g,
-            stats: Stats::default(),
+            stats: SearchStats::default(),
         }
     }
 

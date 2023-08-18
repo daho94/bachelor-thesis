@@ -3,14 +3,18 @@ use std::{
     time::{Duration, Instant},
 };
 
+use histogram::Histogram;
+
+use crate::graph::Graph;
+
 #[derive(Debug, Default)]
-pub struct Stats {
+pub struct SearchStats {
     pub nodes_settled: usize,
     pub duration: Option<Duration>,
     start_time: Option<Instant>,
 }
 
-impl Stats {
+impl SearchStats {
     pub fn init(&mut self) {
         self.nodes_settled = 0;
         self.start_timer();
@@ -27,7 +31,7 @@ impl Stats {
     }
 }
 
-impl Display for Stats {
+impl Display for SearchStats {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -37,12 +41,54 @@ impl Display for Stats {
     }
 }
 
+fn degree_histogram(g: &Graph, outgoing: bool) -> Histogram {
+    let hist = Histogram::new(0, 10, 30).unwrap();
+    for node in 0..g.nodes.len() {
+        if outgoing {
+            let degree = g.edges_out[node].len();
+            hist.increment(degree as u64, 1).unwrap();
+        } else {
+            let degree = g.edges_in[node].len();
+            hist.increment(degree as u64, 1).unwrap();
+        }
+    }
+    hist
+}
+
+pub fn degree_out_hist(g: &Graph) -> Histogram {
+    degree_histogram(g, true)
+}
+
+pub fn degree_in_hist(g: &Graph) -> Histogram {
+    degree_histogram(g, false)
+}
+
+pub fn average_in_degree(g: &Graph) -> f64 {
+    let mut sum = 0.0;
+    for node in 0..g.nodes.len() {
+        sum += g.edges_in[node].len() as f64;
+    }
+    sum / g.nodes.len() as f64
+}
+
+pub fn average_out_degree(g: &Graph) -> f64 {
+    let mut sum = 0.0;
+    for node in 0..g.nodes.len() {
+        sum += g.edges_out[node].len() as f64;
+    }
+    sum / g.nodes.len() as f64
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
         graph::{Edge, Graph, Node, NodeIndex},
         search::dijkstra::Dijkstra,
+        statistics::{degree_in_hist, degree_out_hist},
+        util::test_graphs::{graph_saarland, graph_saarland_raw},
     };
+
+    use super::degree_histogram;
 
     #[test]
     fn stats_work() {
@@ -76,5 +122,41 @@ mod tests {
         assert!(d.stats.duration.is_some());
 
         assert_eq!(d.stats.nodes_settled, 10);
+    }
+
+    #[test]
+    fn degree_hist_out_works() {
+        let g = graph_saarland();
+
+        let hist = degree_out_hist(&g);
+        dbg!(hist.buckets());
+        for bucket in hist.into_iter().filter(|b| b.count() > 0) {
+            println!("[{}-{}]: {}", bucket.low(), bucket.high(), bucket.count());
+        }
+        let g = graph_saarland_raw();
+
+        let hist = degree_out_hist(&g);
+        dbg!(hist.buckets());
+        for bucket in hist.into_iter().filter(|b| b.count() > 0) {
+            println!("[{}-{}]: {}", bucket.low(), bucket.high(), bucket.count());
+        }
+    }
+
+    #[test]
+    fn degree_hist_in_works() {
+        let g = graph_saarland();
+
+        let hist = degree_in_hist(&g);
+        dbg!(hist.buckets());
+        for bucket in hist.into_iter().filter(|b| b.count() > 0) {
+            println!("[{}-{}]: {}", bucket.low(), bucket.high(), bucket.count());
+        }
+        let g = graph_saarland_raw();
+
+        let hist = degree_in_hist(&g);
+        dbg!(hist.buckets());
+        for bucket in hist.into_iter().filter(|b| b.count() > 0) {
+            println!("[{}-{}]: {}", bucket.low(), bucket.high(), bucket.count());
+        }
     }
 }

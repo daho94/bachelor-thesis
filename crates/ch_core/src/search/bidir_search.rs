@@ -7,7 +7,7 @@ use crate::{
     constants::Weight,
     graph::{DefaultIdx, EdgeIndex, NodeIndex},
     overlay_graph::OverlayGraph,
-    statistics::Stats,
+    statistics::SearchStats,
 };
 
 use super::{dijkstra::Candidate, shortest_path::ShortestPath};
@@ -15,7 +15,7 @@ use super::{dijkstra::Candidate, shortest_path::ShortestPath};
 pub type NodeData = FxHashMap<NodeIndex, (Weight, Option<EdgeIndex>)>;
 
 pub struct BiDirSearch<'a, Idx = DefaultIdx> {
-    pub stats: Stats,
+    pub stats: SearchStats,
     g: &'a OverlayGraph<Idx>,
 
     settled_fwd: FxHashSet<NodeIndex<Idx>>,
@@ -31,7 +31,7 @@ impl<'a> BiDirSearch<'a> {
     pub fn new(graph: &'a OverlayGraph) -> Self {
         BiDirSearch {
             g: graph,
-            stats: Stats::default(),
+            stats: SearchStats::default(),
             settled_fwd: FxHashSet::default(),
             settled_bwd: FxHashSet::default(),
             data_fwd: FxHashMap::default(),
