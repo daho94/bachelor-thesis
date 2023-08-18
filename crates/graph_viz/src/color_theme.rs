@@ -14,10 +14,11 @@ pub const DARK_THEME: ColorTheme = ColorTheme {
 
 pub const LIGHT_THEME: ColorTheme = ColorTheme {
     bg_color: WHITE,
-    line_color: color_u8!(64, 64, 64, 128),
+    line_color: color_u8!(64, 64, 64, 255),
     shortcut_color: color_u8!(255, 20, 20, 125),
     node_color: GRAY,
-    graph_down_color: color_u8!(63, 70, 191, 185),
+    // graph_down_color: color_u8!(63, 70, 191, 185),
+    graph_down_color: color_u8!(243, 127, 128, 185),
     graph_up_color: color_u8!(0, 249, 4, 185),
 };
 
