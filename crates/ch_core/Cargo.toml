@@ -16,11 +16,21 @@ priority-queue = "1"
 env_logger = "0.10.0"
 bincode = { version = "2.0.0-rc.3", features = ["serde"] }
 rand = "0.8.5"
+histogram = "0.7.4"
 
 [dev-dependencies]
 proptest = "1"
 approx = "0.5.1"
+plotly = { version = "0.8.4", features = ["kaleido"] }
 
 [[bin]]
 name = "raster_search"
 path = "src/bin/raster_search.rs"
+
+[[bench]]
+name = "query_time"
+harness = false
+
+[[bench]]
+name = "node_degrees"
+harness = false
