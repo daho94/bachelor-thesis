@@ -117,7 +117,7 @@ impl Context {
 
 trait Runnable {
     fn run(&mut self, src: OSMId, dst: OSMId) -> Option<ShortestPath>;
-    fn stats(&self) -> &ch_core::statistics::Stats;
+    fn stats(&self) -> &ch_core::statistics::SearchStats;
 }
 
 impl Runnable for Dijkstra<'_> {
@@ -125,7 +125,7 @@ impl Runnable for Dijkstra<'_> {
         self.search(node_index(src), node_index(dst))
     }
 
-    fn stats(&self) -> &ch_core::statistics::Stats {
+    fn stats(&self) -> &ch_core::statistics::SearchStats {
         &self.stats
     }
 }
@@ -135,7 +135,7 @@ impl Runnable for AStar<'_> {
         self.search(node_index(src), node_index(dst), straight_line)
     }
 
-    fn stats(&self) -> &ch_core::statistics::Stats {
+    fn stats(&self) -> &ch_core::statistics::SearchStats {
         &self.stats
     }
 }
@@ -145,16 +145,28 @@ impl Runnable for BiDirSearch<'_> {
         self.search(node_index(src), node_index(dst))
     }
 
-    fn stats(&self) -> &ch_core::statistics::Stats {
+    fn stats(&self) -> &ch_core::statistics::SearchStats {
         &self.stats
     }
 }
 
 fn main() -> Result<()> {
     env_logger::init();
+    let mut args = std::env::args().skip(1);
     // Init Graph
-    let path_to_pbf = std::env::args().nth(1).expect("No path to PBF file given");
-    let mut graph = Graph::<DefaultIdx>::from_pbf(Path::new(&path_to_pbf)).unwrap();
+    let path_to_pbf = args.next().expect("No path to PBF file given");
+
+    let should_not_simplify = if let Some(s) = args.next() {
+        s == "raw"
+    } else {
+        false
+    };
+
+    let mut graph = if should_not_simplify {
+        Graph::from_pbf(Path::new(&path_to_pbf)).unwrap()
+    } else {
+        Graph::from_pbf_with_simplification(Path::new(&path_to_pbf)).unwrap()
+    };
 
     let mut contractor = NodeContractor::new(&mut graph);
     let overlay_graph = contractor.run();
