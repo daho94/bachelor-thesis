@@ -1,4 +1,4 @@
-use std::sync::Mutex;
+use std::{path::Path, sync::Mutex};
 
 use ch_core::{
     graph::{node_index, Graph},
@@ -71,14 +71,22 @@ static COLOR_THEME: Lazy<Mutex<ActiveTheme>> = Lazy::new(|| Mutex::new(ActiveThe
 #[macroquad::main(window_conf)]
 async fn main() {
     egui_logger::init().unwrap();
+    let mut args = std::env::args().skip(1);
 
     let mut zoom = 1.0;
     let mut pan = Vec2::default();
     let mut draggable = Draggable::new(vec2(0.0, 0.0));
 
-    let pbf_path = std::env::args().nth(1).unwrap_or(
+    let pbf_path = args.next().unwrap_or(
         r"F:\Dev\uni\BA\bachelor_thesis\crates\osm_reader\data\vaterstetten_pp.osm.pbf".into(),
     );
+    let should_not_simplify = if let Some(s) = args.next() {
+        s == "raw"
+    } else {
+        false
+    };
+
+    dbg!(should_not_simplify);
 
     // Add channels to communicate between widgets and view
     let (tx_graph, rx_graph) = bounded(1);
@@ -96,9 +104,16 @@ async fn main() {
     std::thread::spawn(move || {
         let mut g = match pbf_path.as_ref() {
             "test" => generate_complex_graph(),
-            _ => Graph::<u32>::from_pbf(std::path::Path::new(&pbf_path)).unwrap(),
+            _ => {
+                if should_not_simplify {
+                    Graph::from_pbf(Path::new(&pbf_path)).unwrap()
+                } else {
+                    Graph::from_pbf_with_simplification(Path::new(&pbf_path)).unwrap()
+                }
+            }
         };
         let mut node_contractor = NodeContractor::new(&mut g);
+
         let overlay_graph = match pbf_path.as_ref() {
             "test" => node_contractor.run_with_order(&[
                 node_index(1),
