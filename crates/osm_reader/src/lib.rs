@@ -120,7 +120,7 @@ impl RoadGraph {
         info!("FINISHED parsing. Took {:?}", now.elapsed());
 
         let now = std::time::Instant::now();
-        info!("BEGIN simplyfing graph");
+        info!("BEGIN graph simplification");
 
         graph.arcs = Vec::with_capacity(ways.len() * 2);
         // Split ways, but only keep nodes that are referenced more than once
@@ -160,7 +160,7 @@ impl RoadGraph {
                 }
             }
         }
-        info!("FINISHED simplyfing graph. Took {:?}", now.elapsed());
+        info!("FINISHED graph simplification. Took {:?}", now.elapsed());
 
         Ok(graph)
     }

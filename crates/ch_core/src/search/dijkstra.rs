@@ -8,13 +8,13 @@ use log::{debug, info};
 use rustc_hash::FxHashMap;
 
 #[derive(Debug)]
-pub(crate) struct Candidate<Idx = DefaultIdx> {
-    pub(crate) node_idx: NodeIndex<Idx>,
-    pub(crate) weight: Weight,
+pub struct Candidate<Idx = DefaultIdx> {
+    pub node_idx: NodeIndex<Idx>,
+    pub weight: Weight,
 }
 
 impl Candidate {
-    pub(crate) fn new(node_idx: NodeIndex, weight: Weight) -> Self {
+    pub fn new(node_idx: NodeIndex, weight: Weight) -> Self {
         Self { node_idx, weight }
     }
 }

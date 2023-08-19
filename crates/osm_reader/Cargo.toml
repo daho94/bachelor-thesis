@@ -10,3 +10,8 @@ anyhow = "1.0.70"
 osmpbf = "0.3.0"
 rustc-hash = "1.1.0"
 log = "0.4.17"
+
+
+[[bench]]
+name = "simplify"
+harness = false

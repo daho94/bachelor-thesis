@@ -2,9 +2,9 @@ use std::path::Path;
 
 use ch_core::{graph::Graph, statistics};
 use plotly::{
-    color::NamedColor,
+    color::{NamedColor, Rgb},
     common::{Anchor, Font, Orientation, Side, Title},
-    layout::{self, Axis, GridPattern, LayoutGrid, Legend, Margin},
+    layout::{self, Axis, GridPattern, LayoutColorScale, LayoutGrid, Legend, Margin},
     Bar, ImageFormat, Layout, Plot,
 };
 
@@ -80,12 +80,12 @@ fn main() {
                         .font(Font::new().size(12)),
                 ),
         )
-        .colorway(vec![NamedColor::Gray, NamedColor::LightGray])
+        .colorway(vec![Rgb::new(216, 27, 96), Rgb::new(39, 136, 229)])
         .margin(Margin::default().top(8).bottom(8));
 
     plot.set_layout(layout.clone());
 
-    plot.write_image("hist_deg_out.png", ImageFormat::PDF, 800, 600, 1.0);
+    plot.write_image("hist_deg_out.pdf", ImageFormat::PDF, 800, 600, 1.0);
 
     let mut plot = Plot::new();
     let mut show_legend = true;
