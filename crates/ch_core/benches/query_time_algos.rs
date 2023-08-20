@@ -8,7 +8,7 @@ use ch_core::{
 };
 use ch_core::{graph::Graph, search::dijkstra::Candidate};
 use ch_core::{
-    search::{astar::AStar, bidir_search::BiDirSearch, dijkstra::Dijkstra},
+    search::{astar::AStar, ch_search::CHSearch, dijkstra::Dijkstra},
     util::math::straight_line,
 };
 use indicatif::ProgressBar;
@@ -36,7 +36,7 @@ use std::io::Write;
 //   shown inside the box, and the whiskers extend to the minimum and maximum
 //   values, excluding outliers.
 fn main() {
-    const ITERATIONS: usize = 10;
+    const ITERATIONS: usize = 1000;
 
     let mut g = if let Some(path) = std::env::args().nth(1) {
         Graph::from_pbf_with_simplification(Path::new(&path)).expect("Invalid path")
@@ -53,7 +53,8 @@ fn main() {
     let max_rank = (g.nodes.len() as f64).log2() as u32;
 
     let rank_start = 10;
-    let rank_end = dbg!(max_rank);
+    // let rank_end = dbg!(max_rank);
+    let rank_end = 16;
 
     let num_ranks = (rank_end - rank_start + 1) as usize;
 
@@ -65,7 +66,7 @@ fn main() {
     let mut nodes_settled_astar = vec![vec![]; num_ranks];
     let mut nodes_settled_ch = vec![vec![]; num_ranks];
 
-    let mut ch = BiDirSearch::new(&overlay_graph);
+    let mut ch = CHSearch::new(&overlay_graph);
     let mut dijk = Dijkstra::new(&g);
     let mut astar = AStar::new(&g);
 
@@ -78,7 +79,7 @@ fn main() {
         // Find targets
         let targets = calculate_st_queries(source, &g, rank_start, rank_end);
 
-        // Measure query times for Dijsktra-, AStar- and CH-query
+        // Measure query times and #nodes settled for Dijsktra-, AStar- and CH-query
         for (target, rank) in targets {
             let idx = (rank.ilog2() - rank_start) as usize;
 
@@ -123,7 +124,9 @@ fn main() {
 
     let mut file = File::create("query_time_algos.csv").expect("Couldn't create file");
     let header = {
-        let ranks: Vec<String> = (rank_start..=rank_end).map(|r| format!("2^{r}")).collect();
+        let ranks: Vec<String> = (rank_start..=rank_end)
+            .map(|r| format!("2{}", superscript_digits(r)))
+            .collect();
 
         format!("stats,{}", ranks.join(","))
     };
@@ -162,19 +165,22 @@ fn main() {
         .name("Dijkstra")
         .marker(marker.clone())
         .box_points(BoxPoints::Outliers)
-        .whisker_width(0.1);
+        .line(Line::new().width(0.7))
+        .whisker_width(8.);
 
     let trace_astar = BoxPlot::new_xy(x.clone(), timings_astar.into_iter().flatten().collect())
         .name("AStar")
         .marker(marker.clone())
         .box_points(BoxPoints::Outliers)
-        .whisker_width(0.1);
+        .line(Line::new().width(0.7))
+        .whisker_width(8.);
 
     let trace_ch = BoxPlot::new_xy(x, timings_ch.into_iter().flatten().collect())
         .name("CHs")
         .marker(marker)
         .box_points(BoxPoints::Outliers)
-        .whisker_width(0.1);
+        .line(Line::new().width(0.7))
+        .whisker_width(8.);
 
     plot.add_trace(trace_dijk);
     plot.add_trace(trace_astar);
