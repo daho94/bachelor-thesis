@@ -65,27 +65,27 @@ impl<'a> AStar<'a> {
 
     pub fn search(
         &mut self,
-        src: NodeIndex,
-        dst: NodeIndex,
+        source: NodeIndex,
+        target: NodeIndex,
         heuristic: impl Fn(&Node, &Node) -> Weight,
     ) -> Option<ShortestPath> {
+        info!("BEGIN ASTAR SEARCH from {:?} to {:?}", source, target);
         self.stats.init();
-
-        if src == dst {
+        if source == target {
             self.stats.nodes_settled += 1;
             self.stats.finish();
-            return Some(ShortestPath::new(vec![src], 0.0));
+            return Some(ShortestPath::new(vec![source], 0.0));
         }
 
         let mut node_data: FxHashMap<NodeIndex, (Weight, Option<NodeIndex>)> = FxHashMap::default();
-        node_data.insert(src, (0.0, None));
+        node_data.insert(source, (0.0, None));
 
         let mut queue = BinaryHeap::new();
 
         queue.push(Candidate::new(
-            src,
+            source,
             0.0,
-            heuristic(self.g.node(src).unwrap(), self.g.node(dst).unwrap()),
+            heuristic(self.g.node(source).unwrap(), self.g.node(target).unwrap()),
         ));
 
         while let Some(Candidate {
@@ -96,7 +96,7 @@ impl<'a> AStar<'a> {
         {
             self.stats.nodes_settled += 1;
 
-            if node == dst {
+            if node == target {
                 break;
             }
 
@@ -112,7 +112,10 @@ impl<'a> AStar<'a> {
                         .0
                 {
                     let tentative_weight = real_weight
-                        + heuristic(self.g.node(edge.target).unwrap(), self.g.node(dst).unwrap());
+                        + heuristic(
+                            self.g.node(edge.target).unwrap(),
+                            self.g.node(target).unwrap(),
+                        );
 
                     node_data.insert(edge.target, (real_weight, Some(node)));
                     queue.push(Candidate::new(edge.target, real_weight, tentative_weight));
@@ -122,23 +125,26 @@ impl<'a> AStar<'a> {
 
         self.stats.finish();
 
-        let sp = super::reconstruct_path(dst, src, &node_data);
-        if sp.is_some() {
+        // let sp = super::reconstruct_path(dst, src, &node_data);
+        // if sp.is_some() {
+        if let Some(sp) = super::reconstruct_path(target, source, &node_data) {
             debug!("Path found: {:?}", sp);
-            info!(
-                "Path found: {:?}/{} nodes settled",
-                self.stats.duration.unwrap(),
-                self.stats.nodes_settled
-            );
+            info!("{}, weight: {}", self.stats, sp.weight);
+
+            Some(sp)
         } else {
+            // info!(
+            //     "No path found: {:?}/{} nodes settled",
+            //     self.stats.duration.unwrap(),
+            //     self.stats.nodes_settled
+            // );
             info!(
                 "No path found: {:?}/{} nodes settled",
                 self.stats.duration.unwrap(),
                 self.stats.nodes_settled
             );
+            None
         }
-
-        sp
     }
 }
 
