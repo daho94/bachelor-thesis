@@ -21,6 +21,7 @@ pub(crate) struct DebugWidget {
 
 pub(crate) struct NodeInfo {
     pub node: Node,
+    pub node_index: usize,
     pub rank: usize,
     // Neighbors...
 }
@@ -86,6 +87,7 @@ impl DebugWidget {
         ui.separator();
         if let Some(node_info) = &self.debug_info.node_info {
             ui.label(format!("Node (OSMID): {}", node_info.node.id));
+            ui.label(format!("Node (Internal Id): {}", node_info.node_index));
             ui.label(format!("Lat: {:.7}°", node_info.node.lat));
             ui.label(format!("Lon: {:.7}°", node_info.node.lon));
             ui.label(format!("Level: {}", node_info.rank));

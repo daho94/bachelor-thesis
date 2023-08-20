@@ -1,4 +1,9 @@
-use ch_core::{graph::NodeIndex, overlay_graph::OverlayGraph, search::bidir_search::BiDirSearch};
+use ch_core::{
+    graph::NodeIndex,
+    overlay_graph::OverlayGraph,
+    search::{astar::AStar, ch_search::CHSearch, dijkstra::Dijkstra},
+    util::math::straight_line,
+};
 use crossbeam_channel::{Receiver, Sender};
 use egui::{CollapsingHeader, Context, Window};
 use macroquad::prelude::{is_key_pressed, KeyCode};
@@ -70,7 +75,7 @@ impl<'g> super::MyWidget for UserInputWidget<'g> {
         }
 
         if is_key_pressed(KeyCode::F) && self.source_node.is_some() && self.target_node.is_some() {
-            let mut bidir_search = BiDirSearch::new(self.overlay_graph);
+            let mut bidir_search = CHSearch::new(self.overlay_graph);
             if let Some(sp) =
                 bidir_search.search(self.source_node.unwrap(), self.target_node.unwrap())
             {
@@ -145,24 +150,62 @@ impl<'g> super::MyWidget for UserInputWidget<'g> {
                         }
                     });
 
-                    // Button to start search
-                    if ui
-                        .add_enabled(
-                            self.source_node.is_some() && self.target_node.is_some(),
-                            egui::Button::new("Start Search"),
-                        )
-                        .on_disabled_hover_text("Enter valid start and end node first")
-                        .clicked()
-                    {
-                        log::debug!("Search button clicked.");
-
-                        let mut bidir_search = BiDirSearch::new(self.overlay_graph);
-                        if let Some(sp) = bidir_search
-                            .search(self.source_node.unwrap(), self.target_node.unwrap())
+                    // Buttons to start search
+                    ui.horizontal(|ui| {
+                        if ui
+                            .add_enabled(
+                                self.source_node.is_some() && self.target_node.is_some(),
+                                egui::Button::new("CH Search"),
+                            )
+                            .on_disabled_hover_text("Enter valid start and end node first")
+                            .clicked()
                         {
-                            self.options.search_result = Some(SearchResult { sp });
+                            log::debug!("Search button clicked.");
+
+                            let mut bidir_search = CHSearch::new(self.overlay_graph);
+                            if let Some(sp) = bidir_search
+                                .search(self.source_node.unwrap(), self.target_node.unwrap())
+                            {
+                                self.options.search_result = Some(SearchResult { sp });
+                            }
                         }
-                    }
+                        if ui
+                            .add_enabled(
+                                self.source_node.is_some() && self.target_node.is_some(),
+                                egui::Button::new("Dijk. Search"),
+                            )
+                            .on_disabled_hover_text("Enter valid start and end node first")
+                            .clicked()
+                        {
+                            log::debug!("Dijk button clicked.");
+
+                            let mut dijk_search = Dijkstra::new(self.overlay_graph.road_graph());
+                            if let Some(sp) = dijk_search
+                                .search(self.source_node.unwrap(), self.target_node.unwrap())
+                            {
+                                self.options.search_result = Some(SearchResult { sp });
+                            }
+                        }
+                        if ui
+                            .add_enabled(
+                                self.source_node.is_some() && self.target_node.is_some(),
+                                egui::Button::new("AStar Search"),
+                            )
+                            .on_disabled_hover_text("Enter valid start and end node first")
+                            .clicked()
+                        {
+                            log::debug!("AStar button clicked.");
+
+                            let mut astar_search = AStar::new(self.overlay_graph.road_graph());
+                            if let Some(sp) = astar_search.search(
+                                self.source_node.unwrap(),
+                                self.target_node.unwrap(),
+                                straight_line,
+                            ) {
+                                self.options.search_result = Some(SearchResult { sp });
+                            }
+                        }
+                    });
                 });
         });
 

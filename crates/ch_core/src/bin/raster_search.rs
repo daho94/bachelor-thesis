@@ -3,7 +3,7 @@ use std::time::Instant;
 use ch_core::{
     graph::node_index,
     node_contraction::{NodeContractor, PriorityParams},
-    search::bidir_search::BiDirSearch,
+    search::ch_search::CHSearch,
     util::test_graphs::{graph_saarland, graph_vaterstetten},
 };
 
@@ -48,7 +48,7 @@ fn main() {
                     let time_construction = now.elapsed().as_millis();
 
                     // Do 1000 random queries
-                    let mut bidir_search = BiDirSearch::new(&overlay_graph);
+                    let mut bidir_search = CHSearch::new(&overlay_graph);
 
                     let mut time_total = 0;
 

@@ -106,10 +106,14 @@ impl PriorityParams {
 impl Default for PriorityParams {
     fn default() -> Self {
         PriorityParams {
+            // edge_difference_coeff: 101,
+            // contracted_neighbors_coeff: 101,
+            // search_space_coeff: 6,
+            // original_edges_coeff: 10,
             edge_difference_coeff: 101,
             contracted_neighbors_coeff: 101,
             search_space_coeff: 6,
-            original_edges_coeff: 70,
+            original_edges_coeff: 10,
         }
     }
 }
@@ -321,9 +325,9 @@ impl<'a> NodeContractor<'a> {
     }
 
     fn add_shortcut(&mut self, edge: Edge, replaces: [EdgeIndex; 2]) -> EdgeIndex {
-        let edge_idx = self.g.add_edge(edge);
+        let edge_idx = self.g.add_shortcut(edge);
         // self.num_shortcuts += 1;
-        self.g.num_shortcuts += 1;
+        // self.g.num_shortcuts += 1;
 
         self.shortcuts.insert(edge_idx, replaces);
 

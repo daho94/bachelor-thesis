@@ -292,6 +292,7 @@ impl<'a> GraphView<'a> {
                     .send(DebugInfo {
                         node_info: Some(NodeInfo {
                             node: node.clone(),
+                            node_index: node_idx.index(),
                             rank: self.overlay_graph.node_ranks[node_idx.index()],
                         }),
                     })

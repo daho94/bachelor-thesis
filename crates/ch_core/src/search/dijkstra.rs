@@ -5,7 +5,7 @@ use crate::graph::*;
 use crate::search::shortest_path::ShortestPath;
 use crate::statistics::SearchStats;
 use log::{debug, info};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 #[derive(Debug)]
 pub struct Candidate<Idx = DefaultIdx> {
@@ -81,6 +81,7 @@ impl<'a> Dijkstra<'a> {
 
             for (_, edge) in self.g.neighbors_outgoing(node_idx).filter(|(edge_idx, _)| {
                 edge_idx.index() < self.g.edges.len() - self.g.num_shortcuts
+                // true
             }) {
                 let new_distance = weight + edge.weight;
                 if new_distance

@@ -7,7 +7,7 @@ use ch_core::{
     node_contraction::NodeContractor,
     overlay_graph::OverlayGraph,
     search::{astar::AStar, shortest_path::ShortestPath},
-    search::{bidir_search::BiDirSearch, dijkstra::Dijkstra},
+    search::{ch_search::CHSearch, dijkstra::Dijkstra},
     util::math::straight_line,
 };
 use reedline_repl_rs::clap::{value_parser, Arg, ArgMatches, Command};
@@ -35,11 +35,11 @@ fn run_algorithm(args: ArgMatches, context: &mut Context) -> Result<Option<Strin
             (a.run(src, dst), a.stats)
         }
         "ch" => {
-            let mut b = BiDirSearch::new(&context.graph);
+            let mut b = CHSearch::new(&context.graph);
             (b.run(src, dst), b.stats)
         }
         "ch_par" => {
-            let mut b = BiDirSearch::new(&context.graph);
+            let mut b = CHSearch::new(&context.graph);
             (b.search_par(node_index(src), node_index(dst)), b.stats)
         }
         _ => unreachable!("Unknown algorithm"),
@@ -140,7 +140,7 @@ impl Runnable for AStar<'_> {
     }
 }
 
-impl Runnable for BiDirSearch<'_> {
+impl Runnable for CHSearch<'_> {
     fn run(&mut self, src: OSMId, dst: OSMId) -> Option<ShortestPath> {
         self.search(node_index(src), node_index(dst))
     }

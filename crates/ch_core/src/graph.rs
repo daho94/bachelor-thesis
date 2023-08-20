@@ -223,7 +223,29 @@ impl Graph {
     ///
     /// Returns the index of the new created edge.
     pub fn add_edge(&mut self, edge: Edge) -> EdgeIndex {
+        self.add_edge_internal(edge, true)
+    }
+
+    /// Add a new `shortcut edge` to the graph.
+    ///
+    /// **Panics** if the Graph is at the maximum number of edges for its index
+    /// type
+    /// **Panics** if the source or target node does not exist
+    ///
+    /// Returns the index of the new created edge.
+    pub fn add_shortcut(&mut self, edge: Edge) -> EdgeIndex {
+        self.num_shortcuts += 1;
+        self.add_edge_internal(edge, false)
+    }
+
+    fn add_edge_internal(&mut self, edge: Edge, allow_weight_update: bool) -> EdgeIndex {
         let edge_idx = EdgeIndex::new(self.edges.len());
+
+        assert!(
+            edge.weight > 0.0,
+            "No negative edge weights allowed. Edge weight was {}",
+            edge.weight
+        );
 
         assert!(
             EdgeIndex::end() != edge_idx,
@@ -243,11 +265,18 @@ impl Graph {
 
         // If an edge already exists between source and target but the new edge
         // has a lower weight, replace the old edge with the new one (update the weight)
-        for (_, edge_idx) in self.edges_out[edge.source.index()].iter().enumerate() {
-            let old_edge = &self.edges[edge_idx.index()];
-            if edge.target == old_edge.target && edge.weight < old_edge.weight {
-                self.edges[edge_idx.index()].weight = edge.weight;
-                return *edge_idx;
+        // Since shortcuts edges are added like normal edges, we can't allow edge updates for shortcuts
+        if allow_weight_update {
+            for (_, e_idx) in self.edges_out[edge.source.index()].iter().enumerate() {
+                let old_edge = &self.edges[e_idx.index()];
+                if edge.target == old_edge.target && edge.weight < old_edge.weight {
+                    info!(
+                        "Updated edge weight from {} to {}",
+                        old_edge.weight, edge.weight
+                    );
+                    self.edges[e_idx.index()].weight = edge.weight;
+                    return *e_idx;
+                }
             }
         }
 
