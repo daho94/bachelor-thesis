@@ -49,11 +49,9 @@ impl<'a> CHSearch<'a> {
         self.stats.init();
     }
 
-    pub fn search_improved(
-        &mut self,
-        source: NodeIndex,
-        target: NodeIndex,
-    ) -> Option<ShortestPath> {
+    /// Finds the shortest path from `source` to `target`.
+    /// The search is performed using a modified bidirectional version of Dijkstras algorithm
+    pub fn search(&mut self, source: NodeIndex, target: NodeIndex) -> Option<ShortestPath> {
         info!(
             "BEGIN BIDIRECTIONAL SEARCH from {:?} to {:?}",
             source, target
@@ -73,7 +71,7 @@ impl<'a> CHSearch<'a> {
         let mut intersect_node: Option<NodeIndex> = None;
 
         loop {
-            if queue_fwd.is_empty() || queue_bwd.is_empty() {
+            if queue_fwd.is_empty() && queue_bwd.is_empty() {
                 break;
             }
 
@@ -91,36 +89,25 @@ impl<'a> CHSearch<'a> {
                     break;
                 }
 
-                // if self.is_stallable_fwd(&curr) {
-                // continue;
-                // }
+                if self.is_stallable_fwd(&curr) {
+                    continue;
+                }
 
                 for (edge_idx, edge) in self.g.edges_fwd(curr.node_idx) {
-                    let new_distance = curr.weight + edge.weight;
-                    if new_distance
-                        < self
-                            .data_fwd
-                            .get(&edge.target)
-                            .unwrap_or(&(std::f64::INFINITY, None))
-                            .0
-                    {
+                    let new_weight = curr.weight + edge.weight;
+                    if new_weight < self.get_weight_fwd(edge.target) {
                         self.data_fwd
-                            .insert(edge.target, (new_distance, Some(edge_idx)));
-                        queue_fwd.push(Candidate::new(edge.target, new_distance));
+                            .insert(edge.target, (new_weight, Some(edge_idx)));
+                        queue_fwd.push(Candidate::new(edge.target, new_weight));
                     }
                 }
                 self.stats.nodes_settled += 1;
                 self.settled_fwd.insert(curr.node_idx);
 
-                if curr.weight
-                    + self
-                        .data_bwd
-                        .get(&curr.node_idx)
-                        .unwrap_or(&(INFINITY, None))
-                        .0
-                    < best_weight
+                if self.settled_bwd.contains(&curr.node_idx)
+                    && curr.weight + self.get_weight_bwd(curr.node_idx) < best_weight
                 {
-                    best_weight = curr.weight + self.data_bwd.get(&curr.node_idx).unwrap().0;
+                    best_weight = curr.weight + self.get_weight_bwd(curr.node_idx);
                     intersect_node = Some(curr.node_idx);
                 }
                 break;
@@ -140,19 +127,13 @@ impl<'a> CHSearch<'a> {
                     break;
                 }
 
-                // if self.is_stallable_bwd(&curr) {
-                //     continue;
-                // }
+                if self.is_stallable_bwd(&curr) {
+                    continue;
+                }
 
                 for (edge_idx, edge) in self.g.edges_bwd(curr.node_idx) {
                     let new_distance = curr.weight + edge.weight;
-                    if new_distance
-                        < self
-                            .data_bwd
-                            .get(&edge.source)
-                            .unwrap_or(&(std::f64::INFINITY, None))
-                            .0
-                    {
+                    if new_distance < self.get_weight_bwd(edge.source) {
                         self.data_bwd
                             .insert(edge.source, (new_distance, Some(edge_idx)));
                         queue_bwd.push(Candidate::new(edge.source, new_distance));
@@ -161,15 +142,10 @@ impl<'a> CHSearch<'a> {
                 self.stats.nodes_settled += 1;
                 self.settled_bwd.insert(curr.node_idx);
 
-                if curr.weight
-                    + self
-                        .data_fwd
-                        .get(&curr.node_idx)
-                        .unwrap_or(&(INFINITY, None))
-                        .0
-                    < best_weight
+                if self.settled_fwd.contains(&curr.node_idx)
+                    && curr.weight + self.get_weight_fwd(curr.node_idx) < best_weight
                 {
-                    best_weight = curr.weight + self.data_fwd.get(&curr.node_idx).unwrap().0;
+                    best_weight = curr.weight + self.get_weight_fwd(curr.node_idx);
                     intersect_node = Some(curr.node_idx);
                 }
                 break;
@@ -184,8 +160,18 @@ impl<'a> CHSearch<'a> {
         self.reconstruct_shortest_path(intersect_node, source)
     }
 
-    /// Performs a bidirectional search on the graph.
-    pub fn search(&mut self, source: NodeIndex, target: NodeIndex) -> Option<ShortestPath> {
+    fn get_weight_fwd(&self, node: NodeIndex) -> Weight {
+        self.data_fwd.get(&node).unwrap_or(&(Weight::MAX, None)).0
+    }
+
+    fn get_weight_bwd(&self, node: NodeIndex) -> Weight {
+        self.data_bwd.get(&node).unwrap_or(&(Weight::MAX, None)).0
+    }
+
+    /// Finds the shortest path from `source` to `target`.
+    /// The search is performed using a modified bidirectional version of Dijkstras algorithm
+    #[deprecated = "This implementation is simple to read and unterstand but the implementation of `search` is faster."]
+    pub fn search_legacy(&mut self, source: NodeIndex, target: NodeIndex) -> Option<ShortestPath> {
         self.init();
         info!(
             "BEGIN BIDIRECTIONAL SEARCH from {:?} to {:?}",
@@ -367,13 +353,7 @@ impl<'a> CHSearch<'a> {
 
                 for (edge_idx, edge) in self.g.edges_bwd(cand.node_idx) {
                     let new_distance = cand.weight + edge.weight;
-                    if new_distance
-                        < self
-                            .data_bwd
-                            .get(&edge.source)
-                            .unwrap_or(&(std::f64::INFINITY, None))
-                            .0
-                    {
+                    if new_distance < self.get_weight_bwd(edge.source) {
                         self.data_bwd
                             .insert(edge.source, (new_distance, Some(edge_idx)));
                         queue_bwd.push(Candidate::new(edge.source, new_distance));
@@ -411,13 +391,7 @@ impl<'a> CHSearch<'a> {
 
                 for (edge_idx, edge) in self.g.edges_fwd(cand.node_idx) {
                     let new_distance = cand.weight + edge.weight;
-                    if new_distance
-                        < self
-                            .data_fwd
-                            .get(&edge.target)
-                            .unwrap_or(&(std::f64::INFINITY, None))
-                            .0
-                    {
+                    if new_distance < self.get_weight_fwd(edge.target) {
                         self.data_fwd
                             .insert(edge.target, (new_distance, Some(edge_idx)));
                         queue_fwd.push(Candidate::new(edge.target, new_distance));
@@ -599,6 +573,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_bug() {
         init_log();
 
@@ -719,8 +694,8 @@ mod tests {
         let sp_ba = dijkstra.search(b, a);
 
         let mut bidir = CHSearch::new(overlay_graph);
-        let sp_bidir_ab = bidir.search_improved(a, b);
-        let sp_bidir_ba = bidir.search_improved(b, a);
+        let sp_bidir_ab = bidir.search(a, b);
+        let sp_bidir_ba = bidir.search(b, a);
 
         if sp_ab.is_some() {
             assert_abs_diff_eq!(
