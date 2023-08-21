@@ -474,6 +474,7 @@ fn parse_road_graph(road_graph: RoadGraph) -> Result<Graph, anyhow::Error> {
         weight,
     } in road_graph.get_arcs()
     {
+        assert!(*weight > 0.0, "Edge must have a positive non-zero weight");
         let edge: Edge = Edge::new(
             NodeIndex::new(node_index[source]),
             NodeIndex::new(node_index[target]),
