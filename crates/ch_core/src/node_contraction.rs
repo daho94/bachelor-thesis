@@ -18,7 +18,8 @@
 //! [`Graph`]: crate::graph::Graph
 use std::{
     cmp::{max, Reverse},
-    time::Instant,
+    fmt::Display,
+    time::{Duration, Instant},
 };
 
 use log::{debug, info};
@@ -27,7 +28,7 @@ use rustc_hash::FxHashSet;
 
 use crate::{
     contraction_strategy::CHStrategy,
-    graph::{node_index, DefaultIdx, Edge, EdgeIndex, Graph, NodeIndex},
+    graph::{node_index, Edge, EdgeIndex, Graph, NodeIndex},
     overlay_graph::OverlayGraph,
     witness_search::WitnessSearch,
 };
@@ -36,10 +37,47 @@ type AddedEdges = (Vec<EdgeIndex>, usize);
 type RemovedEdges = (Vec<EdgeIndex>, usize);
 const STEP_SIZE: f64 = 5.0;
 
-/// Parameters for the priority function
-/// P(v) = edge_difference_coeff * edge_difference(v)
-///     + contracted_neighbors_coeff * contracted_neighbors(v)
-///     + search_space_coeff * Level(v)
+#[derive(Debug, Clone, Copy)]
+pub struct ContractionParams {
+    priority_params: PriorityParams,
+    // Limit for lazy updates
+    witness_search_limit: usize,
+    // Limit for initial node ordering
+    witness_search_initial_limit: usize,
+}
+
+impl ContractionParams {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn priority_params(mut self, params: PriorityParams) -> Self {
+        self.priority_params = params;
+        self
+    }
+
+    pub fn witness_search_limit(mut self, limit: usize) -> Self {
+        self.witness_search_limit = limit;
+        self
+    }
+
+    pub fn witness_search_initial_limit(mut self, limit: usize) -> Self {
+        self.witness_search_initial_limit = limit;
+        self
+    }
+}
+
+impl Default for ContractionParams {
+    fn default() -> Self {
+        ContractionParams {
+            priority_params: Default::default(),
+            witness_search_limit: 50,
+            witness_search_initial_limit: 500,
+        }
+    }
+}
+
+/// Coefficients for the priority function
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PriorityParams {
     edge_difference_coeff: i32,
@@ -110,11 +148,73 @@ impl Default for PriorityParams {
             // contracted_neighbors_coeff: 101,
             // search_space_coeff: 6,
             // original_edges_coeff: 10,
-            edge_difference_coeff: 101,
-            contracted_neighbors_coeff: 101,
-            search_space_coeff: 6,
-            original_edges_coeff: 10,
+            edge_difference_coeff: 501,
+            contracted_neighbors_coeff: 401,
+            search_space_coeff: 7,
+            original_edges_coeff: 201,
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ConstructionStats {
+    pub node_ordering_time: Duration,
+    pub contraction_time: Duration,
+    pub total_time: Duration,
+    pub shortcuts_added: usize,
+    timer: Instant,
+}
+
+impl Default for ConstructionStats {
+    fn default() -> Self {
+        ConstructionStats {
+            node_ordering_time: Duration::new(0, 0),
+            contraction_time: Duration::new(0, 0),
+            total_time: Duration::new(0, 0),
+            shortcuts_added: 0,
+            timer: Instant::now(),
+        }
+    }
+}
+
+impl Display for ConstructionStats {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "---Construction Stats---")?;
+        writeln!(
+            f,
+            "Node Ordering [sec]: {}",
+            self.node_ordering_time.as_secs()
+        )?;
+        writeln!(
+            f,
+            "Construction  [sec]: {}",
+            self.contraction_time.as_secs()
+        )?;
+        writeln!(f, "------------------------")?;
+        writeln!(f, "Totat time    [sec]: {}", self.total_time.as_secs())?;
+        writeln!(f, "Shortcuts added [#]: {}", self.shortcuts_added)
+    }
+}
+
+impl ConstructionStats {
+    fn init(&mut self) {
+        self.timer = Instant::now();
+        self.shortcuts_added = 0;
+        self.node_ordering_time = Duration::new(0, 0);
+        self.contraction_time = Duration::new(0, 0);
+        self.total_time = Duration::new(0, 0);
+    }
+
+    fn stop_timer_node_ordering(&mut self) {
+        self.node_ordering_time = self.timer.elapsed();
+        self.total_time += self.node_ordering_time;
+        self.timer = Instant::now();
+    }
+
+    fn stop_timer_construction(&mut self) {
+        self.contraction_time = self.timer.elapsed();
+        self.total_time += self.contraction_time;
+        self.timer = Instant::now();
     }
 }
 
@@ -154,7 +254,8 @@ pub struct NodeContractor<'a> {
     /// Stores how many hops a shortcut represents
     hops: rustc_hash::FxHashMap<EdgeIndex, usize>,
 
-    priority_params: PriorityParams,
+    params: ContractionParams,
+    stats: ConstructionStats,
 }
 
 impl<'a> NodeContractor<'a> {
@@ -172,11 +273,12 @@ impl<'a> NodeContractor<'a> {
                 Default::default(),
             ),
             hops: rustc_hash::FxHashMap::with_capacity_and_hasher(num_edges, Default::default()),
-            priority_params: Default::default(),
+            params: Default::default(),
+            stats: Default::default(),
         }
     }
 
-    pub fn new_with_priority_params(g: &'a mut Graph, priority_params: PriorityParams) -> Self {
+    pub fn new_with_params(g: &'a mut Graph, params: ContractionParams) -> Self {
         let num_nodes = g.nodes.len();
         let num_edges = g.edges.len();
         NodeContractor {
@@ -190,20 +292,26 @@ impl<'a> NodeContractor<'a> {
                 Default::default(),
             ),
             hops: rustc_hash::FxHashMap::with_capacity_and_hasher(num_edges, Default::default()),
-            priority_params,
+            params,
+            stats: ConstructionStats::default(),
         }
+    }
+
+    pub fn stats(&self) -> ConstructionStats {
+        self.stats
     }
 
     pub fn run_with_strategy(&mut self, strategy: CHStrategy) -> OverlayGraph {
         info!("BEGIN contracting nodes");
-        info!("Progress: {:.2}%", 0.0 * 100.0);
-        let now = Instant::now();
+        self.stats.init();
         let mut edges_fwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); self.num_nodes];
         let mut edges_bwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); self.num_nodes];
 
         let mut levels = vec![0; self.num_nodes];
         // Allocate additional space for shortcuts to avoid reallocations
         self.g.edges.reserve(self.g.edges.len());
+
+        info!("Calculating initial node order...");
 
         let mut queue = match strategy {
             CHStrategy::FixedOrder(order) => {
@@ -217,17 +325,19 @@ impl<'a> NodeContractor<'a> {
             }
             _ => self.calc_initial_node_order(),
         };
+        self.stats.stop_timer_node_ordering();
 
         let mut step_size = STEP_SIZE;
         let mut next_goal = step_size;
 
+        info!("Progress: {:.2}%", 0.0 * 100.0);
         while !queue.is_empty() {
             let (node, Reverse(priority)) = queue.pop().unwrap();
 
             match strategy {
                 CHStrategy::LazyUpdateSelfAndNeighbors | CHStrategy::LazyUpdateSelf => {
                     // Lazy Update node: If the priority of the node is worse (higher), it will be updated instead of contracted
-                    let importance = self.calc_priority(node, 0, 50, self.priority_params);
+                    let importance = self.calc_priority(node, 0, self.params.witness_search_limit);
                     // let importance = self.calc_priority_alt(node, 0, 50);
 
                     if importance > priority {
@@ -257,21 +367,18 @@ impl<'a> NodeContractor<'a> {
 
             // Update only the priority of neighbors = Lazy Neighbor Updating
             for neighbor in neighbors {
-                // Spatial Uniformity heuristic
+                // Contracted Neighbors
                 self.contracted_neighbors[neighbor.index()] += 1;
+                // Search Space Depth
                 levels[neighbor.index()] = max(levels[node.index()] + 1, levels[neighbor.index()]);
 
                 match strategy {
                     CHStrategy::LazyUpdateSelfAndNeighbors | CHStrategy::LazyUpdateNeighbors => {
-                        // Linear combination of heuristics
                         let importance = self.calc_priority(
                             neighbor,
                             levels[neighbor.index()],
-                            25,
-                            self.priority_params,
+                            self.params.witness_search_limit,
                         );
-                        // let importance =
-                        //     self.calc_priority_alt(neighbor, levels[neighbor.index()], 25);
 
                         if let Some(Reverse(old_value)) =
                             queue.change_priority(&neighbor, Reverse(importance))
@@ -294,16 +401,21 @@ impl<'a> NodeContractor<'a> {
 
             let progress = (self.num_nodes - queue.len()) as f64 / self.num_nodes as f64;
             if progress * 100.0 >= next_goal {
-                info!("Progress: {:.2}%", progress * 100.0);
+                info!(
+                    "Progress: {:.2}%, Shortcuts: {}",
+                    progress * 100.0,
+                    self.stats.shortcuts_added
+                );
                 if progress * 100.0 >= 95.0 {
                     step_size = 0.5;
                 }
                 next_goal += step_size;
             }
         }
+        self.stats.stop_timer_construction();
 
-        info!("FINISHED contracting nodes. Took {:?}", now.elapsed());
-        info!("Added shortcuts: {}", self.g.num_shortcuts);
+        info!("{:?}", self.stats);
+        println!("{}", self.stats);
 
         self.g.edges.shrink_to_fit();
         self.shortcuts.shrink_to_fit();
@@ -326,9 +438,7 @@ impl<'a> NodeContractor<'a> {
 
     fn add_shortcut(&mut self, edge: Edge, replaces: [EdgeIndex; 2]) -> EdgeIndex {
         let edge_idx = self.g.add_shortcut(edge);
-        // self.num_shortcuts += 1;
-        // self.g.num_shortcuts += 1;
-
+        self.stats.shortcuts_added += 1;
         self.shortcuts.insert(edge_idx, replaces);
 
         edge_idx
@@ -435,7 +545,6 @@ impl<'a> NodeContractor<'a> {
                     // Add some value for counting
                     added_edges.push(EdgeIndex::end());
                 }
-                // added_shortcuts += 1;
             }
         }
 
@@ -474,7 +583,7 @@ impl<'a> NodeContractor<'a> {
 
         for v in 0..self.num_nodes {
             let v = node_index(v);
-            let importance = self.calc_priority(v, 0, 500, self.priority_params);
+            let importance = self.calc_priority(v, 0, self.params.witness_search_initial_limit);
             pq.push(v, Reverse(importance));
         }
 
@@ -487,21 +596,15 @@ impl<'a> NodeContractor<'a> {
     /// - Edge difference: Shortcuts - Removed edges
     /// - Level: Level of the node in the hierarchy.
     // Coefficients of priority terms (From Diploma thesis Contraction Hierarchies - Geisberger)
-    fn calc_priority(
-        &mut self,
-        v: NodeIndex,
-        level: usize,
-        // ws: WitnessSearch,
-        max_nodes_settled_limit: usize,
-        params: PriorityParams,
-    ) -> i32 {
-        // let edge_difference = self.calc_edge_difference(v, max_nodes_settled_limit);
-        let ((removed_edges, sum_hops_removed), (added_edges, sum_hops_added)) =
-            self.handle_contract_node(v, max_nodes_settled_limit, true); // A(x), D(x)
+    fn calc_priority(&mut self, v: NodeIndex, level: usize, max_nodes_settled_limit: usize) -> i32 {
+        let ((removed_edges, _sum_hops_removed), (added_edges, sum_hops_added)) =
+            self.handle_contract_node(v, max_nodes_settled_limit, true);
 
         let edge_difference = added_edges.len() as i32 - removed_edges.len() as i32;
         let contracted_neighbors = self.contracted_neighbors[v.index()];
         let original_edges_replaced = sum_hops_added;
+
+        let params = self.params.priority_params;
 
         edge_difference * params.edge_difference_coeff
             + level as i32 * params.search_space_coeff
@@ -516,10 +619,9 @@ impl<'a> NodeContractor<'a> {
         &mut self,
         v: NodeIndex,
         level: usize, //L(x)
-        max_nodes_settled_limit: usize,
     ) -> i32 {
         let ((removed_edges, sum_hops_removed), (added_edges, sum_hops_added)) =
-            self.handle_contract_node(v, max_nodes_settled_limit, true); // A(x), D(x)
+            self.handle_contract_node(v, self.params.witness_search_limit, true); // A(x), D(x)
 
         // let sum_hops_removed = removed_edges
         //     .iter()
@@ -537,17 +639,6 @@ impl<'a> NodeContractor<'a> {
             + (sum_hops_added as f32 + 1.0) / (sum_hops_removed as f32 + 1.0);
 
         (importance * 1000.0) as i32
-    }
-
-    /// ED = Shortcuts - Removed edges
-    fn calc_edge_difference(
-        &mut self,
-        v: NodeIndex,
-        max_nodes_settled_limit: usize, /*ws: WitnessSearch*/
-    ) -> i32 {
-        let ((removed_edges, _), (added_shortcuts, _)) =
-            self.handle_contract_node(v, max_nodes_settled_limit, true);
-        added_shortcuts.len() as i32 - removed_edges.len() as i32
     }
 }
 

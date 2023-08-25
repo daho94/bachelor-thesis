@@ -35,3 +35,15 @@ harness = false
 [[bench]]
 name = "node_degrees"
 harness = false
+
+[[bench]]
+name = "query_stalling"
+harness = false
+
+[[bench]]
+name = "parameter_variation"
+harness = false
+
+[[bench]]
+name = "witness_variation"
+harness = false

@@ -88,8 +88,6 @@ mod tests {
         util::test_graphs::{graph_saarland, graph_saarland_raw},
     };
 
-    use super::degree_histogram;
-
     #[test]
     fn stats_work() {
         //      7 -> 8 -> 9

@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use ch_core::{
     graph::node_index,
-    node_contraction::{NodeContractor, PriorityParams},
+    node_contraction::{ContractionParams, NodeContractor, PriorityParams},
     search::ch_search::CHSearch,
     util::test_graphs::{graph_saarland, graph_vaterstetten},
 };
@@ -30,16 +30,16 @@ fn main() {
         for contracted_neighbors_coeff in (1..=501).step_by(100) {
             for search_space_coeff in (1..=7).step_by(1) {
                 for original_edges_coeff in (1..=401).step_by(100) {
-                    let params = PriorityParams::new(
+                    let params = ContractionParams::new().priority_params(PriorityParams::new(
                         edge_difference_coeff,
                         contracted_neighbors_coeff,
                         search_space_coeff,
                         original_edges_coeff,
-                    );
+                    ));
 
                     let mut g = g.clone();
 
-                    let mut contractor = NodeContractor::new_with_priority_params(&mut g, params);
+                    let mut contractor = NodeContractor::new_with_params(&mut g, params);
 
                     now = Instant::now();
 

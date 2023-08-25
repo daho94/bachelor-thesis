@@ -25,6 +25,8 @@ pub struct CHSearch<'a, Idx = DefaultIdx> {
     pub data_bwd: NodeData,
 
     intersect_node: Option<NodeIndex<Idx>>,
+
+    pub nodes_stalled: usize,
 }
 
 impl<'a> CHSearch<'a> {
@@ -32,6 +34,7 @@ impl<'a> CHSearch<'a> {
         CHSearch {
             g: graph,
             stats: SearchStats::default(),
+            nodes_stalled: 0,
             settled_fwd: FxHashSet::default(),
             settled_bwd: FxHashSet::default(),
             data_fwd: FxHashMap::default(),
@@ -47,11 +50,31 @@ impl<'a> CHSearch<'a> {
         self.data_fwd.clear();
         self.intersect_node = None;
         self.stats.init();
+        self.nodes_stalled = 0;
+    }
+
+    pub fn search_without_stalling(
+        &mut self,
+        source: NodeIndex,
+        target: NodeIndex,
+    ) -> Option<ShortestPath> {
+        self.search_internal(source, target, false)
     }
 
     /// Finds the shortest path from `source` to `target`.
     /// The search is performed using a modified bidirectional version of Dijkstras algorithm
     pub fn search(&mut self, source: NodeIndex, target: NodeIndex) -> Option<ShortestPath> {
+        self.search_internal(source, target, true)
+    }
+
+    // Finds the shortest path from `source` to `target`.
+    // The search is performed using a modified bidirectional version of Dijkstras algorithm
+    fn search_internal(
+        &mut self,
+        source: NodeIndex,
+        target: NodeIndex,
+        is_stalling: bool,
+    ) -> Option<ShortestPath> {
         info!(
             "BEGIN BIDIRECTIONAL SEARCH from {:?} to {:?}",
             source, target
@@ -89,7 +112,8 @@ impl<'a> CHSearch<'a> {
                     break;
                 }
 
-                if self.is_stallable_fwd(&curr) {
+                if is_stalling && self.is_stallable_fwd(&curr) {
+                    self.nodes_stalled += 1;
                     continue;
                 }
 
@@ -127,7 +151,8 @@ impl<'a> CHSearch<'a> {
                     break;
                 }
 
-                if self.is_stallable_bwd(&curr) {
+                if is_stalling && self.is_stallable_bwd(&curr) {
+                    self.nodes_stalled += 1;
                     continue;
                 }
 
@@ -152,6 +177,7 @@ impl<'a> CHSearch<'a> {
             }
         }
 
+        debug!("Nodes stalled: {}", self.nodes_stalled);
         debug!("Intersection node: {:?}", intersect_node);
         debug!("min {{ dist(s,v) + dist(t,v) | v in I }} = {}", best_weight);
 
@@ -212,6 +238,7 @@ impl<'a> CHSearch<'a> {
     }
 
     /// Performs a bidirectional search on the graph. Forward and backward search are run in parallel.
+    #[deprecated = "Parallel implementation is slower than the sequential implementation."]
     pub fn search_par(&mut self, source: NodeIndex, target: NodeIndex) -> Option<ShortestPath> {
         self.init();
         info!(

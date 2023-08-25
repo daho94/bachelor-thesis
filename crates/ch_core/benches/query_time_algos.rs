@@ -14,10 +14,10 @@ use ch_core::{
 use indicatif::ProgressBar;
 use plotly::{
     box_plot::BoxPoints,
-    color::{NamedColor, Rgb},
+    color::Rgb,
     common::{Line, Marker, Orientation, Title},
-    layout::{Axis, BoxMode, LayoutTemplate, Legend, Margin, Template, VAlign},
-    BoxPlot, Configuration, Layout, Plot,
+    layout::{Axis, BoxMode, Legend, Margin, VAlign},
+    BoxPlot, Layout, Plot,
 };
 use rand::prelude::*;
 use rustc_hash::FxHashMap;
@@ -53,8 +53,8 @@ fn main() {
     let max_rank = (g.nodes.len() as f64).log2() as u32;
 
     let rank_start = 10;
-    // let rank_end = dbg!(max_rank);
-    let rank_end = 16;
+    let rank_end = dbg!(max_rank);
+    // let rank_end = 16;
 
     let num_ranks = (rank_end - rank_start + 1) as usize;
 
@@ -70,7 +70,7 @@ fn main() {
     let mut dijk = Dijkstra::new(&g);
     let mut astar = AStar::new(&g);
 
-    let mut rng = thread_rng();
+    let mut rng: StdRng = rand::SeedableRng::seed_from_u64(187);
 
     let pb = ProgressBar::new(ITERATIONS as u64);
     for _ in 0..ITERATIONS {
@@ -100,28 +100,7 @@ fn main() {
     }
     pb.finish_with_message("Measurements finished.");
 
-    // let mut file = File::create("query_time_algos.csv").expect("Couldn't create file");
-    // writeln!(&mut file, "dijk_rank,mean,median,mean,median,mean,median").unwrap();
-
-    // for rank in rank_start..=rank_end {
-    //     let idx = (rank - rank_start) as usize;
-
-    //     let mean_dijk = mean(&timings_dijk[idx]);
-    //     let median_dijk = median(&mut timings_dijk[idx]);
-
-    //     let mean_astar = mean(&timings_astar[idx]);
-    //     let median_astar = median(&mut timings_astar[idx]);
-
-    //     let mean_ch = mean(&timings_ch[idx]);
-    //     let median_ch = median(&mut timings_ch[idx]);
-
-    //     writeln!(
-    //         &mut file,
-    //         "{rank},{mean_dijk:.0},{median_dijk:.0},{mean_astar:.0},{median_astar:.0},{mean_ch:.0},{median_ch:.0}"
-    //     )
-    //     .unwrap();
-    // }
-
+    // Write stats to file
     let mut file = File::create("query_time_algos.csv").expect("Couldn't create file");
     let header = {
         let ranks: Vec<String> = (rank_start..=rank_end)
@@ -137,15 +116,7 @@ fn main() {
     write_stats(&mut file, &mut timings_astar, &nodes_settled_astar);
     write_stats(&mut file, &mut timings_ch, &nodes_settled_ch);
 
-    // let mean_dijk: Vec<String> = timings_dijk
-    //     .iter()
-    //     .map(|t| format!("{:.0}", mean(t)))
-    //     .collect();
-    // writeln!(&mut file, "{}", mean_dijk.join(","));
-
-    // let median_dijk = median(&mut timings_dijk[idx]);
-    // let mean_nodes_settled = mean(&nodes_settled_dijk[idx]);
-
+    // Create plots
     let x: Vec<String> = (rank_start..=rank_end)
         .flat_map(|k| {
             (0..ITERATIONS)

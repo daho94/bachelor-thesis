@@ -77,9 +77,7 @@ async fn main() {
     let mut pan = Vec2::default();
     let mut draggable = Draggable::new(vec2(0.0, 0.0));
 
-    let pbf_path = args.next().unwrap_or(
-        r"F:\Dev\uni\BA\bachelor_thesis\crates\osm_reader\data\vaterstetten_pp.osm.pbf".into(),
-    );
+    let pbf_path = args.next().unwrap_or(r"vaterstetten_pp.osm.pbf".into());
     let should_not_simplify = if let Some(s) = args.next() {
         s == "raw"
     } else {

@@ -1,0 +1,17 @@
+Trying config 1
+---Construction Stats---
+Node Ordering [sec]: 1
+Construction  [sec]: 1
+------------------------
+Totat time    [sec]: 2
+Shortcuts added [#]: 120758
+
+Trying config 2
+---Construction Stats---
+Node Ordering [sec]: 1
+Construction  [sec]: 2
+------------------------
+Totat time    [sec]: 4
+Shortcuts added [#]: 103131
+
+Trying config 3

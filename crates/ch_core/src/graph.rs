@@ -270,7 +270,7 @@ impl Graph {
             for (_, e_idx) in self.edges_out[edge.source.index()].iter().enumerate() {
                 let old_edge = &self.edges[e_idx.index()];
                 if edge.target == old_edge.target && edge.weight < old_edge.weight {
-                    info!(
+                    debug!(
                         "Updated edge weight from {} to {}",
                         old_edge.weight, edge.weight
                     );
