@@ -44,6 +44,7 @@ impl Ord for Candidate {
 
 pub struct Dijkstra<'a, Idx = DefaultIdx> {
     pub stats: SearchStats,
+    pub nodes_settled: FxHashSet<NodeIndex<Idx>>,
     g: &'a Graph<Idx>,
 }
 
@@ -51,6 +52,7 @@ impl<'a> Dijkstra<'a> {
     pub fn new(graph: &'a Graph) -> Self {
         Dijkstra {
             g: graph,
+            nodes_settled: FxHashSet::default(),
             stats: SearchStats::default(),
         }
     }
@@ -72,14 +74,18 @@ impl<'a> Dijkstra<'a> {
 
         queue.push(Candidate::new(source, 0.0));
 
-        while let Some(Candidate { weight, node_idx }) = queue.pop() {
+        while let Some(Candidate {
+            weight,
+            node_idx: node,
+        }) = queue.pop()
+        {
             self.stats.nodes_settled += 1;
 
-            if node_idx == target {
+            if node == target {
                 break;
             }
 
-            for (_, edge) in self.g.neighbors_outgoing(node_idx).filter(|(edge_idx, _)| {
+            for (_, edge) in self.g.neighbors_outgoing(node).filter(|(edge_idx, _)| {
                 edge_idx.index() < self.g.edges.len() - self.g.num_shortcuts
                 // true
             }) {
@@ -90,10 +96,11 @@ impl<'a> Dijkstra<'a> {
                         .unwrap_or(&(std::f64::INFINITY, None))
                         .0
                 {
-                    node_data.insert(edge.target, (new_distance, Some(node_idx)));
+                    node_data.insert(edge.target, (new_distance, Some(node)));
                     queue.push(Candidate::new(edge.target, new_distance));
                 }
             }
+            self.nodes_settled.insert(node);
         }
         self.stats.finish();
 

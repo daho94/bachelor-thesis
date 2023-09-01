@@ -7,6 +7,7 @@ use egui::epaint::ahash::HashSet;
 use macroquad::prelude::*;
 
 use crossbeam_channel::{Receiver, Sender};
+use rustc_hash::FxHashSet;
 use std::{
     collections::BinaryHeap,
     f32::{MAX, MIN},
@@ -20,6 +21,8 @@ use crate::{
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct SearchResult {
     pub sp: ShortestPath,
+    pub settled_fwd: Option<FxHashSet<NodeIndex>>,
+    pub settled_bwd: Option<FxHashSet<NodeIndex>>,
 }
 
 #[derive(Debug, Clone)]
@@ -30,6 +33,7 @@ pub(crate) struct GraphViewOptions {
     pub draw_graph_downward: bool,
     pub draw_shortest_path: bool,
     pub search_result: Option<SearchResult>,
+    pub node_radius: f32,
 }
 
 impl Default for GraphViewOptions {
@@ -41,6 +45,7 @@ impl Default for GraphViewOptions {
             draw_graph_downward: false,
             draw_shortest_path: true,
             search_result: None,
+            node_radius: 2.0,
         }
     }
 }
@@ -115,7 +120,12 @@ impl<'a> GraphView<'a> {
         // Draw selected node
         if let Some(node_idx) = self.selected_node {
             let scale = self.scale();
-            self.draw_node(self.g.node(node_idx).unwrap(), self.scale(), 3.5, ORANGE);
+            self.draw_node(
+                self.g.node(node_idx).unwrap(),
+                self.scale(),
+                self.options.node_radius,
+                ORANGE,
+            );
 
             // Draw connected edges
             for (edge_idx, edge) in self.g.neighbors_incoming(node_idx) {
@@ -148,70 +158,41 @@ impl<'a> GraphView<'a> {
         }
 
         // Draw shortest path, Upward and Downward graph
-        if let Some(SearchResult { sp }) = &self.options.search_result {
+        if let Some(SearchResult {
+            sp,
+            settled_fwd,
+            settled_bwd,
+        }) = &self.options.search_result
+        {
             let scale = self.scale();
 
-            // Draw upward
+            // Draw upward graph
             if self.options.draw_graph_upward {
-                let mut edges_to_draw = HashSet::default();
-                let mut queue = BinaryHeap::new();
-                queue.push(sp.nodes[0]);
-                while !queue.is_empty() {
-                    let node = queue.pop().unwrap();
-                    for (edge_idx, edge) in self.overlay_graph.edges_fwd(node) {
-                        if edges_to_draw.insert(edge_idx) {
-                            queue.push(edge.target);
-                        }
+                if let Some(settled_fwd) = settled_fwd {
+                    for node_idx in settled_fwd {
+                        let node = self.g.node(*node_idx).unwrap();
+                        self.draw_node(
+                            node,
+                            scale,
+                            self.options.node_radius,
+                            COLOR_THEME.lock().unwrap().graph_up_color(),
+                        );
                     }
-                }
-                for edge_idx in &edges_to_draw {
-                    let edge = self.overlay_graph.edge(*edge_idx);
-                    let from = node_to_vec(self.g.node(edge.source).unwrap());
-                    let to = node_to_vec(self.g.node(edge.target).unwrap());
-
-                    let from = (from - self.rect.point()) * scale;
-                    let to = (to - self.rect.point()) * scale;
-
-                    draw_line_with_arrow(
-                        from.x,
-                        from.y,
-                        to.x,
-                        to.y,
-                        1.0,
-                        COLOR_THEME.lock().unwrap().graph_up_color(),
-                    );
                 }
             }
 
             // Draw downward graph
             if self.options.draw_graph_downward {
-                let mut edges_to_draw = HashSet::default();
-                let mut queue = BinaryHeap::new();
-                queue.push(sp.nodes[sp.nodes.len() - 1]);
-                while !queue.is_empty() {
-                    let node = queue.pop().unwrap();
-                    for (edge_idx, edge) in self.overlay_graph.edges_bwd(node) {
-                        if edges_to_draw.insert(edge_idx) {
-                            queue.push(edge.source);
-                        }
+                if let Some(settled_bwd) = settled_bwd {
+                    for node_idx in settled_bwd {
+                        let node = self.g.node(*node_idx).unwrap();
+                        self.draw_node(
+                            node,
+                            scale,
+                            self.options.node_radius,
+                            COLOR_THEME.lock().unwrap().graph_down_color(),
+                        );
                     }
-                }
-                for edge_idx in &edges_to_draw {
-                    let edge = self.overlay_graph.edge(*edge_idx);
-                    let from = node_to_vec(self.g.node(edge.source).unwrap());
-                    let to = node_to_vec(self.g.node(edge.target).unwrap());
-
-                    let from = (from - self.rect.point()) * scale;
-                    let to = (to - self.rect.point()) * scale;
-
-                    draw_line_with_arrow(
-                        to.x,
-                        to.y,
-                        from.x,
-                        from.y,
-                        1.0,
-                        COLOR_THEME.lock().unwrap().graph_down_color(),
-                    );
                 }
             }
 
@@ -241,12 +222,12 @@ impl<'a> GraphView<'a> {
         if let Some(node_idx) = self.start_node {
             let mut color = COLOR_THEME.lock().unwrap().graph_up_color();
             color.a = 1.0;
-            self.draw_node(self.g.node(node_idx).unwrap(), self.scale(), 3.5, color);
+            self.draw_node(self.g.node(node_idx).unwrap(), self.scale(), 4.0, RED);
         }
         if let Some(node_idx) = self.target_node {
             let mut color = COLOR_THEME.lock().unwrap().graph_down_color();
             color.a = 1.0;
-            self.draw_node(self.g.node(node_idx).unwrap(), self.scale(), 3.5, color);
+            self.draw_node(self.g.node(node_idx).unwrap(), self.scale(), 4.0, BLUE);
         }
     }
 
@@ -304,6 +285,9 @@ impl<'a> GraphView<'a> {
 
         if is_key_pressed(KeyCode::R) {
             self.selected_node = None;
+            self.start_node = None;
+            self.target_node = None;
+            self.options.search_result = None;
         }
 
         if is_key_pressed(KeyCode::Q) {
@@ -369,7 +353,12 @@ impl<'a> GraphView<'a> {
         let scale = self.scale();
 
         for node in self.g.nodes() {
-            self.draw_node(node, scale, 2.0, COLOR_THEME.lock().unwrap().node_color());
+            self.draw_node(
+                node,
+                scale,
+                self.options.node_radius,
+                COLOR_THEME.lock().unwrap().node_color(),
+            );
         }
     }
 

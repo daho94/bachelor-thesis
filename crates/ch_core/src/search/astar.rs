@@ -1,7 +1,7 @@
 use std::collections::BinaryHeap;
 
 use log::{debug, info};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     constants::Weight,
@@ -10,11 +10,6 @@ use crate::{
 };
 
 use super::shortest_path::ShortestPath;
-
-pub struct AStar<'a, Idx = DefaultIdx> {
-    pub stats: SearchStats,
-    g: &'a Graph<Idx>,
-}
 
 #[derive(Debug)]
 struct Candidate<Idx = DefaultIdx> {
@@ -55,11 +50,18 @@ impl Ord for Candidate {
     }
 }
 
+pub struct AStar<'a, Idx = DefaultIdx> {
+    pub stats: SearchStats,
+    pub nodes_settled: FxHashSet<NodeIndex<Idx>>,
+    g: &'a Graph<Idx>,
+}
+
 impl<'a> AStar<'a> {
     pub fn new(g: &'a Graph) -> Self {
         AStar {
             g,
             stats: SearchStats::default(),
+            nodes_settled: FxHashSet::default(),
         }
     }
 
@@ -121,6 +123,8 @@ impl<'a> AStar<'a> {
                     queue.push(Candidate::new(edge.target, real_weight, tentative_weight));
                 }
             }
+
+            self.nodes_settled.insert(node);
         }
 
         self.stats.finish();

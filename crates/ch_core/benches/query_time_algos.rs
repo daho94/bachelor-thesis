@@ -15,9 +15,9 @@ use indicatif::ProgressBar;
 use plotly::{
     box_plot::BoxPoints,
     color::Rgb,
-    common::{Line, Marker, Orientation, Title},
+    common::{Line, Marker, Mode, Orientation, Title},
     layout::{Axis, BoxMode, Legend, Margin, VAlign},
-    BoxPlot, Layout, Plot,
+    BoxPlot, Layout, Plot, Scatter,
 };
 use rand::prelude::*;
 use rustc_hash::FxHashMap;
@@ -36,9 +36,9 @@ use std::io::Write;
 //   shown inside the box, and the whiskers extend to the minimum and maximum
 //   values, excluding outliers.
 fn main() {
-    const ITERATIONS: usize = 1000;
+    const ITERATIONS: usize = 10_000;
 
-    let mut g = if let Some(path) = std::env::args().nth(1) {
+    let mut g = if let Some(path) = std::env::args().filter(|p| p.ends_with(".pbf")).nth(1) {
         Graph::from_pbf_with_simplification(Path::new(&path)).expect("Invalid path")
     } else {
         graph_saarland()
@@ -53,8 +53,8 @@ fn main() {
     let max_rank = (g.nodes.len() as f64).log2() as u32;
 
     let rank_start = 10;
-    let rank_end = dbg!(max_rank);
-    // let rank_end = 16;
+    // let rank_end = dbg!(max_rank);
+    let rank_end = 16;
 
     let num_ranks = (rank_end - rank_start + 1) as usize;
 
@@ -120,7 +120,6 @@ fn main() {
     let x: Vec<String> = (rank_start..=rank_end)
         .flat_map(|k| {
             (0..ITERATIONS)
-                // .map(|_| format!("$2^{{{k}}}$"))
                 .map(|_| format!("2{}", superscript_digits(k)))
                 .collect::<Vec<String>>()
         })
@@ -146,7 +145,7 @@ fn main() {
         .line(Line::new().width(0.7))
         .whisker_width(8.);
 
-    let trace_ch = BoxPlot::new_xy(x, timings_ch.into_iter().flatten().collect())
+    let trace_ch = BoxPlot::new_xy(x.clone(), timings_ch.into_iter().flatten().collect())
         .name("CHs")
         .marker(marker)
         .box_points(BoxPoints::Outliers)
@@ -177,11 +176,12 @@ fn main() {
             // Rgb::new(255, 193, 7),
             Rgb::new(0, 77, 64),
         ])
-        .margin(Margin::default().top(8).right(0).bottom(8))
+        .margin(Margin::default().top(8).bottom(8))
         .legend(
             Legend::new()
                 .orientation(Orientation::Horizontal)
-                .valign(VAlign::Middle),
+                // .y(-1.00)
+                .valign(VAlign::Top),
         )
         .box_mode(BoxMode::Group);
 
@@ -190,11 +190,58 @@ fn main() {
 
     plot.write_image("boxplot_rank.pdf", plotly::ImageFormat::PDF, 800, 600, 1.0);
 
-    plot.set_layout(layout.y_axis(y_axis_log));
+    plot.set_layout(layout.clone().y_axis(y_axis_log.clone()));
     plot.show();
 
     plot.write_image(
         "boxplot_rank_log.pdf",
+        plotly::ImageFormat::PDF,
+        800,
+        600,
+        1.0,
+    );
+
+    // Plot nodes settled
+    let x: Vec<String> = (rank_start..=rank_end)
+        .map(|k| format!("2{}", superscript_digits(k)))
+        .collect::<Vec<String>>();
+
+    let mut plot = Plot::new();
+    dbg!(x.clone());
+    let trace_dijk = Scatter::new(
+        x.clone(),
+        nodes_settled_dijk.into_iter().map(|n| mean(&n)).collect(),
+    )
+    .mode(Mode::Lines)
+    .name("Dijkstra");
+
+    let trace_astar = Scatter::new(
+        x.clone(),
+        nodes_settled_astar.into_iter().map(|n| mean(&n)).collect(),
+    )
+    .mode(Mode::Lines)
+    .name("AStar");
+
+    let trace_ch = Scatter::new(x, nodes_settled_ch.into_iter().map(|n| mean(&n)).collect())
+        .mode(Mode::Lines)
+        .name("CHs");
+
+    plot.add_trace(trace_dijk);
+    plot.add_trace(trace_astar);
+    plot.add_trace(trace_ch);
+
+    let y_axis = Axis::new()
+        .title(Title::new("Avg. Nodes Settled [#]"))
+        .type_(plotly::layout::AxisType::Log)
+        .zero_line(false);
+
+    let layout = layout.y_axis(y_axis);
+
+    plot.set_layout(layout);
+    plot.show();
+
+    plot.write_image(
+        "boxplot_rank_nodes.pdf",
         plotly::ImageFormat::PDF,
         800,
         600,

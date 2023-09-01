@@ -108,7 +108,12 @@ impl super::MyWidget for DebugWidget {
         Window::new("Debug").default_open(false).show(ctx, |ui| {
             if (ui.button("Screenshot")).clicked() {
                 let image = get_screen_data();
-                image.export_png("screenshot.png");
+                let timestamp = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .expect("Time went backwards")
+                    .as_nanos();
+
+                image.export_png(&format!("screenshot_{}.png", timestamp));
             }
             ui.add_space(10.);
 

@@ -18,13 +18,14 @@ pub struct CHSearch<'a, Idx = DefaultIdx> {
     pub stats: SearchStats,
     g: &'a OverlayGraph<Idx>,
 
-    settled_fwd: FxHashSet<NodeIndex<Idx>>,
-    settled_bwd: FxHashSet<NodeIndex<Idx>>,
+    pub settled_fwd: FxHashSet<NodeIndex<Idx>>,
+    pub settled_bwd: FxHashSet<NodeIndex<Idx>>,
 
     pub data_fwd: NodeData,
     pub data_bwd: NodeData,
 
     intersect_node: Option<NodeIndex<Idx>>,
+    best_weight: Weight,
 
     pub nodes_stalled: usize,
 }
@@ -40,6 +41,7 @@ impl<'a> CHSearch<'a> {
             data_fwd: FxHashMap::default(),
             data_bwd: FxHashMap::default(),
             intersect_node: None,
+            best_weight: Weight::MAX,
         }
     }
 
@@ -49,6 +51,7 @@ impl<'a> CHSearch<'a> {
         self.data_bwd.clear();
         self.data_fwd.clear();
         self.intersect_node = None;
+        self.best_weight = Weight::MAX;
         self.stats.init();
         self.nodes_stalled = 0;
     }
@@ -90,100 +93,105 @@ impl<'a> CHSearch<'a> {
         self.data_fwd.insert(source, (0.0, None));
         self.data_bwd.insert(target, (0.0, None));
 
-        let mut best_weight = Weight::MAX;
-        let mut intersect_node: Option<NodeIndex> = None;
-
-        loop {
-            if queue_fwd.is_empty() && queue_bwd.is_empty() {
-                break;
-            }
-
-            loop {
-                if queue_fwd.is_empty() {
-                    break;
-                }
-                let curr = queue_fwd.pop().unwrap();
-
-                if self.settled_fwd.contains(&curr.node_idx) {
-                    continue;
-                }
-
-                if curr.weight > best_weight {
-                    break;
-                }
-
-                if is_stalling && self.is_stallable_fwd(&curr) {
-                    self.nodes_stalled += 1;
-                    continue;
-                }
-
-                for (edge_idx, edge) in self.g.edges_fwd(curr.node_idx) {
-                    let new_weight = curr.weight + edge.weight;
-                    if new_weight < self.get_weight_fwd(edge.target) {
-                        self.data_fwd
-                            .insert(edge.target, (new_weight, Some(edge_idx)));
-                        queue_fwd.push(Candidate::new(edge.target, new_weight));
-                    }
-                }
-                self.stats.nodes_settled += 1;
-                self.settled_fwd.insert(curr.node_idx);
-
-                if self.settled_bwd.contains(&curr.node_idx)
-                    && curr.weight + self.get_weight_bwd(curr.node_idx) < best_weight
-                {
-                    best_weight = curr.weight + self.get_weight_bwd(curr.node_idx);
-                    intersect_node = Some(curr.node_idx);
-                }
-                break;
-            }
-
-            loop {
-                if queue_bwd.is_empty() {
-                    break;
-                }
-                let curr = queue_bwd.pop().unwrap();
-
-                if self.settled_bwd.contains(&curr.node_idx) {
-                    continue;
-                }
-
-                if curr.weight > best_weight {
-                    break;
-                }
-
-                if is_stalling && self.is_stallable_bwd(&curr) {
-                    self.nodes_stalled += 1;
-                    continue;
-                }
-
-                for (edge_idx, edge) in self.g.edges_bwd(curr.node_idx) {
-                    let new_distance = curr.weight + edge.weight;
-                    if new_distance < self.get_weight_bwd(edge.source) {
-                        self.data_bwd
-                            .insert(edge.source, (new_distance, Some(edge_idx)));
-                        queue_bwd.push(Candidate::new(edge.source, new_distance));
-                    }
-                }
-                self.stats.nodes_settled += 1;
-                self.settled_bwd.insert(curr.node_idx);
-
-                if self.settled_fwd.contains(&curr.node_idx)
-                    && curr.weight + self.get_weight_fwd(curr.node_idx) < best_weight
-                {
-                    best_weight = curr.weight + self.get_weight_fwd(curr.node_idx);
-                    intersect_node = Some(curr.node_idx);
-                }
-                break;
-            }
+        while !queue_fwd.is_empty() || !queue_bwd.is_empty() {
+            self.search_fwd(&mut queue_fwd, is_stalling);
+            self.search_bwd(&mut queue_bwd, is_stalling);
         }
 
         debug!("Nodes stalled: {}", self.nodes_stalled);
-        debug!("Intersection node: {:?}", intersect_node);
-        debug!("min {{ dist(s,v) + dist(t,v) | v in I }} = {}", best_weight);
+        debug!("Intersection node: {:?}", self.intersect_node);
+        debug!(
+            "min {{ dist(s,v) + dist(t,v) | v in I }} = {}",
+            self.best_weight
+        );
 
         self.stats.finish();
 
-        self.reconstruct_shortest_path(intersect_node, source)
+        self.reconstruct_shortest_path(self.intersect_node, source)
+    }
+
+    fn search_bwd(&mut self, queue_bwd: &mut BinaryHeap<Candidate>, is_stalling: bool) {
+        loop {
+            if queue_bwd.is_empty() {
+                break;
+            }
+
+            let curr = queue_bwd.pop().unwrap();
+
+            if self.settled_bwd.contains(&curr.node_idx) {
+                continue;
+            }
+
+            if curr.weight > self.best_weight {
+                break;
+            }
+
+            if is_stalling && self.is_stallable_bwd(&curr) {
+                self.nodes_stalled += 1;
+                continue;
+            }
+
+            for (edge_idx, edge) in self.g.edges_bwd(curr.node_idx) {
+                let new_distance = curr.weight + edge.weight;
+                if new_distance < self.get_weight_bwd(edge.source) {
+                    self.data_bwd
+                        .insert(edge.source, (new_distance, Some(edge_idx)));
+                    queue_bwd.push(Candidate::new(edge.source, new_distance));
+                }
+            }
+            self.stats.nodes_settled += 1;
+            self.settled_bwd.insert(curr.node_idx);
+
+            if self.settled_fwd.contains(&curr.node_idx)
+                && curr.weight + self.get_weight_fwd(curr.node_idx) < self.best_weight
+            {
+                self.best_weight = curr.weight + self.get_weight_fwd(curr.node_idx);
+                self.intersect_node = Some(curr.node_idx);
+            }
+            break;
+        }
+    }
+
+    fn search_fwd(&mut self, queue_fwd: &mut BinaryHeap<Candidate>, is_stalling: bool) {
+        loop {
+            if queue_fwd.is_empty() {
+                break;
+            }
+
+            let curr = queue_fwd.pop().unwrap();
+
+            if self.settled_fwd.contains(&curr.node_idx) {
+                continue;
+            }
+
+            if curr.weight > self.best_weight {
+                break;
+            }
+
+            if is_stalling && self.is_stallable_fwd(&curr) {
+                self.nodes_stalled += 1;
+                continue;
+            }
+
+            for (edge_idx, edge) in self.g.edges_fwd(curr.node_idx) {
+                let new_weight = curr.weight + edge.weight;
+                if new_weight < self.get_weight_fwd(edge.target) {
+                    self.data_fwd
+                        .insert(edge.target, (new_weight, Some(edge_idx)));
+                    queue_fwd.push(Candidate::new(edge.target, new_weight));
+                }
+            }
+            self.stats.nodes_settled += 1;
+            self.settled_fwd.insert(curr.node_idx);
+
+            if self.settled_bwd.contains(&curr.node_idx)
+                && curr.weight + self.get_weight_bwd(curr.node_idx) < self.best_weight
+            {
+                self.best_weight = curr.weight + self.get_weight_bwd(curr.node_idx);
+                self.intersect_node = Some(curr.node_idx);
+            }
+            break;
+        }
     }
 
     fn get_weight_fwd(&self, node: NodeIndex) -> Weight {
@@ -205,10 +213,10 @@ impl<'a> CHSearch<'a> {
         );
 
         // Do a full dijkstra on upward graph
-        self.fwd_search(source);
+        self.fwd_search_legacy(source);
 
         // Do a full dijkstra on downward graph
-        self.bwd_search(target);
+        self.bwd_search_legacy(target);
 
         // Find the set `I` of nodes settled in both dijkstras
         let intersect = self.settled_fwd.intersection(&self.settled_bwd);
@@ -366,7 +374,7 @@ impl<'a> CHSearch<'a> {
         self.reconstruct_shortest_path(intersect_node, source)
     }
 
-    fn bwd_search(&mut self, target: NodeIndex) {
+    fn bwd_search_legacy(&mut self, target: NodeIndex) {
         let mut queue_bwd = BinaryHeap::new();
         queue_bwd.push(Candidate::new(target, 0.0));
         self.data_bwd.insert(target, (0.0, None));
@@ -403,7 +411,7 @@ impl<'a> CHSearch<'a> {
         false
     }
 
-    fn fwd_search(&mut self, source: NodeIndex) {
+    fn fwd_search_legacy(&mut self, source: NodeIndex) {
         let mut queue_fwd = BinaryHeap::new();
         queue_fwd.push(Candidate::new(source, 0.0));
 

@@ -243,7 +243,7 @@ impl Graph {
 
         assert!(
             edge.weight > 0.0,
-            "No negative edge weights allowed. Edge weight was {}",
+            "Edge must have a positive non-zero weight. Edge weight was {}",
             edge.weight
         );
 
@@ -474,7 +474,9 @@ fn parse_road_graph(road_graph: RoadGraph) -> Result<Graph, anyhow::Error> {
         weight,
     } in road_graph.get_arcs()
     {
-        assert!(*weight > 0.0, "Edge must have a positive non-zero weight");
+        if *weight <= 0.0 {
+            continue;
+        }
         let edge: Edge = Edge::new(
             NodeIndex::new(node_index[source]),
             NodeIndex::new(node_index[target]),

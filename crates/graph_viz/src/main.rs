@@ -3,7 +3,7 @@ use std::{path::Path, sync::Mutex};
 use ch_core::{
     graph::{node_index, Graph},
     node_contraction::NodeContractor,
-    util::test_graphs::generate_complex_graph,
+    util::{cli, test_graphs::generate_complex_graph},
 };
 use color_theme::ActiveTheme;
 use crossbeam_channel::bounded;
@@ -71,20 +71,24 @@ static COLOR_THEME: Lazy<Mutex<ActiveTheme>> = Lazy::new(|| Mutex::new(ActiveThe
 #[macroquad::main(window_conf)]
 async fn main() {
     egui_logger::init().unwrap();
-    let mut args = std::env::args().skip(1);
+
+    let cfg = cli::parse();
+
+    // let mut args = std::env::args().skip(1);
 
     let mut zoom = 1.0;
     let mut pan = Vec2::default();
     let mut draggable = Draggable::new(vec2(0.0, 0.0));
 
-    let pbf_path = args.next().unwrap_or(r"vaterstetten_pp.osm.pbf".into());
-    let should_not_simplify = if let Some(s) = args.next() {
-        s == "raw"
-    } else {
-        false
-    };
+    // let pbf_path = args.next().unwrap_or(r"vaterstetten_pp.osm.pbf".into());
+    // let should_not_simplify = if let Some(s) = args.next() {
+    //     s == "raw"
+    // } else {
+    //     false
+    // };
 
-    dbg!(should_not_simplify);
+    // dbg!(should_not_simplify);
+    println!("Config: {:?}", &cfg);
 
     // Add channels to communicate between widgets and view
     let (tx_graph, rx_graph) = bounded(1);
@@ -100,34 +104,41 @@ async fn main() {
     let (tx_contraction, rx_contraction) = bounded(1);
 
     std::thread::spawn(move || {
-        let mut g = match pbf_path.as_ref() {
-            "test" => generate_complex_graph(),
-            _ => {
-                if should_not_simplify {
-                    Graph::from_pbf(Path::new(&pbf_path)).unwrap()
-                } else {
-                    Graph::from_pbf_with_simplification(Path::new(&pbf_path)).unwrap()
-                }
-            }
+        let pbf_path = cfg.pbf_file;
+        // let mut g = match pbf_path.as_ref() {
+        //     "test" => generate_complex_graph(),
+        //     _ => {
+        //         if should_not_simplify {
+        //             Graph::from_pbf(Path::new(&pbf_path)).unwrap()
+        //         } else {
+        //             Graph::from_pbf_with_simplification(Path::new(&pbf_path)).unwrap()
+        //         }
+        //     }
+        // };
+        let mut g = if cfg.simplify {
+            Graph::from_pbf_with_simplification(Path::new(&pbf_path)).unwrap()
+        } else {
+            Graph::from_pbf(Path::new(&pbf_path)).unwrap()
         };
-        let mut node_contractor = NodeContractor::new(&mut g);
+        let mut node_contractor = NodeContractor::new_with_params(&mut g, cfg.params);
 
-        let overlay_graph = match pbf_path.as_ref() {
-            "test" => node_contractor.run_with_order(&[
-                node_index(1),
-                node_index(4),
-                node_index(8),
-                node_index(10),
-                node_index(3),
-                node_index(6),
-                node_index(2),
-                node_index(9),
-                node_index(7),
-                node_index(5),
-                node_index(0),
-            ]),
-            _ => node_contractor.run(),
-        };
+        // let overlay_graph = match pbf_path.as_ref() {
+        //     "test" => node_contractor.run_with_order(&[
+        //         node_index(1),
+        //         node_index(4),
+        //         node_index(8),
+        //         node_index(10),
+        //         node_index(3),
+        //         node_index(6),
+        //         node_index(2),
+        //         node_index(9),
+        //         node_index(7),
+        //         node_index(5),
+        //         node_index(0),
+        //     ]),
+        //     _ => node_contractor.run(),
+        // };
+        let overlay_graph = node_contractor.run_with_strategy(cfg.strategy);
         tx_contraction.send(overlay_graph).unwrap();
     });
 

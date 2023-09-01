@@ -330,22 +330,59 @@ impl<'a> NodeContractor<'a> {
         let mut step_size = STEP_SIZE;
         let mut next_goal = step_size;
 
+        let mut consecutive_lazy_updates = 0;
+        let mut did_fixed_update = false;
+
         info!("Progress: {:.2}%", 0.0 * 100.0);
         while !queue.is_empty() {
+            if let CHStrategy::LazyUpdate(strat) = strategy {
+                // Do recalculation if
+                // - too many lazy updates were performed consecutively
+                // - at 50%
+                let do_fixed_update = self.num_nodes / 2 == self.num_nodes - queue.len();
+                if strat.update_periodic()
+                    && 
+                    // (strat.periodic_update_triggered(consecutive_lazy_updates)
+                        // ||
+                         (!did_fixed_update && do_fixed_update)
+                        // )
+                {
+                    info!("Periodic update of priority queue triggered");
+                    info!("Consecutive lazy updates: {}", consecutive_lazy_updates);
+
+                    let mut new_queue = PriorityQueue::new();
+
+                    for (v, _) in queue.iter_mut() {
+                        let priority =
+                            self.calc_priority(*v, 0, self.params.witness_search_initial_limit);
+                        new_queue.push(*v, Reverse(priority));
+                    }
+
+                    // Replace queue with new queue
+                    queue = new_queue;
+                    consecutive_lazy_updates = 0;
+
+                    if do_fixed_update {
+                        did_fixed_update = true;
+                    }
+                }
+            }
+
             let (node, Reverse(priority)) = queue.pop().unwrap();
 
-            match strategy {
-                CHStrategy::LazyUpdateSelfAndNeighbors | CHStrategy::LazyUpdateSelf => {
+            if let CHStrategy::LazyUpdate(strat) = strategy {
+                if strat.update_top() {
                     // Lazy Update node: If the priority of the node is worse (higher), it will be updated instead of contracted
                     let importance = self.calc_priority(node, 0, self.params.witness_search_limit);
                     // let importance = self.calc_priority_alt(node, 0, 50);
 
                     if importance > priority {
+                        consecutive_lazy_updates += 1;
                         queue.push(node, Reverse(importance));
                         continue;
                     }
+                    consecutive_lazy_updates = 0;
                 }
-                _ => {}
             }
 
             debug!("=> Contracting node: {}", node.index());
@@ -372,8 +409,8 @@ impl<'a> NodeContractor<'a> {
                 // Search Space Depth
                 levels[neighbor.index()] = max(levels[node.index()] + 1, levels[neighbor.index()]);
 
-                match strategy {
-                    CHStrategy::LazyUpdateSelfAndNeighbors | CHStrategy::LazyUpdateNeighbors => {
+                if let CHStrategy::LazyUpdate(strat) = strategy {
+                    if strat.update_neighbors() {
                         let importance = self.calc_priority(
                             neighbor,
                             levels[neighbor.index()],
@@ -393,7 +430,6 @@ impl<'a> NodeContractor<'a> {
                             }
                         }
                     }
-                    _ => {}
                 }
             }
 
@@ -429,7 +465,7 @@ impl<'a> NodeContractor<'a> {
     }
 
     pub fn run(&mut self) -> OverlayGraph {
-        self.run_with_strategy(CHStrategy::LazyUpdateSelfAndNeighbors)
+        self.run_with_strategy(CHStrategy::default())
     }
 
     pub fn run_with_order(&mut self, node_order: &[NodeIndex]) -> OverlayGraph {
@@ -646,6 +682,7 @@ impl<'a> NodeContractor<'a> {
 mod tests {
 
     use crate::{
+        contraction_strategy::UpdateStrategy,
         edge,
         graph::{DefaultIdx, Node},
         util::test_graphs::{
@@ -768,7 +805,7 @@ mod tests {
         let mut g = generate_complex_graph();
 
         let mut contractor = NodeContractor::new(&mut g);
-        let overlay_graph = contractor.run_with_strategy(CHStrategy::LazyUpdateSelfAndNeighbors);
+        let overlay_graph = contractor.run_with_strategy(CHStrategy::default());
         info!("Hops: {:#?}", &contractor.hops);
         info!("Shortcuts: {:#?}", &overlay_graph.shortcuts);
     }
@@ -812,6 +849,22 @@ mod tests {
 
         let mut contractor = NodeContractor::new(&mut g);
         contractor.run();
+    }
+
+    #[test]
+    fn contract_with_periodic_updates() {
+        init_log();
+
+        // let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        //     .join("../osm_reader/data/bayern_pp.osm.pbf");
+
+        // let mut g = Graph::from_pbf_with_simplification(&path).unwrap();
+
+        let mut g = graph_saarland();
+
+        let mut contractor = NodeContractor::new(&mut g);
+        let strategy = CHStrategy::LazyUpdate(UpdateStrategy::default().set_periodic_updates(true));
+        contractor.run_with_strategy(strategy);
     }
 
     #[test]

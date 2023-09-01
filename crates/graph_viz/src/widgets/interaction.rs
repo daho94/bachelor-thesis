@@ -5,7 +5,7 @@ use ch_core::{
     util::math::straight_line,
 };
 use crossbeam_channel::{Receiver, Sender};
-use egui::{CollapsingHeader, Context, Window};
+use egui::{CollapsingHeader, Context, Slider, Window};
 use macroquad::prelude::{is_key_pressed, KeyCode};
 
 use crate::{
@@ -79,7 +79,11 @@ impl<'g> super::MyWidget for UserInputWidget<'g> {
             if let Some(sp) =
                 bidir_search.search(self.source_node.unwrap(), self.target_node.unwrap())
             {
-                self.options.search_result = Some(SearchResult { sp });
+                self.options.search_result = Some(SearchResult {
+                    sp,
+                    settled_fwd: Some(bidir_search.settled_fwd),
+                    settled_bwd: Some(bidir_search.settled_bwd),
+                });
             }
         }
 
@@ -94,14 +98,29 @@ impl<'g> super::MyWidget for UserInputWidget<'g> {
                 ui.checkbox(&mut self.options.draw_shortcuts, "Draw shortcuts");
                 ui.checkbox(&mut self.options.draw_nodes, "Draw nodes");
                 ui.checkbox(&mut self.options.draw_shortest_path, "Draw Shortest Path");
-                ui.checkbox(&mut self.options.draw_graph_upward, "Draw Graph Up");
-                ui.checkbox(&mut self.options.draw_graph_downward, "Draw Graph Down");
+                ui.checkbox(&mut self.options.draw_graph_upward, "Draw Search Space Up");
+                ui.checkbox(
+                    &mut self.options.draw_graph_downward,
+                    "Draw Search Space Down",
+                );
                 // ui.checkbox(
                 //     &mut self.options.draw_top_important_nodes,
                 //     "Draw Most Important Nodes",
                 // );
-                ui.checkbox(&mut self.dark_theme, "Dark Theme");
+                // ui.checkbox(&mut self.dark_theme, "Dark Theme");
             });
+
+            ui.add_space(10.);
+            ui.separator();
+
+            CollapsingHeader::new("Theme")
+                .default_open(true)
+                .show(ui, |ui| {
+                    ui.checkbox(&mut self.dark_theme, "Dark Theme");
+                    ui.add(
+                        Slider::new(&mut self.options.node_radius, 0.0..=10.0).text("Node Radius"),
+                    );
+                });
 
             ui.add_space(10.);
             ui.separator();
@@ -166,7 +185,11 @@ impl<'g> super::MyWidget for UserInputWidget<'g> {
                             if let Some(sp) = bidir_search
                                 .search(self.source_node.unwrap(), self.target_node.unwrap())
                             {
-                                self.options.search_result = Some(SearchResult { sp });
+                                self.options.search_result = Some(SearchResult {
+                                    sp,
+                                    settled_fwd: Some(bidir_search.settled_fwd),
+                                    settled_bwd: Some(bidir_search.settled_bwd),
+                                });
                             }
                         }
                         if ui
@@ -183,7 +206,11 @@ impl<'g> super::MyWidget for UserInputWidget<'g> {
                             if let Some(sp) = dijk_search
                                 .search(self.source_node.unwrap(), self.target_node.unwrap())
                             {
-                                self.options.search_result = Some(SearchResult { sp });
+                                self.options.search_result = Some(SearchResult {
+                                    sp,
+                                    settled_fwd: Some(dijk_search.nodes_settled),
+                                    settled_bwd: None,
+                                });
                             }
                         }
                         if ui
@@ -202,7 +229,11 @@ impl<'g> super::MyWidget for UserInputWidget<'g> {
                                 self.target_node.unwrap(),
                                 straight_line,
                             ) {
-                                self.options.search_result = Some(SearchResult { sp });
+                                self.options.search_result = Some(SearchResult {
+                                    sp,
+                                    settled_fwd: Some(astar_search.nodes_settled),
+                                    settled_bwd: None,
+                                });
                             }
                         }
                     });
