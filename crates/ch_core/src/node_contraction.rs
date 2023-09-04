@@ -18,11 +18,11 @@
 //! [`Graph`]: crate::graph::Graph
 use std::{
     cmp::{max, Reverse},
-    fmt::Display,
+    fmt::{Display, Write},
     time::{Duration, Instant},
 };
 
-use indicatif::ProgressBar;
+use indicatif::{ProgressBar, ProgressStyle, ProgressState};
 use log::{debug, info};
 use priority_queue::PriorityQueue;
 use rustc_hash::FxHashSet;
@@ -336,6 +336,10 @@ impl<'a> NodeContractor<'a> {
 
         info!("Progress: {:.2}%", 0.0 * 100.0);
         let pb = ProgressBar::new(queue.len() as u64);
+        pb.set_style(ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {human_pos}/{human_len} Nodes ({eta})")
+        .unwrap()
+        .with_key("eta", |state: &ProgressState, w: &mut dyn Write| write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap())
+        .progress_chars("#>-"));
         while !queue.is_empty() {
             if let CHStrategy::LazyUpdate(strat) = strategy {
                 // Do recalculation if

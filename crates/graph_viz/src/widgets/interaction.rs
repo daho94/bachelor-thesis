@@ -1,7 +1,9 @@
 use ch_core::{
     graph::NodeIndex,
     overlay_graph::OverlayGraph,
-    search::{astar::AStar, ch_search::CHSearch, dijkstra::Dijkstra},
+    search::{
+        astar::AStar, bidir_dijkstra::BidirDijkstra, ch_search::CHSearch, dijkstra::Dijkstra,
+    },
     util::math::straight_line,
 };
 use crossbeam_channel::{Receiver, Sender};
@@ -233,6 +235,28 @@ impl<'g> super::MyWidget for UserInputWidget<'g> {
                                     sp,
                                     settled_fwd: Some(astar_search.nodes_settled),
                                     settled_bwd: None,
+                                });
+                            }
+                        }
+                        if ui
+                            .add_enabled(
+                                self.source_node.is_some() && self.target_node.is_some(),
+                                egui::Button::new("Bidir. Dijk Search"),
+                            )
+                            .on_disabled_hover_text("Enter valid start and end node first")
+                            .clicked()
+                        {
+                            log::debug!("bidir. Dijkstra button clicked.");
+
+                            let mut bdir_djik_search =
+                                BidirDijkstra::new(self.overlay_graph.road_graph());
+                            if let Some(sp) = bdir_djik_search
+                                .search(self.source_node.unwrap(), self.target_node.unwrap())
+                            {
+                                self.options.search_result = Some(SearchResult {
+                                    sp,
+                                    settled_fwd: Some(bdir_djik_search.settled_fwd),
+                                    settled_bwd: Some(bdir_djik_search.settled_bwd),
                                 });
                             }
                         }

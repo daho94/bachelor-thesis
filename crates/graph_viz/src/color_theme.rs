@@ -23,8 +23,10 @@ pub const LIGHT_THEME: ColorTheme = ColorTheme {
     // graph_up_color: color_u8!(0, 249, 4, 185),
     // graph_up_color: color_u8!(135, 37, 222, 37), // Thesis color
     // graph_down_color: color_u8!(20, 235, 197, 49), // Thesis color
-    graph_up_color: color_u8!(135, 37, 222, 128),
-    graph_down_color: color_u8!(20, 235, 197, 128),
+    // graph_up_color: color_u8!(135, 37, 222, 128),
+    // graph_down_color: color_u8!(20, 235, 197, 128),
+    graph_down_color: color_u8!(59, 60, 246, 255),
+    graph_up_color: color_u8!(0, 125, 0, 255),
 };
 
 pub struct ColorTheme {
