@@ -14,7 +14,8 @@ pub const DARK_THEME: ColorTheme = ColorTheme {
 
 pub const LIGHT_THEME: ColorTheme = ColorTheme {
     bg_color: WHITE,
-    line_color: color_u8!(59, 59, 59, 255),
+    // line_color: color_u8!(59, 59, 59, 255),
+    line_color: color_u8!(204, 204, 204, 255),
     shortcut_color: color_u8!(255, 20, 20, 125),
     node_color: DARKGRAY,
     // graph_down_color: color_u8!(63, 70, 191, 185),

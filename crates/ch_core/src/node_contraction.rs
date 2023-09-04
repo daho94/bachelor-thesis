@@ -22,6 +22,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use indicatif::ProgressBar;
 use log::{debug, info};
 use priority_queue::PriorityQueue;
 use rustc_hash::FxHashSet;
@@ -80,10 +81,10 @@ impl Default for ContractionParams {
 /// Coefficients for the priority function
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PriorityParams {
-    edge_difference_coeff: i32,
-    contracted_neighbors_coeff: i32,
-    search_space_coeff: i32,
-    original_edges_coeff: i32,
+    pub edge_difference_coeff: i32,
+    pub contracted_neighbors_coeff: i32,
+    pub search_space_coeff: i32,
+    pub original_edges_coeff: i32,
 }
 
 impl PriorityParams {
@@ -334,6 +335,7 @@ impl<'a> NodeContractor<'a> {
         let mut did_fixed_update = false;
 
         info!("Progress: {:.2}%", 0.0 * 100.0);
+        let pb = ProgressBar::new(queue.len() as u64);
         while !queue.is_empty() {
             if let CHStrategy::LazyUpdate(strat) = strategy {
                 // Do recalculation if
@@ -447,9 +449,10 @@ impl<'a> NodeContractor<'a> {
                 }
                 next_goal += step_size;
             }
+            pb.inc(1);
         }
         self.stats.stop_timer_construction();
-
+        pb.finish_with_message("Done contracting nodes");
         info!("{:?}", self.stats);
         println!("{}", self.stats);
 

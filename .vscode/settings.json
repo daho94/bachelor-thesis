@@ -5,5 +5,20 @@
     "spellright.documentTypes": [
         "markdown",
         "plaintext"
-    ]
+    ],
+    "workbench.colorCustomizations": {
+        "commandCenter.border": "#e7e7e799",
+        "sash.hoverBorder": "#b35e27",
+        "statusBar.background": "#89481e",
+        "statusBar.foreground": "#e7e7e7",
+        "statusBarItem.hoverBackground": "#b35e27",
+        "statusBarItem.remoteBackground": "#89481e",
+        "statusBarItem.remoteForeground": "#e7e7e7",
+        "tab.activeBorder": "#b35e27",
+        "titleBar.activeBackground": "#89481e",
+        "titleBar.activeForeground": "#e7e7e7",
+        "titleBar.inactiveBackground": "#89481e99",
+        "titleBar.inactiveForeground": "#e7e7e799"
+    },
+    "peacock.color": "#89481E"
 }

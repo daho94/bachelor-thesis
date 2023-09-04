@@ -1,5 +1,5 @@
 //! Minimal example
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use ch_core::{
     constants::OSMId,
@@ -8,7 +8,7 @@ use ch_core::{
     overlay_graph::OverlayGraph,
     search::{astar::AStar, shortest_path::ShortestPath},
     search::{ch_search::CHSearch, dijkstra::Dijkstra},
-    util::math::straight_line,
+    util::{cli, math::straight_line},
 };
 use reedline_repl_rs::clap::{value_parser, Arg, ArgMatches, Command};
 use reedline_repl_rs::{Repl, Result};
@@ -71,39 +71,6 @@ fn save_graph(args: ArgMatches, context: &mut Context) -> Result<Option<String>>
         Err(e) => Ok(Some(format!("Error saving graph: {}", e))),
     }
 }
-// fn measure_dijkstra(args: ArgMatches, context: &mut Context) -> Result<Option<String>> {
-//     use rand::Rng;
-
-//     let n = *args.get_one::<usize>("n").unwrap_or(&10);
-
-//     // Select n random start and end nodes
-//     let mut rng = rand::thread_rng();
-//     let src_nodes: Vec<OSMId> = (0..n)
-//         .map(|_| rng.gen_range(0..context.graph.nodes.len()))
-//         .collect();
-//     let dst_nodes: Vec<OSMId> = (0..n)
-//         .map(|_| rng.gen_range(0..context.graph.nodes.len()))
-//         .collect();
-
-//     let mut res = String::new();
-//     // Run Dijkstra for each pair of nodes
-//     for (src, dst) in src_nodes.iter().zip(dst_nodes.iter()) {
-//         let mut dijkstra = Dijkstra::new(&context.graph);
-//         let sp = dijkstra.search(node_index(*src), node_index(*dst));
-//         if sp.is_none() {
-//             continue;
-//         }
-//         res.push_str(&format!(
-//             "{} -> {}: {:?} / {} nodes settled\n",
-//             src,
-//             dst,
-//             dijkstra.stats.duration.unwrap(),
-//             dijkstra.stats.nodes_settled
-//         ));
-//     }
-
-//     Ok(Some(res))
-// }
 
 struct Context {
     graph: OverlayGraph,
@@ -152,24 +119,16 @@ impl Runnable for CHSearch<'_> {
 
 fn main() -> Result<()> {
     env_logger::init();
-    let mut args = std::env::args().skip(1);
-    // Init Graph
-    let path_to_pbf = args.next().expect("No path to PBF file given");
+    let cfg = cli::parse();
 
-    let should_not_simplify = if let Some(s) = args.next() {
-        s == "raw"
+    let mut graph = if cfg.simplify {
+        Graph::from_pbf_with_simplification(&cfg.pbf_file).unwrap()
     } else {
-        false
+        Graph::from_pbf(&cfg.pbf_file).unwrap()
     };
 
-    let mut graph = if should_not_simplify {
-        Graph::from_pbf(Path::new(&path_to_pbf)).unwrap()
-    } else {
-        Graph::from_pbf_with_simplification(Path::new(&path_to_pbf)).unwrap()
-    };
-
-    let mut contractor = NodeContractor::new(&mut graph);
-    let overlay_graph = contractor.run();
+    let mut contractor = NodeContractor::new_with_params(&mut graph, cfg.params);
+    let overlay_graph = contractor.run_with_strategy(cfg.strategy);
 
     let context = Context::new(overlay_graph);
 
@@ -180,34 +139,6 @@ fn main() -> Result<()> {
         .with_banner("Welcome to Pathfinder")
         .with_history(PathBuf::from(r".\history"), 100)
         .with_command(Command::new("info").about("Print graph info"), info)
-        // .with_command(
-        //     Command::new("dijk")
-        //         .arg(
-        //             Arg::new("src")
-        //                 .value_parser(value_parser!(usize))
-        //                 .required(true)
-        //                 .help("ID of source node"),
-        //         )
-        //         .arg(
-        //             Arg::new("dst")
-        //                 .value_parser(value_parser!(usize))
-        //                 .required(true)
-        //                 .help("ID of destination node"),
-        //         )
-        //         .about("Calculate shortest path using Dijkstra's algorithm"),
-        //     run_dijkstra,
-        // )
-        // .with_command(
-        //     Command::new("dijkm")
-        //         .arg(
-        //             Arg::new("n")
-        //                 .value_parser(value_parser!(usize))
-        //                 .required(false)
-        //                 .help("Number of random shortest paths to calculate"),
-        //         )
-        //         .about("Measure `n` random shortest paths calculations"),
-        //     measure_dijkstra,
-        // )
         .with_command(
             Command::new("run")
                 .arg(

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{Parser, Subcommand};
+use clap::Parser;
 
 use crate::{
     contraction_strategy::{CHStrategy, UpdateStrategy},

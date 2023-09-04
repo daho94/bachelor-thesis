@@ -3,8 +3,11 @@ use std::{collections::BinaryHeap, fs::File, path::Path};
 use ch_core::{
     constants::Weight,
     graph::{node_index, NodeIndex},
-    node_contraction::NodeContractor,
-    util::test_graphs::{graph_saarland, graph_vaterstetten},
+    node_contraction::{ContractionParams, NodeContractor, PriorityParams},
+    util::{
+        cli,
+        test_graphs::{graph_saarland, graph_vaterstetten},
+    },
 };
 use ch_core::{graph::Graph, search::dijkstra::Candidate};
 use ch_core::{
@@ -36,15 +39,30 @@ use std::io::Write;
 //   shown inside the box, and the whiskers extend to the minimum and maximum
 //   values, excluding outliers.
 fn main() {
-    const ITERATIONS: usize = 10_000;
+    const ITERATIONS: usize = 100;
 
-    let mut g = if let Some(path) = std::env::args().filter(|p| p.ends_with(".pbf")).nth(1) {
+    // let cli = cli::parse();
+
+    let mut g = if let Some(path) = std::env::args().find(|p| p.ends_with(".pbf")) {
         Graph::from_pbf_with_simplification(Path::new(&path)).expect("Invalid path")
     } else {
         graph_saarland()
     };
+    // let mut g;
+    // if cli.simplify {
+    //     g = Graph::from_pbf_with_simplification(Path::new(&cli.pbf_file)).expect("Invalid path");
+    // } else {
+    //     g = Graph::from_pbf(Path::new(&cli.pbf_file)).expect("Invalid path");
+    // }
+    let mut params = ContractionParams::default();
+    params = params.priority_params(PriorityParams {
+        edge_difference_coeff: 190,
+        contracted_neighbors_coeff: 120,
+        search_space_coeff: 1,
+        original_edges_coeff: 70,
+    });
 
-    let mut contractor = NodeContractor::new(&mut g);
+    let mut contractor = NodeContractor::new_with_params(&mut g, params);
     println!("Started node contraction");
     let overlay_graph = contractor.run();
     println!("Finished node contraction");
@@ -53,8 +71,8 @@ fn main() {
     let max_rank = (g.nodes.len() as f64).log2() as u32;
 
     let rank_start = 10;
-    // let rank_end = dbg!(max_rank);
-    let rank_end = 16;
+    let rank_end = dbg!(max_rank);
+    // let rank_end = 16;
 
     let num_ranks = (rank_end - rank_start + 1) as usize;
 
