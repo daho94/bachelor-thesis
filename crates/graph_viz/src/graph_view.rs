@@ -213,7 +213,8 @@ impl<'a> GraphView<'a> {
                         to.x,
                         to.y,
                         2.0,
-                        Color::from_rgba(255, 0, 255, 255),
+                        // Color::from_rgba(255, 0, 255, 255),
+                        COLOR_THEME.lock().unwrap().sp_color(),
                     );
                 }
             }

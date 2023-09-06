@@ -28,7 +28,7 @@ use priority_queue::PriorityQueue;
 use rustc_hash::FxHashSet;
 
 use crate::{
-    contraction_strategy::CHStrategy,
+    contraction_strategy::ContractionStrategy,
     graph::{node_index, Edge, EdgeIndex, Graph, NodeIndex},
     overlay_graph::OverlayGraph,
     witness_search::WitnessSearch,
@@ -302,7 +302,7 @@ impl<'a> NodeContractor<'a> {
         self.stats
     }
 
-    pub fn run_with_strategy(&mut self, strategy: CHStrategy) -> OverlayGraph {
+    pub fn run_with_strategy(&mut self, strategy: ContractionStrategy) -> OverlayGraph {
         info!("BEGIN contracting nodes");
         self.stats.init();
         let mut edges_fwd: Vec<Vec<EdgeIndex>> = vec![Vec::new(); self.num_nodes];
@@ -315,7 +315,7 @@ impl<'a> NodeContractor<'a> {
         info!("Calculating initial node order...");
 
         let mut queue = match strategy {
-            CHStrategy::FixedOrder(order) => {
+            ContractionStrategy::FixedOrder(order) => {
                 let mut pq = PriorityQueue::new();
 
                 for (priority, node) in order.iter().enumerate() {
@@ -341,7 +341,7 @@ impl<'a> NodeContractor<'a> {
         .with_key("eta", |state: &ProgressState, w: &mut dyn Write| write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap())
         .progress_chars("#>-"));
         while !queue.is_empty() {
-            if let CHStrategy::LazyUpdate(strat) = strategy {
+            if let ContractionStrategy::LazyUpdate(strat) = strategy {
                 // Do recalculation if
                 // - too many lazy updates were performed consecutively
                 // - at 50%
@@ -376,8 +376,8 @@ impl<'a> NodeContractor<'a> {
 
             let (node, Reverse(priority)) = queue.pop().unwrap();
 
-            if let CHStrategy::LazyUpdate(strat) = strategy {
-                if strat.update_top() {
+            if let ContractionStrategy::LazyUpdate(strat) = strategy {
+                if strat.update_jit() {
                     // Lazy Update node: If the priority of the node is worse (higher), it will be updated instead of contracted
                     let importance = self.calc_priority(node, 0, self.params.witness_search_limit);
                     // let importance = self.calc_priority_alt(node, 0, 50);
@@ -415,8 +415,8 @@ impl<'a> NodeContractor<'a> {
                 // Search Space Depth
                 levels[neighbor.index()] = max(levels[node.index()] + 1, levels[neighbor.index()]);
 
-                if let CHStrategy::LazyUpdate(strat) = strategy {
-                    if strat.update_neighbors() {
+                if let ContractionStrategy::LazyUpdate(strat) = strategy {
+                    if strat.update_local() {
                         let importance = self.calc_priority(
                             neighbor,
                             levels[neighbor.index()],
@@ -472,11 +472,11 @@ impl<'a> NodeContractor<'a> {
     }
 
     pub fn run(&mut self) -> OverlayGraph {
-        self.run_with_strategy(CHStrategy::default())
+        self.run_with_strategy(ContractionStrategy::default())
     }
 
     pub fn run_with_order(&mut self, node_order: &[NodeIndex]) -> OverlayGraph {
-        self.run_with_strategy(CHStrategy::FixedOrder(node_order))
+        self.run_with_strategy(ContractionStrategy::FixedOrder(node_order))
     }
 
     fn add_shortcut(&mut self, edge: Edge, replaces: [EdgeIndex; 2]) -> EdgeIndex {
@@ -812,7 +812,7 @@ mod tests {
         let mut g = generate_complex_graph();
 
         let mut contractor = NodeContractor::new(&mut g);
-        let overlay_graph = contractor.run_with_strategy(CHStrategy::default());
+        let overlay_graph = contractor.run_with_strategy(ContractionStrategy::default());
         info!("Hops: {:#?}", &contractor.hops);
         info!("Shortcuts: {:#?}", &overlay_graph.shortcuts);
     }
@@ -870,7 +870,7 @@ mod tests {
         let mut g = graph_saarland();
 
         let mut contractor = NodeContractor::new(&mut g);
-        let strategy = CHStrategy::LazyUpdate(UpdateStrategy::default().set_periodic_updates(true));
+        let strategy = ContractionStrategy::LazyUpdate(UpdateStrategy::default().set_periodic_updates(true));
         contractor.run_with_strategy(strategy);
     }
 

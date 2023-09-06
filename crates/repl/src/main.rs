@@ -160,16 +160,18 @@ fn main() -> Result<()> {
                         .required(true)
                         .help("ID of destination node"),
                 )
-                .about("Runs the selected algorithm"),
+                .about("Run the selected algorithm"),
             run_algorithm,
         )
         .with_command(
-            Command::new("save").arg(
-                Arg::new("path")
-                    .value_parser(value_parser!(PathBuf))
-                    .required(true)
-                    .help("Path to save graph to"),
-            ),
+            Command::new("save")
+                .arg(
+                    Arg::new("path")
+                        .value_parser(value_parser!(PathBuf))
+                        .required(true)
+                        .help("Path to save graph to"),
+                )
+                .about("Save graph to file"),
             save_graph,
         );
 

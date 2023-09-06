@@ -1,10 +1,11 @@
 use macroquad::{
     color_u8,
-    prelude::{Color, DARKGRAY, WHITE},
+    prelude::{Color, BLACK, DARKGRAY, WHITE},
 };
 
 pub const DARK_THEME: ColorTheme = ColorTheme {
     bg_color: color_u8!(27, 27, 27, 255),
+    sp_color: WHITE,
     line_color: color_u8!(128, 128, 128, 255),
     shortcut_color: color_u8!(255, 20, 20, 125),
     node_color: WHITE,
@@ -14,6 +15,7 @@ pub const DARK_THEME: ColorTheme = ColorTheme {
 
 pub const LIGHT_THEME: ColorTheme = ColorTheme {
     bg_color: WHITE,
+    sp_color: BLACK,
     // line_color: color_u8!(59, 59, 59, 255),
     line_color: color_u8!(204, 204, 204, 255),
     shortcut_color: color_u8!(255, 20, 20, 125),
@@ -31,6 +33,7 @@ pub const LIGHT_THEME: ColorTheme = ColorTheme {
 
 pub struct ColorTheme {
     pub bg_color: Color,
+    pub sp_color: Color,
     pub line_color: Color,
     pub shortcut_color: Color,
     pub node_color: Color,
@@ -60,6 +63,10 @@ impl ActiveTheme {
     pub fn set_light_theme(&mut self) {
         self.theme = LIGHT_THEME;
         self.is_dark_theme = false;
+    }
+
+    pub fn sp_color(&self) -> Color {
+        self.theme.sp_color
     }
 
     pub fn bg_color(&self) -> Color {

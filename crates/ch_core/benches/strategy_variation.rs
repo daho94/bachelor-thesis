@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use ch_core::{
-    contraction_strategy::{CHStrategy, UpdateStrategy},
+    contraction_strategy::{ContractionStrategy, UpdateStrategy},
     graph::Graph,
     node_contraction::{ContractionParams, NodeContractor, PriorityParams},
     util::test_graphs::graph_saarland,
@@ -17,15 +17,15 @@ fn main() {
     };
 
     // Only Self Update
-    let self_update = UpdateStrategy::default().set_update_neighbors(false);
+    let self_update = UpdateStrategy::default().set_update_local(false);
     let self_update_p = UpdateStrategy::default()
-        .set_update_neighbors(false)
+        .set_update_local(false)
         .set_periodic_updates(true);
 
     // Only Neighbors Update
-    let neighbors_update = UpdateStrategy::default().set_update_top(false);
+    let neighbors_update = UpdateStrategy::default().set_update_jit(false);
     let neighbors_update_p = UpdateStrategy::default()
-        .set_update_top(false)
+        .set_update_jit(false)
         .set_periodic_updates(true);
 
     // Both Self and Neighbors Update
@@ -50,7 +50,7 @@ fn main() {
         let mut contractor = NodeContractor::new_with_params(&mut g, params);
 
         println!("Strategy: {name}");
-        contractor.run_with_strategy(CHStrategy::LazyUpdate(strat));
+        contractor.run_with_strategy(ContractionStrategy::LazyUpdate(strat));
         // println!("{}", contractor.stats());
     }
 }

@@ -4,6 +4,7 @@ use ch_core::{
     constants::Weight,
     graph::{node_index, NodeIndex},
     node_contraction::{ContractionParams, NodeContractor, PriorityParams},
+    search::bidir_dijkstra::BidirDijkstra,
     util::{
         cli,
         test_graphs::{graph_saarland, graph_vaterstetten},
@@ -18,7 +19,7 @@ use indicatif::ProgressBar;
 use plotly::{
     box_plot::BoxPoints,
     color::Rgb,
-    common::{Line, Marker, Mode, Orientation, Title},
+    common::{Font, Line, Marker, Mode, Orientation, Title},
     layout::{Axis, BoxMode, Legend, Margin, VAlign},
     BoxPlot, Layout, Plot, Scatter,
 };
@@ -39,7 +40,7 @@ use std::io::Write;
 //   shown inside the box, and the whiskers extend to the minimum and maximum
 //   values, excluding outliers.
 fn main() {
-    const ITERATIONS: usize = 100;
+    const ITERATIONS: usize = 1_00;
 
     // let cli = cli::parse();
 
@@ -78,18 +79,22 @@ fn main() {
 
     let mut timings_dijk = vec![vec![]; num_ranks];
     let mut timings_astar = vec![vec![]; num_ranks];
+    let mut timings_bidir = vec![vec![]; num_ranks];
     let mut timings_ch = vec![vec![]; num_ranks];
 
     let mut nodes_settled_dijk = vec![vec![]; num_ranks];
     let mut nodes_settled_astar = vec![vec![]; num_ranks];
+    let mut nodes_settled_bidir = vec![vec![]; num_ranks];
     let mut nodes_settled_ch = vec![vec![]; num_ranks];
 
     let mut ch = CHSearch::new(&overlay_graph);
     let mut dijk = Dijkstra::new(&g);
+    let mut bidir = BidirDijkstra::new(&g);
     let mut astar = AStar::new(&g);
 
     let mut rng: StdRng = rand::SeedableRng::seed_from_u64(187);
 
+    println!("Start iterations");
     let pb = ProgressBar::new(ITERATIONS as u64);
     for _ in 0..ITERATIONS {
         // Generate random start node
@@ -108,6 +113,10 @@ fn main() {
             astar.search(source, target, straight_line).unwrap();
             timings_astar[idx].push(astar.stats.duration.unwrap().as_micros() as f64);
             nodes_settled_astar[idx].push(astar.stats.nodes_settled as f64);
+
+            bidir.search(source, target).unwrap();
+            timings_bidir[idx].push(bidir.stats.duration.unwrap().as_micros() as f64);
+            nodes_settled_bidir[idx].push(bidir.stats.nodes_settled as f64);
 
             ch.search(source, target).unwrap();
             timings_ch[idx].push(ch.stats.duration.unwrap().as_micros() as f64);
@@ -132,6 +141,7 @@ fn main() {
 
     write_stats(&mut file, &mut timings_dijk, &nodes_settled_dijk);
     write_stats(&mut file, &mut timings_astar, &nodes_settled_astar);
+    write_stats(&mut file, &mut timings_bidir, &nodes_settled_bidir);
     write_stats(&mut file, &mut timings_ch, &nodes_settled_ch);
 
     // Create plots
@@ -163,6 +173,13 @@ fn main() {
         .line(Line::new().width(0.7))
         .whisker_width(8.);
 
+    let trace_bidir = BoxPlot::new_xy(x.clone(), timings_bidir.into_iter().flatten().collect())
+        .name("Bidir. Dijkstra")
+        .marker(marker.clone())
+        .box_points(BoxPoints::Outliers)
+        .line(Line::new().width(0.7))
+        .whisker_width(8.);
+
     let trace_ch = BoxPlot::new_xy(x.clone(), timings_ch.into_iter().flatten().collect())
         .name("CHs")
         .marker(marker)
@@ -172,27 +189,35 @@ fn main() {
 
     plot.add_trace(trace_dijk);
     plot.add_trace(trace_astar);
-    plot.add_trace(trace_ch);
+    plot.add_trace(trace_bidir);
+    // plot.add_trace(trace_ch);
 
     let y_axis_log = Axis::new()
-        .title(Title::new("Avg. Query-Time [μs]"))
+        .title(Title::new("Query-Time [μs]"))
         .zero_line(true)
+        .tick_font(Font::new().size(20).family("Calibri Light"))
         .type_(plotly::layout::AxisType::Log);
 
     let y_axis = Axis::new()
-        .title(Title::new("Avg. Query-Time [μs]"))
+        .title(Title::new("Query-Time [μs]"))
+        .tick_font(Font::new().size(20).family("Calibri Light"))
         .zero_line(true);
 
     let layout = Layout::new()
-        .width(800)
+        // .width(1000) //800
         .height(600)
         .y_axis(y_axis)
-        .x_axis(Axis::new().title(Title::new("Dijkstra Rank")))
+        .font(Font::new().family("Calibri").size(20))
+        .x_axis(
+            Axis::new()
+                .title(Title::new("Dijkstra Rank"))
+                .tick_font(Font::new().size(20).family("Calibri")),
+        )
         .colorway(vec![
             Rgb::new(216, 27, 96),
             Rgb::new(39, 136, 229),
-            // Rgb::new(255, 193, 7),
             Rgb::new(0, 77, 64),
+            Rgb::new(255, 193, 7),
         ])
         .margin(Margin::default().top(8).bottom(8))
         .legend(
@@ -218,6 +243,13 @@ fn main() {
         600,
         1.0,
     );
+    plot.write_image(
+        "boxplot_rank_log.svg",
+        plotly::ImageFormat::SVG,
+        1600,
+        600,
+        1.0,
+    );
 
     // Plot nodes settled
     let x: Vec<String> = (rank_start..=rank_end)
@@ -240,16 +272,24 @@ fn main() {
     .mode(Mode::Lines)
     .name("AStar");
 
+    let trace_bidir = Scatter::new(
+        x.clone(),
+        nodes_settled_bidir.into_iter().map(|n| mean(&n)).collect(),
+    )
+    .mode(Mode::Lines)
+    .name("Bidir. Dijkstra");
+
     let trace_ch = Scatter::new(x, nodes_settled_ch.into_iter().map(|n| mean(&n)).collect())
         .mode(Mode::Lines)
         .name("CHs");
 
     plot.add_trace(trace_dijk);
     plot.add_trace(trace_astar);
-    plot.add_trace(trace_ch);
+    plot.add_trace(trace_bidir);
+    // plot.add_trace(trace_ch);
 
     let y_axis = Axis::new()
-        .title(Title::new("Avg. Nodes Settled [#]"))
+        .title(Title::new("Nodes Settled [#]"))
         .type_(plotly::layout::AxisType::Log)
         .zero_line(false);
 
@@ -262,6 +302,13 @@ fn main() {
         "boxplot_rank_nodes.pdf",
         plotly::ImageFormat::PDF,
         800,
+        600,
+        1.0,
+    );
+    plot.write_image(
+        "boxplot_rank_nodes.svg",
+        plotly::ImageFormat::SVG,
+        1600,
         600,
         1.0,
     );

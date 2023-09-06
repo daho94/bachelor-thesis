@@ -1,12 +1,12 @@
 use crate::graph::NodeIndex;
 
 #[derive(Clone, Copy, Debug)]
-pub enum CHStrategy<'a> {
+pub enum ContractionStrategy<'a> {
     FixedOrder(&'a [NodeIndex]),
     LazyUpdate(UpdateStrategy),
 }
 
-impl Default for CHStrategy<'_> {
+impl Default for ContractionStrategy<'_> {
     fn default() -> Self {
         Self::LazyUpdate(UpdateStrategy::default())
     }
@@ -33,8 +33,8 @@ impl Default for PeriodicUpdateData {
 
 #[derive(Clone, Copy, Debug)]
 pub struct UpdateStrategy {
-    update_top: bool,
-    update_neighbors: bool,
+    update_jit: bool,
+    update_local: bool,
     update_periodic: bool,
 
     periodic_update_data: PeriodicUpdateData,
@@ -43,8 +43,8 @@ pub struct UpdateStrategy {
 impl Default for UpdateStrategy {
     fn default() -> Self {
         Self {
-            update_top: true,
-            update_neighbors: true,
+            update_jit: true,
+            update_local: true,
             update_periodic: false,
             periodic_update_data: PeriodicUpdateData::default(),
         }
@@ -56,25 +56,25 @@ impl UpdateStrategy {
         Self::default()
     }
 
-    pub fn update_top(&self) -> bool {
-        self.update_top
+    pub fn update_jit(&self) -> bool {
+        self.update_jit
     }
 
-    pub fn update_neighbors(&self) -> bool {
-        self.update_neighbors
+    pub fn update_local(&self) -> bool {
+        self.update_local
     }
 
     pub fn update_periodic(&self) -> bool {
         self.update_periodic
     }
 
-    pub fn set_update_top(mut self, lazy_update_self: bool) -> Self {
-        self.update_top = lazy_update_self;
+    pub fn set_update_jit(mut self, lazy_update_self: bool) -> Self {
+        self.update_jit = lazy_update_self;
         self
     }
 
-    pub fn set_update_neighbors(mut self, lazy_update_neighbors: bool) -> Self {
-        self.update_neighbors = lazy_update_neighbors;
+    pub fn set_update_local(mut self, lazy_update_neighbors: bool) -> Self {
+        self.update_local = lazy_update_neighbors;
         self
     }
 

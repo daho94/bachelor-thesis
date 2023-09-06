@@ -3,12 +3,12 @@ use std::path::PathBuf;
 use clap::Parser;
 
 use crate::{
-    contraction_strategy::{CHStrategy, UpdateStrategy},
+    contraction_strategy::{ContractionStrategy, UpdateStrategy},
     node_contraction::{ContractionParams, PriorityParams},
 };
 
 #[derive(Parser)]
-#[command(author, version, about, long_about = None)]
+#[command(author = "Daniel Holzner", version, about, long_about = None)]
 struct Cli {
     /// Path to the .pbf file
     pbf_file: String,
@@ -18,25 +18,25 @@ struct Cli {
     raw_graph: bool,
 
     /// Set the coefficient for the edge difference term
-    #[arg(short, long, value_name = "E")]
+    #[arg(short, long, value_name = "coeff")]
     ed: Option<i32>,
 
     /// Set the coefficient for the contracted neighbors term
-    #[arg(short, long, value_name = "C")]
+    #[arg(short, long, value_name = "coeff")]
     cn: Option<i32>,
 
     /// Set the coefficient for the search space depth term
-    #[arg(short, long, value_name = "S")]
+    #[arg(short, long, value_name = "coeff")]
     ss: Option<i32>,
     /// Set the coefficient for the original edges term
-    #[arg(short, long, value_name = "O")]
+    #[arg(short, long, value_name = "coeff")]
     oe: Option<i32>,
 
-    /// Set the lazy update strategy. Possible values are "jit" and "local"
+    /// Set the lazy update strategy. Possible values are "jit", "local" and "combined"
     #[arg(long, value_name = "strategy")]
     strat: Option<String>,
 
-    /// Enable or disable periodic updates
+    /// Enable periodic updates
     #[arg(short, long, value_name = "periodic")]
     periodic: bool,
 }
@@ -46,7 +46,7 @@ pub struct Cfg<'a> {
     pub pbf_file: PathBuf,
     pub simplify: bool,
     pub params: ContractionParams,
-    pub strategy: CHStrategy<'a>,
+    pub strategy: ContractionStrategy<'a>,
 }
 
 pub fn parse<'a>() -> Cfg<'a> {
@@ -73,12 +73,10 @@ pub fn parse<'a>() -> Cfg<'a> {
 
     match cli.strat.as_deref() {
         Some("jit") => {
-            lazy_strategy = lazy_strategy.set_update_neighbors(false);
+            lazy_strategy = lazy_strategy.set_update_local(false);
         }
         Some("local") => {
-            lazy_strategy = lazy_strategy
-                .set_update_top(false)
-                .set_update_neighbors(true);
+            lazy_strategy = lazy_strategy.set_update_jit(false).set_update_local(true);
         }
         _ => {}
     };
@@ -90,7 +88,7 @@ pub fn parse<'a>() -> Cfg<'a> {
     Cfg {
         pbf_file: PathBuf::from(pbf_file),
         params: ContractionParams::new().priority_params(priority_params),
-        strategy: CHStrategy::LazyUpdate(lazy_strategy),
+        strategy: ContractionStrategy::LazyUpdate(lazy_strategy),
         simplify: !cli.raw_graph,
     }
 }

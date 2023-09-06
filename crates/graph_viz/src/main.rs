@@ -1,10 +1,6 @@
 use std::{path::Path, sync::Mutex};
 
-use ch_core::{
-    graph::{node_index, Graph},
-    node_contraction::NodeContractor,
-    util::{cli, test_graphs::generate_complex_graph},
-};
+use ch_core::{graph::Graph, node_contraction::NodeContractor, util::cli};
 use color_theme::ActiveTheme;
 use crossbeam_channel::bounded;
 use egui::{Style, Visuals};
@@ -18,7 +14,7 @@ mod widgets;
 
 fn window_conf() -> Conf {
     Conf {
-        window_title: "Graph View".to_string(),
+        window_title: "GraphViz".to_string(),
         fullscreen: false,
         window_resizable: true,
         window_width: 1280,
