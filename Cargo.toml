@@ -1,6 +1,4 @@
 [workspace]
-exclude = ["benches"]
-
 members = [
     "crates/osm_reader",
     "crates/ch_core",
