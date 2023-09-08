@@ -1,15 +1,15 @@
 //! Minimal example
-use std::path::PathBuf;
+use std::{path::PathBuf, time::Duration};
 
 use ch_core::{
-    constants::OSMId,
-    graph::{node_index, DefaultIdx, Graph},
+    graph::{node_index, Graph},
     node_contraction::NodeContractor,
     overlay_graph::OverlayGraph,
     search::{astar::AStar, shortest_path::ShortestPath},
-    search::{ch_search::CHSearch, dijkstra::Dijkstra},
+    search::{ch_search::CHSearch, dijkstra::Dijkstra, BidirDijkstra},
     util::{cli, math::straight_line},
 };
+use indicatif::ProgressBar;
 use reedline_repl_rs::clap::{value_parser, Arg, ArgMatches, Command};
 use reedline_repl_rs::{Repl, Result};
 
@@ -19,6 +19,34 @@ fn info(_args: ArgMatches, context: &mut Context) -> Result<Option<String>> {
     context.graph.print_info();
 
     Ok(None)
+}
+
+fn bench_algorithm(args: ArgMatches, context: &mut Context) -> Result<Option<String>> {
+    let bench = Benchmark::new(
+        context.graph.nodes().count(),
+        *args.get_one::<usize>("iterations").unwrap(),
+    );
+
+    match args.get_one::<String>("algo").unwrap().as_str() {
+        "dijk" => {
+            let mut d = Dijkstra::new(context.graph.road_graph());
+            println!("Bench: {}", d.bench(bench));
+        }
+        "astar" => {
+            let mut a = AStar::new(context.graph.road_graph());
+            println!("Bench: {}", a.bench(bench));
+        }
+        "ch" => {
+            let mut b = CHSearch::new(&context.graph);
+            println!("Bench: {}", b.bench(bench));
+        }
+        "bidir_dijk" => {
+            let mut b = BidirDijkstra::new(context.graph.road_graph());
+            println!("Bench: {}", b.bench(bench));
+        }
+        _ => println!("Unknown algorithm"),
+    }
+    Ok(Some("Done.".to_string()))
 }
 
 fn run_algorithm(args: ArgMatches, context: &mut Context) -> Result<Option<String>> {
@@ -38,9 +66,9 @@ fn run_algorithm(args: ArgMatches, context: &mut Context) -> Result<Option<Strin
             let mut b = CHSearch::new(&context.graph);
             (b.run(src, dst), b.stats)
         }
-        "ch_par" => {
-            let mut b = CHSearch::new(&context.graph);
-            (b.search_par(node_index(src), node_index(dst)), b.stats)
+        "bidir_dijk" => {
+            let mut b = BidirDijkstra::new(context.graph.road_graph());
+            (b.run(src, dst), b.stats)
         }
         _ => unreachable!("Unknown algorithm"),
     };
@@ -82,13 +110,106 @@ impl Context {
     }
 }
 
+#[derive(Debug)]
+struct BenchmarkResult {
+    pub mean_query: f64,
+    pub median_query: f64,
+    pub mean_nodes_settled: f64,
+    pub median_nodes_settled: f64,
+}
+
+impl std::fmt::Display for BenchmarkResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(
+            f,
+            "Query: mean: {:?}, median: {:?}",
+            Duration::from_secs_f64(self.mean_query),
+            Duration::from_secs_f64(self.median_query),
+        )?;
+        writeln!(
+            f,
+            "Nodes settled: mean: # {}, median: # {}",
+            self.mean_nodes_settled, self.median_nodes_settled,
+        )
+    }
+}
+
+struct Benchmark {
+    num_nodes: usize,
+    iterations: usize,
+}
+
+impl Benchmark {
+    pub fn new(num_nodes: usize, iterations: usize) -> Self {
+        Self {
+            num_nodes,
+            iterations,
+        }
+    }
+}
+
 trait Runnable {
-    fn run(&mut self, src: OSMId, dst: OSMId) -> Option<ShortestPath>;
+    fn run(&mut self, src: usize, dst: usize) -> Option<ShortestPath>;
+    fn bench(&mut self, b: Benchmark) -> BenchmarkResult {
+        use rand::{rngs::StdRng, Rng};
+
+        let mut rng: StdRng = rand::SeedableRng::seed_from_u64(187);
+        let mut timings = Vec::with_capacity(b.iterations);
+        let mut nodes_settled = Vec::with_capacity(b.iterations);
+
+        let pb = ProgressBar::new(b.iterations as u64);
+        for _ in 0..b.iterations {
+            let src = rng.gen_range(0..b.num_nodes);
+            let dst = rng.gen_range(0..b.num_nodes);
+
+            self.run(src, dst);
+
+            timings.push(self.stats().duration.unwrap().as_secs_f64());
+            nodes_settled.push(self.stats().nodes_settled as f64);
+            pb.inc(1);
+        }
+
+        timings.sort_by(|a, b| a.partial_cmp(b).unwrap());
+
+        let mean_query = timings.iter().sum::<f64>() / timings.len() as f64;
+        let mean_nodes_settled = nodes_settled.iter().sum::<f64>() / nodes_settled.len() as f64;
+
+        let mid = timings.len() / 2;
+
+        let median_query;
+        let median_nodes_settled;
+
+        if timings.len() % 2 == 0 {
+            median_query = (timings[mid] + timings[mid - 1]) / 2.0;
+            median_nodes_settled = (nodes_settled[mid] + nodes_settled[mid - 1]) / 2.0;
+        } else {
+            median_query = timings[mid];
+            median_nodes_settled = nodes_settled[mid];
+        }
+
+        BenchmarkResult {
+            mean_query,
+            median_query,
+            mean_nodes_settled,
+            median_nodes_settled,
+        }
+    }
+
     fn stats(&self) -> &ch_core::statistics::SearchStats;
 }
 
 impl Runnable for Dijkstra<'_> {
-    fn run(&mut self, src: OSMId, dst: OSMId) -> Option<ShortestPath> {
+    fn run(&mut self, src: usize, dst: usize) -> Option<ShortestPath> {
+        self.search(node_index(src), node_index(dst))
+    }
+
+    fn stats(&self) -> &ch_core::statistics::SearchStats {
+        &self.stats
+    }
+}
+
+impl Runnable for BidirDijkstra<'_> {
+    fn run(&mut self, src: usize, dst: usize) -> Option<ShortestPath> {
         self.search(node_index(src), node_index(dst))
     }
 
@@ -98,7 +219,7 @@ impl Runnable for Dijkstra<'_> {
 }
 
 impl Runnable for AStar<'_> {
-    fn run(&mut self, src: OSMId, dst: OSMId) -> Option<ShortestPath> {
+    fn run(&mut self, src: usize, dst: usize) -> Option<ShortestPath> {
         self.search(node_index(src), node_index(dst), straight_line)
     }
 
@@ -108,7 +229,7 @@ impl Runnable for AStar<'_> {
 }
 
 impl Runnable for CHSearch<'_> {
-    fn run(&mut self, src: OSMId, dst: OSMId) -> Option<ShortestPath> {
+    fn run(&mut self, src: usize, dst: usize) -> Option<ShortestPath> {
         self.search(node_index(src), node_index(dst))
     }
 
@@ -140,10 +261,29 @@ fn main() -> Result<()> {
         .with_history(PathBuf::from(r".\history"), 100)
         .with_command(Command::new("info").about("Print graph info"), info)
         .with_command(
+            Command::new("bench")
+                .arg(
+                    Arg::new("algo")
+                        .value_parser(["dijk", "astar", "ch", "bidir_dijk"])
+                        .default_value("dijk")
+                        .required(true)
+                        .help("Name of algorithm"),
+                )
+                .arg(
+                    Arg::new("iterations")
+                        .value_parser(value_parser!(usize))
+                        .default_value("1000")
+                        .default_missing_value("1000")
+                        .required(false),
+                )
+                .about("Bench the selected algorithm"),
+            bench_algorithm,
+        )
+        .with_command(
             Command::new("run")
                 .arg(
                     Arg::new("algo")
-                        .value_parser(["dijk", "astar", "ch", "ch_par"])
+                        .value_parser(["dijk", "astar", "ch", "bidir_dijk"])
                         .default_value("dijk")
                         .required(true)
                         .help("Name of algorithm"),
