@@ -501,10 +501,12 @@ impl Default for Graph {
 }
 
 /// Macro to create a edge from source to target with a weight
-///
-/// edge!(0 , 1, 3.0) Returns edge in both directions
-///
-/// edge!(0 => 1, 3.0) Returns directed edge
+/// ```
+/// // Returns two edges. One for each direction
+/// let edges = edge!(0 , 1, 3.0);
+/// // Returns unidirectional edge
+/// let edge = edge!(0 => 1, 3.0);
+/// ```
 #[macro_export]
 macro_rules! edge {
     ($source:expr => $target:expr, $weight:expr) => {
@@ -519,7 +521,6 @@ macro_rules! edge {
 }
 
 /// Macro to create a node with a given id, lat, lon
-/// node!(0, 1.0, 1.0)
 #[macro_export]
 macro_rules! node {
     ($id:expr, $lat:expr, $lon:expr) => {

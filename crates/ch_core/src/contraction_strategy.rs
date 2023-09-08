@@ -1,3 +1,17 @@
+//! Module to choose a strategy for the node contraction process.
+//!
+//! # Examples
+//! ```
+//! use ch_core::prelude::*;
+//!
+//! // Use a fixed order for contraction
+//! let contraction_strategy = ContractionStrategy::FixedOrder(&[node_index(0), node_index(1)]);
+//!
+//! // Use a lazy update strategy with periodic updates
+//! let update_strategy = UpdateStrategy::new().set_periodic_updates(true);
+//!
+//! let contraction_strategy = ContractionStrategy::LazyUpdate(update_strategy);
+//! ```
 use crate::graph::NodeIndex;
 
 #[derive(Clone, Copy, Debug)]

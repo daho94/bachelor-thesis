@@ -1,3 +1,4 @@
+//! The overlay graph is a representation of the graph after running the node contraction process.
 use std::{fmt::Display, path::PathBuf};
 
 use anyhow::Context;
@@ -8,10 +9,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::graph::{DefaultIdx, Edge, EdgeIndex, Graph, Node, NodeIndex};
 
-/// Representation of the graph after running
-///     - NodeContractor::run
-///     - NodeContractor::run_with_order
-/// Shortes path calculation is performed on this graph.
+/// Representation of the graph after running the node contraction process. The
+/// graph contains two adjancency lists, one for the upward graph G↑ and one for
+/// the downward graph G↓.
 #[derive(Serialize, Deserialize)]
 pub struct OverlayGraph<Idx = DefaultIdx> {
     // Represents the upward graph G↑
@@ -21,7 +21,7 @@ pub struct OverlayGraph<Idx = DefaultIdx> {
 
     pub shortcuts: FxHashMap<EdgeIndex, [EdgeIndex<Idx>; 2]>,
 
-    pub node_ranks: Vec<usize>,
+    pub node_order: Vec<usize>,
 
     g: Graph<Idx>,
 }
@@ -39,7 +39,7 @@ impl OverlayGraph {
             edges_bwd,
             g: graph,
             shortcuts,
-            node_ranks,
+            node_order: node_ranks,
         }
     }
 

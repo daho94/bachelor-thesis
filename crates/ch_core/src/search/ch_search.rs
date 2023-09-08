@@ -1,4 +1,27 @@
-use std::{collections::BinaryHeap, f64::INFINITY};
+//! Performs a search on the [`OverlayGraph`] using a modified bidirectional version of Dijkstras algorithm.
+//!
+//! # Examples
+//! ```
+//! use ch_core::prelude::*;
+//! use ch_core::prelude::search::*;
+//!
+//! let mut g = generate_simple_graph();
+//! let s = node_index(4);
+//! let t = node_index(1);
+//!
+//! // Build the overlay graph
+//! let mut contractor = NodeContractor::new(&mut g);
+//! let overlay_graph = contractor.run();
+//!
+//! // Search
+//! let mut ch = CHSearch::new(&overlay_graph);
+//! let mut sp = ch.search(s, t).unwrap();
+//! println!("Costs: {}", sp.weight);
+//! println!("Path: {:?}", sp.nodes);
+//!
+//! ```
+//! [`OverlayGraph`]: crate::overlay_graph::OverlayGraph
+use std::collections::BinaryHeap;
 
 use log::{debug, info};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -659,30 +682,30 @@ mod tests {
         let sp_ab = dijkstra.search(a, b);
         let sp_ba = dijkstra.search(b, a);
 
-        let mut bidir = CHSearch::new(overlay_graph);
-        let sp_bidir_ab = bidir.search(a, b);
-        let sp_bidir_ba = bidir.search(b, a);
+        let mut ch = CHSearch::new(overlay_graph);
+        let sp_ch_ab = ch.search(a, b);
+        let sp_ch_ba = ch.search(b, a);
 
         if sp_ab.is_some() {
             assert_abs_diff_eq!(
                 sp_ab.unwrap().weight,
-                sp_bidir_ab.unwrap().weight,
+                sp_ch_ab.unwrap().weight,
                 epsilon = 1e-4,
             );
         } else {
             // Both should be None
-            assert_eq!(sp_ab, sp_bidir_ab);
+            assert_eq!(sp_ab, sp_ch_ab);
         }
 
         if sp_ba.is_some() {
             assert_abs_diff_eq!(
                 sp_ba.unwrap().weight,
-                sp_bidir_ba.unwrap().weight,
+                sp_ch_ba.unwrap().weight,
                 epsilon = 1e-4,
             );
         } else {
             // Both should be None
-            assert_eq!(sp_ba, sp_bidir_ba);
+            assert_eq!(sp_ba, sp_ch_ba);
         }
     }
     fn test_search_par(overlay_graph: &OverlayGraph, a: usize, b: usize) {

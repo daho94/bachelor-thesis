@@ -1,3 +1,4 @@
+//! Statistics module. Used to collect statistics about the graph and search algorithms.
 use std::{
     fmt::{Debug, Display},
     time::{Duration, Instant},

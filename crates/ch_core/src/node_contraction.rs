@@ -3,7 +3,8 @@
 //! # Examples
 //! ```
 //! use rustc_hash::FxHashMap;
-//! use crate::util::test_graphs::generate_simple_graph;
+//! use ch_core::util::test_graphs::generate_simple_graph;
+//! use ch_core::node_contraction::{NodeContractor};
 //!
 //! // Create a new graph
 //! let mut g = generate_simple_graph();
@@ -236,8 +237,8 @@ impl ConstructionStats {
 ///
 /// # Examples
 /// ```
-/// use rustc_hash::FxHashMap;
-/// use crate::util::test_graphs::generate_simple_graph;
+/// use ch_core::node_contraction::NodeContractor;
+/// use ch_core::util::test_graphs::generate_simple_graph;
 ///
 /// // Create a new graph
 /// let mut g = generate_simple_graph();
@@ -746,7 +747,7 @@ mod tests {
         let overlay_graph = contractor.run();
 
         dbg!(overlay_graph.shortcuts);
-        dbg!(overlay_graph.node_ranks);
+        dbg!(overlay_graph.node_order);
 
         assert_eq!(3, contractor.g.num_shortcuts)
     }
