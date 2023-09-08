@@ -268,14 +268,14 @@ impl<'a> GraphView<'a> {
                 log::debug!(
                     "Clicked node: {:?}, Rank: {}",
                     node,
-                    self.overlay_graph.node_ranks[node_idx.index()]
+                    self.overlay_graph.node_order[node_idx.index()]
                 );
                 self.tx_debug
                     .send(DebugInfo {
                         node_info: Some(NodeInfo {
                             node: node.clone(),
                             node_index: node_idx.index(),
-                            rank: self.overlay_graph.node_ranks[node_idx.index()],
+                            rank: self.overlay_graph.node_order[node_idx.index()],
                         }),
                     })
                     .unwrap();

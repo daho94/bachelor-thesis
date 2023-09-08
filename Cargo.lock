@@ -1966,6 +1966,7 @@ version = "0.1.0"
 dependencies = [
  "ch_core",
  "env_logger",
+ "indicatif",
  "osm_reader",
  "rand",
  "reedline-repl-rs",
