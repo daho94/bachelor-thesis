@@ -40,7 +40,7 @@ use std::io::Write;
 //   shown inside the box, and the whiskers extend to the minimum and maximum
 //   values, excluding outliers.
 fn main() {
-    const ITERATIONS: usize = 1_00;
+    const ITERATIONS: usize = 1_000;
 
     // let cli = cli::parse();
 
@@ -190,7 +190,7 @@ fn main() {
     plot.add_trace(trace_dijk);
     plot.add_trace(trace_astar);
     plot.add_trace(trace_bidir);
-    // plot.add_trace(trace_ch);
+    plot.add_trace(trace_ch);
 
     let y_axis_log = Axis::new()
         .title(Title::new("Query-Time [μs]"))
@@ -219,19 +219,21 @@ fn main() {
             Rgb::new(0, 77, 64),
             Rgb::new(255, 193, 7),
         ])
-        .margin(Margin::default().top(8).bottom(8))
+        // .margin(Margin::default().top(8).bottom(8))
+        .margin(Margin::default().top(2).right(15).pad(10))
         .legend(
             Legend::new()
                 .orientation(Orientation::Horizontal)
                 // .y(-1.00)
-                .valign(VAlign::Top),
+                .valign(VAlign::Bottom)
+                .y(1.0),
         )
         .box_mode(BoxMode::Group);
 
     plot.set_layout(layout.clone());
     plot.show();
 
-    plot.write_image("boxplot_rank.pdf", plotly::ImageFormat::PDF, 800, 600, 1.0);
+    // plot.write_image("boxplot_rank.pdf", plotly::ImageFormat::PDF, 800, 600, 1.0);
 
     plot.set_layout(layout.clone().y_axis(y_axis_log.clone()));
     plot.show();
@@ -286,7 +288,7 @@ fn main() {
     plot.add_trace(trace_dijk);
     plot.add_trace(trace_astar);
     plot.add_trace(trace_bidir);
-    // plot.add_trace(trace_ch);
+    plot.add_trace(trace_ch);
 
     let y_axis = Axis::new()
         .title(Title::new("Nodes Settled [#]"))
@@ -299,14 +301,14 @@ fn main() {
     plot.show();
 
     plot.write_image(
-        "boxplot_rank_nodes.pdf",
+        "nodes_per_rank.pdf",
         plotly::ImageFormat::PDF,
         800,
         600,
         1.0,
     );
     plot.write_image(
-        "boxplot_rank_nodes.svg",
+        "nodes_per_rank.svg",
         plotly::ImageFormat::SVG,
         1600,
         600,
