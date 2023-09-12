@@ -184,16 +184,16 @@ impl Display for ConstructionStats {
         writeln!(f, "---Construction Stats---")?;
         writeln!(
             f,
-            "Node Ordering [sec]: {}",
-            self.node_ordering_time.as_secs()
+            "Node Ordering      : {:?}",
+            self.node_ordering_time
         )?;
         writeln!(
             f,
-            "Construction  [sec]: {}",
-            self.contraction_time.as_secs()
+            "Construction       : {:?}",
+            self.contraction_time
         )?;
         writeln!(f, "------------------------")?;
-        writeln!(f, "Totat time    [sec]: {}", self.total_time.as_secs())?;
+        writeln!(f, "Totat time         : {:?}", self.total_time)?;
         writeln!(f, "Shortcuts added [#]: {}", self.shortcuts_added)
     }
 }

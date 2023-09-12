@@ -40,7 +40,7 @@ use std::io::Write;
 //   shown inside the box, and the whiskers extend to the minimum and maximum
 //   values, excluding outliers.
 fn main() {
-    const ITERATIONS: usize = 1_000;
+    const ITERATIONS: usize = 1_00;
 
     // let cli = cli::parse();
 
@@ -190,7 +190,7 @@ fn main() {
     plot.add_trace(trace_dijk);
     plot.add_trace(trace_astar);
     plot.add_trace(trace_bidir);
-    plot.add_trace(trace_ch);
+    // plot.add_trace(trace_ch);
 
     let y_axis_log = Axis::new()
         .title(Title::new("Query-Time [μs]"))
@@ -231,13 +231,29 @@ fn main() {
         .box_mode(BoxMode::Group);
 
     plot.set_layout(layout.clone());
-    plot.show();
+    // plot.show();
 
     // plot.write_image("boxplot_rank.pdf", plotly::ImageFormat::PDF, 800, 600, 1.0);
 
     plot.set_layout(layout.clone().y_axis(y_axis_log.clone()));
     plot.show();
 
+    plot.write_image(
+        "boxplot_rank_log_no_ch.pdf",
+        plotly::ImageFormat::PDF,
+        800,
+        600,
+        1.0,
+    );
+    plot.write_image(
+        "boxplot_rank_log_no_ch.svg",
+        plotly::ImageFormat::SVG,
+        1600,
+        600,
+        1.0,
+    );
+
+    plot.add_trace(trace_ch);
     plot.write_image(
         "boxplot_rank_log.pdf",
         plotly::ImageFormat::PDF,

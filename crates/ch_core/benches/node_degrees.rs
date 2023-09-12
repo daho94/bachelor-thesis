@@ -39,6 +39,8 @@ fn main() {
         show_legend = false;
     }
 
+    let yaxis = Axis::new().title(Title::new("Anzahl Knoten"));
+
     let layout = Layout::new()
         .grid(
             LayoutGrid::new()
@@ -50,21 +52,22 @@ fn main() {
         .x_axis(
             Axis::new()
                 .fixed_range(true)
+                .title("Knotengrad".into())
                 .range(vec![0, 1, 2, 3, 4, 5, 6])
-                .title(Title::new("Saarland").font(Font::new().size(12))),
+                .title(Title::new("Knotengrad - Saarland").font(Font::new().size(12))),
         )
         .x_axis2(
             Axis::new()
                 .fixed_range(true)
                 .range(vec![0, 1, 2, 3, 4, 5, 6])
-                .title(Title::new("Bayern").font(Font::new().size(12))),
+                .title(Title::new("Knotengrad - Bayern").font(Font::new().size(12))),
         )
         .x_axis3(
             Axis::new()
                 .fixed_range(true)
                 .range(vec![0, 1, 2, 3, 4, 5, 6])
                 .title(
-                    Title::new("Ney York")
+                    Title::new("Knotengrad - New York")
                         .y_anchor(Anchor::Bottom)
                         .side(Side::Top)
                         .font(Font::new().size(12)),
@@ -75,11 +78,15 @@ fn main() {
                 .fixed_range(true)
                 .range(vec![0, 1, 2, 3, 4, 5, 6])
                 .title(
-                    Title::new("Deutschland")
+                    Title::new("Knotengrad - Deutschland")
                         .y_anchor(Anchor::Bottom)
                         .font(Font::new().size(12)),
                 ),
         )
+        .y_axis(yaxis.clone())
+        .y_axis2(yaxis.clone())
+        .y_axis3(yaxis.clone())
+        .y_axis4(yaxis)
         .colorway(vec![Rgb::new(216, 27, 96), Rgb::new(39, 136, 229)])
         .margin(Margin::default().top(8).bottom(8));
 
@@ -90,25 +97,25 @@ fn main() {
     let mut plot = Plot::new();
     let mut show_legend = true;
 
-    for p in paths {
-        dbg!(&p);
-        let (trace, trace_simplified) = create_traces_in(Path::new(&p));
-        let x = format!("x{}", num_plots);
-        let y = format!("y{}", num_plots);
+    // for p in paths {
+    //     dbg!(&p);
+    //     let (trace, trace_simplified) = create_traces_in(Path::new(&p));
+    //     let x = format!("x{}", num_plots);
+    //     let y = format!("y{}", num_plots);
 
-        plot.add_trace(trace.x_axis(&x).y_axis(&y).show_legend(show_legend));
-        plot.add_trace(
-            trace_simplified
-                .x_axis(x)
-                .y_axis(y)
-                .show_legend(show_legend),
-        );
-        show_legend = false;
-    }
+    //     plot.add_trace(trace.x_axis(&x).y_axis(&y).show_legend(show_legend));
+    //     plot.add_trace(
+    //         trace_simplified
+    //             .x_axis(x)
+    //             .y_axis(y)
+    //             .show_legend(show_legend),
+    //     );
+    //     show_legend = false;
+    // }
 
-    plot.set_layout(layout);
+    // plot.set_layout(layout);
 
-    plot.write_image("hist_deg_in.png", ImageFormat::PDF, 800, 600, 1.0);
+    // plot.write_image("hist_deg_in.png", ImageFormat::PDF, 800, 600, 1.0);
 }
 
 #[allow(dead_code)]
