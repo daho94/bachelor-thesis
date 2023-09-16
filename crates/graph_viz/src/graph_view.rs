@@ -3,15 +3,12 @@ use ch_core::{
     overlay_graph::OverlayGraph,
     search::shortest_path::ShortestPath,
 };
-use egui::epaint::ahash::HashSet;
+
 use macroquad::prelude::*;
 
 use crossbeam_channel::{Receiver, Sender};
 use rustc_hash::FxHashSet;
-use std::{
-    collections::BinaryHeap,
-    f32::{MAX, MIN},
-};
+use std::f32::{MAX, MIN};
 
 use crate::{
     widgets::debug::{DebugInfo, NodeInfo},
@@ -213,7 +210,6 @@ impl<'a> GraphView<'a> {
                         to.x,
                         to.y,
                         2.5,
-                        // Color::from_rgba(255, 0, 255, 255),
                         COLOR_THEME.lock().unwrap().sp_color(),
                     );
                 }

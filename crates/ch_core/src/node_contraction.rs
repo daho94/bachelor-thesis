@@ -1,4 +1,4 @@
-//! Module to build contraction hierarchies from a given [`Graph`].
+//! Module to build contraction hierarchies for a given [`Graph`].
 //!
 //! # Examples
 //! ```

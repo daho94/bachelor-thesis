@@ -1,6 +1,6 @@
 use macroquad::{
     color_u8,
-    prelude::{Color, BLACK, DARKGRAY, RED, WHITE},
+    prelude::{Color, DARKGRAY, RED, WHITE},
 };
 
 pub const DARK_THEME: ColorTheme = ColorTheme {
@@ -15,19 +15,10 @@ pub const DARK_THEME: ColorTheme = ColorTheme {
 
 pub const LIGHT_THEME: ColorTheme = ColorTheme {
     bg_color: WHITE,
-    // sp_color: BLACK,
     sp_color: RED,
-    // line_color: color_u8!(59, 59, 59, 255),
     line_color: color_u8!(204, 204, 204, 255),
     shortcut_color: color_u8!(255, 20, 20, 125),
     node_color: DARKGRAY,
-    // graph_down_color: color_u8!(63, 70, 191, 185),
-    // graph_down_color: color_u8!(243, 127, 128, 185),
-    // graph_up_color: color_u8!(0, 249, 4, 185),
-    // graph_up_color: color_u8!(135, 37, 222, 37), // Thesis color
-    // graph_down_color: color_u8!(20, 235, 197, 49), // Thesis color
-    // graph_up_color: color_u8!(135, 37, 222, 128),
-    // graph_down_color: color_u8!(20, 235, 197, 128),
     graph_down_color: color_u8!(59, 60, 246, 255),
     graph_up_color: color_u8!(0, 125, 0, 255),
 };

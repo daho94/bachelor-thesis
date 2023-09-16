@@ -4,7 +4,7 @@ use ch_core::{
     graph::node_index,
     node_contraction::{ContractionParams, NodeContractor, PriorityParams},
     search::ch_search::CHSearch,
-    util::test_graphs::{graph_saarland, graph_vaterstetten},
+    util::test_graphs::graph_saarland,
 };
 
 use rand::prelude::*;
@@ -22,9 +22,6 @@ fn main() {
 
     let mut min_params_aggressive = None;
     let mut min_time_aggressive = std::u128::MAX;
-
-    // let min_params_economical;
-    // let min_time_economical = std::u128::MAX;
 
     for edge_difference_coeff in (1..=501).step_by(100) {
         for contracted_neighbors_coeff in (1..=501).step_by(100) {

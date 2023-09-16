@@ -1,5 +1,4 @@
 use ch_core::prelude::*;
-use rustc_hash::FxHashMap;
 use std::path::Path;
 
 fn main() {
@@ -7,7 +6,7 @@ fn main() {
     let path = Path::new("path/to/pbf/file.osm.pbf");
 
     // Create a new graph
-    let mut g = Graph::from_pbf(&path).expect("Failed to create graph from pbf file");
+    let mut g = Graph::from_pbf(path).expect("Failed to create graph from pbf file");
 
     // Create a new NodeContractor instance with required parameters
     let mut contractor = NodeContractor::new(&mut g);

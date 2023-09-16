@@ -2,6 +2,7 @@
 name = "ch_core"
 version = "0.1.0"
 edition = "2021"
+authors = ["Daniel Holzner <daniel.holzner@hm.edu>"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -30,6 +31,10 @@ plotly = { version = "0.8.4", features = ["kaleido"] }
 [[bin]]
 name = "raster_search"
 path = "src/bin/raster_search.rs"
+
+[[bin]]
+name = "demo"
+path = "src/bin/demo.rs"
 
 [[bench]]
 name = "query_time_algos"

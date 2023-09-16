@@ -14,9 +14,12 @@
 //! ```
 use crate::graph::NodeIndex;
 
+/// Strategy which is used while contracting nodes.
 #[derive(Clone, Copy, Debug)]
 pub enum ContractionStrategy<'a> {
+    /// Nodes are contracted in the `exact` order of the given slice.
     FixedOrder(&'a [NodeIndex]),
+    /// The order gets updated according to the chosen [UpdateStrategy] while the contraction process is running.
     LazyUpdate(UpdateStrategy),
 }
 
@@ -45,6 +48,7 @@ impl Default for PeriodicUpdateData {
     }
 }
 
+/// Strategy which is used to update the contraction order.
 #[derive(Clone, Copy, Debug)]
 pub struct UpdateStrategy {
     update_jit: bool,
@@ -70,39 +74,47 @@ impl UpdateStrategy {
         Self::default()
     }
 
+    /// Returns true if the `Just In Time`-Strategy is enabled
     pub fn update_jit(&self) -> bool {
         self.update_jit
     }
 
+    /// Returns true if the `Local Update`-Strategy is enabled
     pub fn update_local(&self) -> bool {
         self.update_local
     }
 
+    /// Returns true if the `Periodic Update`-Strategy is enabled
     pub fn update_periodic(&self) -> bool {
         self.update_periodic
     }
 
+    /// Enable or disable the `Just In Time`-Strategy
     pub fn set_update_jit(mut self, lazy_update_self: bool) -> Self {
         self.update_jit = lazy_update_self;
         self
     }
 
+    /// Enable or disable the `Local Update`-Strategy
     pub fn set_update_local(mut self, lazy_update_neighbors: bool) -> Self {
         self.update_local = lazy_update_neighbors;
         self
     }
 
+    /// Enable or disable the `Periodic Update`-Strategy
     pub fn set_periodic_updates(mut self, periodic_updates: bool) -> Self {
         self.update_periodic = periodic_updates;
         self
     }
 
-    pub fn set_periodic_updates_trigger(mut self, trigger: usize) -> Self {
+    #[allow(dead_code)]
+    fn set_periodic_updates_trigger(mut self, trigger: usize) -> Self {
         self.periodic_update_data.trigger = trigger;
         self
     }
 
-    pub fn periodic_update_triggered(&self, consecutive_lazy_updates: usize) -> bool {
+    #[allow(dead_code)]
+    fn periodic_update_triggered(&self, consecutive_lazy_updates: usize) -> bool {
         if self.update_periodic {
             consecutive_lazy_updates >= self.periodic_update_data.trigger
         } else {

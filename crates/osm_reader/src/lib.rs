@@ -1,3 +1,22 @@
+//! Crate to parse *.osm.pbf files into a [RoadGraph].
+//!
+//! # Basic usage
+//! ```
+//! use std::path::Path;
+//! use osm_reader::RoadGraph;
+//!
+//! // Path to pbf file
+//! let path = Path::new("path/to/pbf/file.osm.pbf");
+//!
+//! // Create a road graph from a pbf file
+//! let road_graph = RoadGraph::from_pbf(&path).expect("Failed to create graph from pbf file");
+//!
+//! // Create a road graph from a pbf file with simplification
+//! let road_graph = RoadGraph::from_pbf_with_simplification(&path).expect("Failed to create graph from pbf file");
+//!
+//! println!("The graph has {} nodes and {} arcs", road_graph.get_nodes().len(), road_graph.get_arcs().len());
+//! ```
+//!
 use log::info;
 use osmpbf::{Element, IndexedReader};
 use rustc_hash::FxHashMap;
@@ -6,9 +25,13 @@ use std::{collections::HashMap, fs::File, io::BufWriter, path::Path, str::FromSt
 mod road_types;
 use road_types::RoadType;
 
+/// Represents a road in a graph.
 pub struct Arc {
+    /// Start of the road
     pub source: i64,
+    /// End of the road
     pub target: i64,
+    /// Costs to traverse the road
     pub weight: f64,
 }
 
@@ -22,12 +45,14 @@ impl Arc {
     }
 }
 
+/// A road graph, containing a set of nodes and arcs
 pub struct RoadGraph {
     nodes: FxHashMap<i64, [f64; 2]>,
     arcs: Vec<Arc>,
 }
 
 impl RoadGraph {
+    /// Create a new empty graph.
     pub fn new() -> Self {
         RoadGraph {
             nodes: FxHashMap::default(),
@@ -35,22 +60,26 @@ impl RoadGraph {
         }
     }
 
-    pub fn add_node(&mut self, id: i64, lat: f64, lon: f64) {
+    fn add_node(&mut self, id: i64, lat: f64, lon: f64) {
         self.nodes.insert(id, [lat, lon]);
     }
 
-    pub fn add_arc(&mut self, from: i64, to: i64, weight: f64) {
+    fn add_arc(&mut self, from: i64, to: i64, weight: f64) {
         self.arcs.push(Arc::new(from, to, weight));
     }
 
+    /// Returns the nodes of the graph.
     pub fn get_nodes(&self) -> &FxHashMap<i64, [f64; 2]> {
         &self.nodes
     }
 
-    pub fn get_arcs(&self) -> &Vec<Arc> {
+    /// Returns the arcs of the graph.
+    pub fn get_arcs(&self) -> &[Arc] {
         &self.arcs
     }
 
+    /// Parses a pbf file and returns a road graph. Before the graph is returned it is simplified by removing nodes
+    /// which are no "real" nodes (mostly nodes with degree `2`) in the context of graph theory.
     pub fn from_pbf_with_simplification(pbf_path: &Path) -> anyhow::Result<RoadGraph> {
         let mut graph = RoadGraph::new();
 
@@ -165,6 +194,7 @@ impl RoadGraph {
         Ok(graph)
     }
 
+    /// Parses a pbf file and returns a road graph.
     pub fn from_pbf(pbf_path: &Path) -> anyhow::Result<RoadGraph> {
         let mut graph = RoadGraph::new();
 
@@ -242,6 +272,7 @@ impl RoadGraph {
         Ok(graph)
     }
 
+    /// Writes nodes to `nodes.csv` and edges to `edges.csv`.
     pub fn write_csv(&self) -> anyhow::Result<()> {
         use std::io::Write;
 

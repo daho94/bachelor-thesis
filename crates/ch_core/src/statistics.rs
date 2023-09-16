@@ -8,14 +8,18 @@ use histogram::Histogram;
 
 use crate::graph::Graph;
 
+/// Collects statistics about the search algorithm.
 #[derive(Debug, Default)]
 pub struct SearchStats {
+    /// Nodes visited by the search algorithm.
     pub nodes_settled: usize,
+    /// Duration of the search algorithm.
     pub duration: Option<Duration>,
     start_time: Option<Instant>,
 }
 
 impl SearchStats {
+    /// Resets the statistics.
     pub fn init(&mut self) {
         self.nodes_settled = 0;
         self.start_timer();
@@ -25,6 +29,7 @@ impl SearchStats {
         self.start_time = Some(Instant::now());
     }
 
+    /// Stops the timer.
     pub fn finish(&mut self) {
         if let Some(start_time) = self.start_time {
             self.duration = Some(start_time.elapsed());
@@ -56,14 +61,17 @@ fn degree_histogram(g: &Graph, outgoing: bool) -> Histogram {
     hist
 }
 
+/// Returns a histogram of the out-degree distribution of the nodes in the graph.
 pub fn degree_out_hist(g: &Graph) -> Histogram {
     degree_histogram(g, true)
 }
 
+/// Returns a histogram of the in-degree distribution of the nodes in the graph.
 pub fn degree_in_hist(g: &Graph) -> Histogram {
     degree_histogram(g, false)
 }
 
+/// Returns the average in-degree of the nodes in the graph.
 pub fn average_in_degree(g: &Graph) -> f64 {
     let mut sum = 0.0;
     for node in 0..g.nodes.len() {
@@ -72,6 +80,7 @@ pub fn average_in_degree(g: &Graph) -> f64 {
     sum / g.nodes.len() as f64
 }
 
+/// Returns the average out-degree of the nodes in the graph.
 pub fn average_out_degree(g: &Graph) -> f64 {
     let mut sum = 0.0;
     for node in 0..g.nodes.len() {
