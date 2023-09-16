@@ -1,6 +1,6 @@
 use macroquad::{
     color_u8,
-    prelude::{Color, BLACK, DARKGRAY, WHITE},
+    prelude::{Color, BLACK, DARKGRAY, RED, WHITE},
 };
 
 pub const DARK_THEME: ColorTheme = ColorTheme {
@@ -15,7 +15,8 @@ pub const DARK_THEME: ColorTheme = ColorTheme {
 
 pub const LIGHT_THEME: ColorTheme = ColorTheme {
     bg_color: WHITE,
-    sp_color: BLACK,
+    // sp_color: BLACK,
+    sp_color: RED,
     // line_color: color_u8!(59, 59, 59, 255),
     line_color: color_u8!(204, 204, 204, 255),
     shortcut_color: color_u8!(255, 20, 20, 125),
