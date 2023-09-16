@@ -1,4 +1,4 @@
-//! Statistics module. Used to collect statistics about the graph and search algorithms.
+//! Statistics module. Used to collect various statistics.
 use std::{
     fmt::{Debug, Display},
     time::{Duration, Instant},
@@ -87,6 +87,60 @@ pub fn average_out_degree(g: &Graph) -> f64 {
         sum += g.edges_out[node].len() as f64;
     }
     sum / g.nodes.len() as f64
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ConstructionStats {
+    pub node_ordering_time: Duration,
+    pub contraction_time: Duration,
+    pub total_time: Duration,
+    pub shortcuts_added: usize,
+    timer: Instant,
+}
+
+impl Default for ConstructionStats {
+    fn default() -> Self {
+        ConstructionStats {
+            node_ordering_time: Duration::new(0, 0),
+            contraction_time: Duration::new(0, 0),
+            total_time: Duration::new(0, 0),
+            shortcuts_added: 0,
+            timer: Instant::now(),
+        }
+    }
+}
+
+impl Display for ConstructionStats {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "---Construction Stats---")?;
+        writeln!(f, "Node Ordering      : {:?}", self.node_ordering_time)?;
+        writeln!(f, "Construction       : {:?}", self.contraction_time)?;
+        writeln!(f, "------------------------")?;
+        writeln!(f, "Totat time         : {:?}", self.total_time)?;
+        writeln!(f, "Shortcuts added [#]: {}", self.shortcuts_added)
+    }
+}
+
+impl ConstructionStats {
+    pub(crate) fn init(&mut self) {
+        self.timer = Instant::now();
+        self.shortcuts_added = 0;
+        self.node_ordering_time = Duration::new(0, 0);
+        self.contraction_time = Duration::new(0, 0);
+        self.total_time = Duration::new(0, 0);
+    }
+
+    pub(crate) fn stop_timer_node_ordering(&mut self) {
+        self.node_ordering_time = self.timer.elapsed();
+        self.total_time += self.node_ordering_time;
+        self.timer = Instant::now();
+    }
+
+    pub(crate) fn stop_timer_construction(&mut self) {
+        self.contraction_time = self.timer.elapsed();
+        self.total_time += self.contraction_time;
+        self.timer = Instant::now();
+    }
 }
 
 #[cfg(test)]
