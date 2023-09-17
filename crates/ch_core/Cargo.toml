@@ -2,8 +2,10 @@
 name = "ch_core"
 version = "0.1.0"
 edition = "2021"
+authors = ["Daniel Holzner <daniel.holzner@hm.edu>"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -14,3 +16,42 @@ log = "0.4.17"
 rustc-hash = "1.1"
 priority-queue = "1"
 env_logger = "0.10.0"
+bincode = { version = "2.0.0-rc.3", features = ["serde"] }
+rand = "0.8.5"
+histogram = "0.7.4"
+clap = { version = "4.4.2", features = ["derive"] }
+indicatif = "0.17.6"
+
+[dev-dependencies]
+proptest = "1"
+approx = "0.5.1"
+plotly = { version = "0.8.4", features = ["kaleido"] }
+# indicatif = "0.17.6"
+
+[[bin]]
+name = "raster_search"
+path = "src/bin/raster_search.rs"
+
+[[bench]]
+name = "query_time_algos"
+harness = false
+
+[[bench]]
+name = "node_degrees"
+harness = false
+
+[[bench]]
+name = "query_stalling"
+harness = false
+
+[[bench]]
+name = "parameter_variation"
+harness = false
+
+[[bench]]
+name = "witness_variation"
+harness = false
+
+[[bench]]
+name = "strategy_variation"
+harness = false

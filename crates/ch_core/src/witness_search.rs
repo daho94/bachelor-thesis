@@ -1,10 +1,13 @@
+// Implementation of the local witness-search
+
 use std::collections::BinaryHeap;
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 
 use crate::{
     constants::Weight,
-    graph::{DefaultIdx, Graph, IndexType, NodeIndex},
+    graph::{DefaultIdx, NodeIndex},
+    node_contraction::NodeContractor,
 };
 
 #[derive(Debug)]
@@ -13,27 +16,27 @@ struct Candidate<Idx = DefaultIdx> {
     weight: Weight,
 }
 
-impl<Idx: IndexType> Candidate<Idx> {
-    fn new(node_idx: NodeIndex<Idx>, weight: Weight) -> Self {
+impl Candidate {
+    fn new(node_idx: NodeIndex, weight: Weight) -> Self {
         Self { node_idx, weight }
     }
 }
 
-impl<Idx: IndexType> PartialOrd for Candidate<Idx> {
+impl PartialOrd for Candidate {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         other.weight.partial_cmp(&self.weight)
     }
 }
 
-impl<Idx: IndexType> PartialEq for Candidate<Idx> {
+impl PartialEq for Candidate {
     fn eq(&self, other: &Self) -> bool {
         other.weight == self.weight
     }
 }
 
-impl<Idx: IndexType> Eq for Candidate<Idx> {}
+impl Eq for Candidate {}
 
-impl<Idx: IndexType> Ord for Candidate<Idx> {
+impl Ord for Candidate {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         other
             .weight
@@ -43,22 +46,23 @@ impl<Idx: IndexType> Ord for Candidate<Idx> {
 }
 
 pub(crate) struct WitnessSearch<'a> {
-    max_nodes_settled: usize,
-    g: &'a Graph,
+    max_nodes_settled_limit: usize,
+    node_contractor: &'a NodeContractor<'a>,
 }
 
 impl<'a> WitnessSearch<'a> {
-    pub(crate) fn new(g: &'a Graph) -> Self {
+    #[allow(dead_code)]
+    pub(crate) fn new(node_contractor: &'a NodeContractor) -> Self {
         Self {
-            g,
-            max_nodes_settled: 50,
+            node_contractor,
+            max_nodes_settled_limit: 50,
         }
     }
 
-    pub fn with_params(g: &'a Graph, max_nodes_settled: usize) -> Self {
+    pub fn with_params(g: &'a NodeContractor, max_nodes_settled_limit: usize) -> Self {
         Self {
-            g,
-            max_nodes_settled,
+            node_contractor: g,
+            max_nodes_settled_limit,
         }
     }
 
@@ -68,34 +72,34 @@ impl<'a> WitnessSearch<'a> {
         targets: &[NodeIndex],
         avoid: NodeIndex,
         max_weight: f64,
-        // ignore: &FxHashSet<EdgeIndex>,
     ) -> FxHashMap<NodeIndex, Weight> {
         let mut nodes_settled = 0;
         let mut node_data = FxHashMap::default();
         let mut targets_settled = 0;
 
         let mut queue = BinaryHeap::new();
-        let mut settled = FxHashSet::default();
 
         queue.push(Candidate::new(start, 0.0));
 
         while let Some(Candidate { weight, node_idx }) = queue.pop() {
-            if nodes_settled >= self.max_nodes_settled {
-                // dbg!("Max nodes settled limit reached");
+            // Stop when all targets are settled
+            if targets_settled == targets.len() {
                 break;
             }
 
+            // Stop when maximum number of nodes settled is reached
+            if nodes_settled >= self.max_nodes_settled_limit {
+                break;
+            }
+
+            // Stop if weight is greater than the P_max = max { <u,v,W> }
             if weight > max_weight {
                 break;
             }
 
-            for (_, edge) in self.g.neighbors_outgoing(node_idx)
-            // .filter(|(i, _)| !ignore.contains(i))
-            {
+            for (_, edge) in self.node_contractor.neighbors_outgoing(node_idx) {
                 // Skip edges where target is avoid node
-                if edge.target == avoid
-                // || settled.contains(&edge.target)
-                {
+                if edge.target == avoid {
                     continue;
                 }
 
@@ -107,14 +111,9 @@ impl<'a> WitnessSearch<'a> {
             }
 
             nodes_settled += 1;
-            settled.insert(node_idx);
+
             if targets.contains(&node_idx) {
                 targets_settled += 1;
-            }
-
-            // If all targets are settled
-            if targets_settled == targets.len() {
-                break;
             }
         }
 

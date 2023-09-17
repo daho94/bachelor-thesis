@@ -1,39 +1,40 @@
+//! Implementation of the Dijkstra search algorithm.
 use std::collections::BinaryHeap;
 
 use crate::constants::Weight;
 use crate::graph::*;
 use crate::search::shortest_path::ShortestPath;
-use crate::statistics::Stats;
+use crate::statistics::SearchStats;
 use log::{debug, info};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 #[derive(Debug)]
-pub(crate) struct Candidate<Idx = DefaultIdx> {
-    pub(crate) node_idx: NodeIndex<Idx>,
-    pub(crate) weight: Weight,
+pub struct Candidate<Idx = DefaultIdx> {
+    pub node_idx: NodeIndex<Idx>,
+    pub weight: Weight,
 }
 
-impl<Idx: IndexType> Candidate<Idx> {
-    pub(crate) fn new(node_idx: NodeIndex<Idx>, weight: Weight) -> Self {
+impl Candidate {
+    pub fn new(node_idx: NodeIndex, weight: Weight) -> Self {
         Self { node_idx, weight }
     }
 }
 
-impl<Idx: IndexType> PartialOrd for Candidate<Idx> {
+impl PartialOrd for Candidate {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         other.weight.partial_cmp(&self.weight)
     }
 }
 
-impl<Idx: IndexType> PartialEq for Candidate<Idx> {
+impl PartialEq for Candidate {
     fn eq(&self, other: &Self) -> bool {
         other.weight == self.weight
     }
 }
 
-impl<Idx: IndexType> Eq for Candidate<Idx> {}
+impl Eq for Candidate {}
 
-impl<Idx: IndexType> Ord for Candidate<Idx> {
+impl Ord for Candidate {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         other
             .weight
@@ -43,27 +44,23 @@ impl<Idx: IndexType> Ord for Candidate<Idx> {
 }
 
 pub struct Dijkstra<'a, Idx = DefaultIdx> {
-    pub stats: Stats,
+    pub stats: SearchStats,
+    pub nodes_settled: FxHashSet<NodeIndex<Idx>>,
     g: &'a Graph<Idx>,
 }
 
-impl<'a, Idx> Dijkstra<'a, Idx>
-where
-    Idx: IndexType,
-{
-    pub fn new(graph: &'a Graph<Idx>) -> Self {
+impl<'a> Dijkstra<'a> {
+    pub fn new(graph: &'a Graph) -> Self {
         Dijkstra {
             g: graph,
-            stats: Stats::default(),
+            nodes_settled: FxHashSet::default(),
+            stats: SearchStats::default(),
         }
     }
 
-    pub fn search(
-        &mut self,
-        source: NodeIndex<Idx>,
-        target: NodeIndex<Idx>,
-    ) -> Option<ShortestPath<Idx>> {
+    pub fn search(&mut self, source: NodeIndex, target: NodeIndex) -> Option<ShortestPath> {
         self.stats.init();
+        info!("BEGIN DIJKSTRA SEARCH from {:?} to {:?}", source, target);
 
         if source == target {
             self.stats.nodes_settled += 1;
@@ -71,22 +68,28 @@ where
             return Some(ShortestPath::new(vec![source], 0.0));
         }
 
-        let mut node_data: FxHashMap<NodeIndex<Idx>, (Weight, Option<NodeIndex<Idx>>)> =
-            FxHashMap::default();
+        let mut node_data: FxHashMap<NodeIndex, (Weight, Option<NodeIndex>)> = FxHashMap::default();
         node_data.insert(source, (0.0, None));
 
         let mut queue = BinaryHeap::new();
 
         queue.push(Candidate::new(source, 0.0));
 
-        while let Some(Candidate { weight, node_idx }) = queue.pop() {
+        while let Some(Candidate {
+            weight,
+            node_idx: node,
+        }) = queue.pop()
+        {
             self.stats.nodes_settled += 1;
 
-            if node_idx == target {
+            if node == target {
                 break;
             }
 
-            for (_, edge) in self.g.neighbors_outgoing(node_idx) {
+            for (_, edge) in self.g.neighbors_outgoing(node).filter(|(edge_idx, _)| {
+                edge_idx.index() < self.g.edges.len() - self.g.num_shortcuts
+                // true
+            }) {
                 let new_distance = weight + edge.weight;
                 if new_distance
                     < node_data
@@ -94,30 +97,27 @@ where
                         .unwrap_or(&(std::f64::INFINITY, None))
                         .0
                 {
-                    node_data.insert(edge.target, (new_distance, Some(node_idx)));
+                    node_data.insert(edge.target, (new_distance, Some(node)));
                     queue.push(Candidate::new(edge.target, new_distance));
                 }
             }
+            self.nodes_settled.insert(node);
         }
         self.stats.finish();
 
-        let sp = super::reconstruct_path(target, source, &node_data);
-        if sp.is_some() {
+        if let Some(sp) = super::reconstruct_path(target, source, &node_data) {
             debug!("Path found: {:?}", sp);
-            info!(
-                "Path found: {:?}/{} nodes settled",
-                self.stats.duration.unwrap(),
-                self.stats.nodes_settled
-            );
+            info!("{}, weight: {}", self.stats, sp.weight);
+
+            Some(sp)
         } else {
             info!(
                 "No path found: {:?}/{} nodes settled",
                 self.stats.duration.unwrap(),
                 self.stats.nodes_settled
             );
+            None
         }
-
-        sp
     }
 }
 
@@ -134,7 +134,7 @@ mod tests {
         // 0 -> 5 -> 6 -  |
         // |         |  \ |
         // 1 -> 2 -> 3 -> 4
-        let mut g = Graph::<DefaultIdx>::new();
+        let mut g = Graph::new();
 
         for i in 0..10 {
             g.add_node(Node::new(i, 0.0, 0.0));
@@ -166,7 +166,7 @@ mod tests {
     fn disconnected_graph() {
         // 0 -> 1 -> 2
         // 3 -> 4 -> 5
-        let mut g = Graph::<DefaultIdx>::new();
+        let mut g = Graph::new();
         for i in 0..6 {
             g.add_node(Node::new(i, 0.0, 0.0));
         }
@@ -189,7 +189,7 @@ mod tests {
         // 0 -> 1
         // |    |
         // 2 -> 3
-        let mut g = Graph::<DefaultIdx>::new();
+        let mut g = Graph::new();
         let a = g.add_node(Node::new(0, 0.0, 0.0));
         let b = g.add_node(Node::new(1, 0.0, 0.0));
         let c = g.add_node(Node::new(2, 0.0, 0.0));

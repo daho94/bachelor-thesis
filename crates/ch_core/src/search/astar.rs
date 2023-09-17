@@ -1,20 +1,16 @@
+//! Implementation of the A* search algorithm.
 use std::collections::BinaryHeap;
 
 use log::{debug, info};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     constants::Weight,
-    graph::{DefaultIdx, Graph, IndexType, Node, NodeIndex},
-    statistics::Stats,
+    graph::{DefaultIdx, Graph, Node, NodeIndex},
+    statistics::SearchStats,
 };
 
 use super::shortest_path::ShortestPath;
-
-pub struct AStar<'a, Idx = DefaultIdx> {
-    pub stats: Stats,
-    g: &'a Graph<Idx>,
-}
 
 #[derive(Debug)]
 struct Candidate<Idx = DefaultIdx> {
@@ -23,8 +19,8 @@ struct Candidate<Idx = DefaultIdx> {
     tentative_weight: Weight,
 }
 
-impl<Idx: IndexType> Candidate<Idx> {
-    fn new(node: NodeIndex<Idx>, real_weight: Weight, estimated_weight: Weight) -> Self {
+impl Candidate {
+    fn new(node: NodeIndex, real_weight: Weight, estimated_weight: Weight) -> Self {
         Self {
             node,
             real_weight,
@@ -32,21 +28,21 @@ impl<Idx: IndexType> Candidate<Idx> {
         }
     }
 }
-impl<Idx: IndexType> PartialOrd for Candidate<Idx> {
+impl PartialOrd for Candidate {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         other.tentative_weight.partial_cmp(&self.tentative_weight)
     }
 }
 
-impl<Idx: IndexType> PartialEq for Candidate<Idx> {
+impl PartialEq for Candidate {
     fn eq(&self, other: &Self) -> bool {
         other.tentative_weight == self.tentative_weight
     }
 }
 
-impl<Idx: IndexType> Eq for Candidate<Idx> {}
+impl Eq for Candidate {}
 
-impl<Idx: IndexType> Ord for Candidate<Idx> {
+impl Ord for Candidate {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         other
             .tentative_weight
@@ -55,41 +51,44 @@ impl<Idx: IndexType> Ord for Candidate<Idx> {
     }
 }
 
-impl<'a, Idx> AStar<'a, Idx>
-where
-    Idx: IndexType,
-{
-    pub fn new(g: &'a Graph<Idx>) -> Self {
+pub struct AStar<'a, Idx = DefaultIdx> {
+    pub stats: SearchStats,
+    pub nodes_settled: FxHashSet<NodeIndex<Idx>>,
+    g: &'a Graph<Idx>,
+}
+
+impl<'a> AStar<'a> {
+    pub fn new(g: &'a Graph) -> Self {
         AStar {
             g,
-            stats: Stats::default(),
+            stats: SearchStats::default(),
+            nodes_settled: FxHashSet::default(),
         }
     }
 
     pub fn search(
         &mut self,
-        src: NodeIndex<Idx>,
-        dst: NodeIndex<Idx>,
+        source: NodeIndex,
+        target: NodeIndex,
         heuristic: impl Fn(&Node, &Node) -> Weight,
-    ) -> Option<ShortestPath<Idx>> {
+    ) -> Option<ShortestPath> {
+        info!("BEGIN ASTAR SEARCH from {:?} to {:?}", source, target);
         self.stats.init();
-
-        if src == dst {
+        if source == target {
             self.stats.nodes_settled += 1;
             self.stats.finish();
-            return Some(ShortestPath::new(vec![src], 0.0));
+            return Some(ShortestPath::new(vec![source], 0.0));
         }
 
-        let mut node_data: FxHashMap<NodeIndex<Idx>, (Weight, Option<NodeIndex<Idx>>)> =
-            FxHashMap::default();
-        node_data.insert(src, (0.0, None));
+        let mut node_data: FxHashMap<NodeIndex, (Weight, Option<NodeIndex>)> = FxHashMap::default();
+        node_data.insert(source, (0.0, None));
 
         let mut queue = BinaryHeap::new();
 
         queue.push(Candidate::new(
-            src,
+            source,
             0.0,
-            heuristic(self.g.node(src).unwrap(), self.g.node(dst).unwrap()),
+            heuristic(self.g.node(source).unwrap(), self.g.node(target).unwrap()),
         ));
 
         while let Some(Candidate {
@@ -100,11 +99,13 @@ where
         {
             self.stats.nodes_settled += 1;
 
-            if node == dst {
+            if node == target {
                 break;
             }
 
-            for (_, edge) in self.g.neighbors_outgoing(node) {
+            for (_, edge) in self.g.neighbors_outgoing(node).filter(|(edge_idx, _)| {
+                edge_idx.index() < self.g.edges.len() - self.g.num_shortcuts
+            }) {
                 let real_weight = real_weight + edge.weight;
 
                 if real_weight
@@ -114,33 +115,41 @@ where
                         .0
                 {
                     let tentative_weight = real_weight
-                        + heuristic(self.g.node(edge.target).unwrap(), self.g.node(dst).unwrap());
+                        + heuristic(
+                            self.g.node(edge.target).unwrap(),
+                            self.g.node(target).unwrap(),
+                        );
 
                     node_data.insert(edge.target, (real_weight, Some(node)));
                     queue.push(Candidate::new(edge.target, real_weight, tentative_weight));
                 }
             }
+
+            self.nodes_settled.insert(node);
         }
 
         self.stats.finish();
 
-        let sp = super::reconstruct_path(dst, src, &node_data);
-        if sp.is_some() {
+        // let sp = super::reconstruct_path(dst, src, &node_data);
+        // if sp.is_some() {
+        if let Some(sp) = super::reconstruct_path(target, source, &node_data) {
             debug!("Path found: {:?}", sp);
-            info!(
-                "Path found: {:?}/{} nodes settled",
-                self.stats.duration.unwrap(),
-                self.stats.nodes_settled
-            );
+            info!("{}, weight: {}", self.stats, sp.weight);
+
+            Some(sp)
         } else {
+            // info!(
+            //     "No path found: {:?}/{} nodes settled",
+            //     self.stats.duration.unwrap(),
+            //     self.stats.nodes_settled
+            // );
             info!(
                 "No path found: {:?}/{} nodes settled",
                 self.stats.duration.unwrap(),
                 self.stats.nodes_settled
             );
+            None
         }
-
-        sp
     }
 }
 
@@ -165,7 +174,7 @@ mod tests {
         // 0 -> 5 -> 6 -  |
         // |         |  \ |
         // 1 -> 2 -> 3 -> 4
-        let mut g = Graph::<DefaultIdx>::new();
+        let mut g = Graph::new();
 
         for i in 0..10 {
             g.add_node(Node::new(i, 0.0, 0.0));
@@ -213,7 +222,7 @@ mod tests {
     fn disconnected_graph() {
         // 0 -> 1 -> 2
         // 3 -> 4 -> 5
-        let mut g = Graph::<DefaultIdx>::new();
+        let mut g = Graph::new();
         for i in 0..6 {
             g.add_node(Node::new(i, 0.0, 0.0));
         }
@@ -244,7 +253,7 @@ mod tests {
         // 0 -> 1
         // |    |
         // 2 -> 3
-        let mut g = Graph::<DefaultIdx>::new();
+        let mut g = Graph::new();
         let a = g.add_node(Node::new(0, 0.0, 0.0));
         let b = g.add_node(Node::new(1, 0.0, 0.0));
         let c = g.add_node(Node::new(2, 0.0, 0.0));

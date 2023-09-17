@@ -1,13 +1,9 @@
 [workspace]
-exclude = ["benches"]
-
 members = [
     "crates/osm_reader",
-    "crates/frontend/src-tauri",
     "crates/ch_core",
     "crates/repl",
-    # "crates/graph_viz", Inactive for now
-    "crates/graph_viz_macroquad",
+    "crates/graph_viz",
 ]
 
 [profile.release]

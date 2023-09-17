@@ -1,188 +1,199 @@
-use std::{collections::HashMap, time::Instant};
+use std::{path::Path, sync::Mutex};
 
-use ch_core::graph::Graph;
-use eframe::{run_native, App, CreationContext};
-use egui::{
-    plot::{Line, Plot, PlotPoints},
-    CollapsingHeader, Color32, Context, ScrollArea, Ui, Vec2,
-};
-use egui_graphs::{Edge, Elements, GraphView, Node, SettingsNavigation};
+use ch_core::{graph::Graph, node_contraction::NodeContractor, util::cli};
+use color_theme::ActiveTheme;
+use crossbeam_channel::bounded;
+use egui::{Style, Visuals};
+use macroquad::prelude::*;
+use once_cell::sync::Lazy;
+use widgets::MyWidget;
 
-const EARTH_RADIUS: f32 = 6_371_000.;
-const EDGE_SCALE_WEIGHT: f32 = 0.5;
-const NODE_RADIUS: f32 = 0.0;
-const EDGE_TIP_SIZE: f32 = 5.0;
-const FPS_LINE_COLOR: Color32 = Color32::from_rgb(128, 128, 128);
+mod color_theme;
+mod graph_view;
+mod widgets;
 
-pub struct BasicApp {
-    elements: Elements,
-    settings_navigation: SettingsNavigation,
-
-    fps: f64,
-    fps_history: Vec<f64>,
-    last_update_time: Instant,
-    frames_last_time_span: usize,
+fn window_conf() -> Conf {
+    Conf {
+        window_title: "GraphViz".to_string(),
+        fullscreen: false,
+        window_resizable: true,
+        window_width: 1280,
+        window_height: 720,
+        ..Default::default()
+    }
 }
 
-impl BasicApp {
-    fn new(_: &CreationContext<'_>, graph: Graph) -> Self {
-        let elements = into_elements(graph);
-        Self {
-            elements,
-            settings_navigation: Default::default(),
+#[derive(Debug)]
+struct Draggable {
+    position: Vec2,
+    is_dragging: bool,
+    last_mouse_position: Vec2,
+}
 
-            fps: 0.,
-            fps_history: Default::default(),
-            last_update_time: Instant::now(),
-            frames_last_time_span: 0,
+impl Draggable {
+    fn new(position: Vec2) -> Self {
+        Self {
+            position,
+            is_dragging: false,
+            last_mouse_position: Vec2::default(),
         }
     }
 
-    fn update_fps(&mut self) {
-        self.frames_last_time_span += 1;
-        let now = Instant::now();
-        let elapsed = now.duration_since(self.last_update_time);
-        if elapsed.as_secs() >= 1 {
-            self.last_update_time = now;
-            self.fps = self.frames_last_time_span as f64 / elapsed.as_secs_f64();
-            self.frames_last_time_span = 0;
+    fn update(&mut self, offset: &mut Vec2, _zoom: f32) {
+        let (x, y) = mouse_position();
+        let mouse_position = vec2(x, y);
 
-            self.fps_history.push(self.fps);
-            if self.fps_history.len() > 100 {
-                self.fps_history.remove(0);
+        if is_mouse_button_down(MouseButton::Right) {
+            if !self.is_dragging {
+                self.is_dragging = true;
+                self.last_mouse_position = mouse_position;
+            } else {
+                let displacement = mouse_position - self.last_mouse_position;
+
+                offset.x += displacement.x;
+                offset.y += displacement.y;
+
+                self.position += displacement;
+                self.last_mouse_position = mouse_position;
+            }
+        } else {
+            self.is_dragging = false;
+        }
+    }
+}
+
+static COLOR_THEME: Lazy<Mutex<ActiveTheme>> = Lazy::new(|| Mutex::new(ActiveTheme::default()));
+
+#[macroquad::main(window_conf)]
+async fn main() {
+    egui_logger::init().unwrap();
+
+    let cfg = cli::parse();
+
+    let mut zoom = 1.0;
+    let mut pan = Vec2::default();
+    let mut draggable = Draggable::new(vec2(0.0, 0.0));
+
+    println!("Config: {:?}", &cfg);
+
+    // Add channels to communicate between widgets and view
+    let (tx_graph, rx_graph) = bounded(1);
+
+    let (tx_debug, rx_debug) = bounded(1);
+
+    let (tx_search, rx_search) = bounded(2);
+
+    let mut graph_view: Option<graph_view::GraphView> = None;
+    let mut overlay_graph;
+
+    // Channel for node contraction process. The sender will notify the main thread when the contraction is done.
+    let (tx_contraction, rx_contraction) = bounded(1);
+
+    std::thread::spawn(move || {
+        let pbf_path = cfg.pbf_file;
+
+        let mut g = if cfg.simplify {
+            Graph::from_pbf_with_simplification(Path::new(&pbf_path)).unwrap()
+        } else {
+            Graph::from_pbf(Path::new(&pbf_path)).unwrap()
+        };
+
+        let mut node_contractor = NodeContractor::new_with_params(&mut g, cfg.params);
+
+        let overlay_graph = node_contractor.run_with_strategy(cfg.strategy);
+        tx_contraction.send(overlay_graph).unwrap();
+    });
+
+    // Init egui widgets
+    let mut debug_widget = widgets::debug::DebugWidget::new(rx_debug);
+    let mut user_input: Option<widgets::interaction::UserInputWidget> = None;
+
+    loop {
+        clear_background(COLOR_THEME.lock().unwrap().bg_color());
+
+        draggable.update(&mut pan, zoom);
+
+        let move_factor = 5.;
+        if is_key_down(KeyCode::W) {
+            pan.y += move_factor;
+        }
+        if is_key_down(KeyCode::S) {
+            pan.y -= move_factor;
+        }
+        if is_key_down(KeyCode::A) {
+            pan.x += move_factor;
+        }
+        if is_key_down(KeyCode::D) {
+            pan.x -= move_factor;
+        }
+
+        if is_key_down(KeyCode::R) {
+            zoom = 1.0;
+            pan = Vec2::default();
+
+            if let Some(graph_view) = graph_view.as_mut() {
+                graph_view.reset();
             }
         }
-    }
-    fn draw_fps(&self, ui: &mut Ui) {
-        let points: PlotPoints = self
-            .fps_history
-            .iter()
-            .enumerate()
-            .map(|(i, val)| [i as f64, *val])
-            .collect();
 
-        let line = Line::new(points).color(FPS_LINE_COLOR);
-        Plot::new("my_plot")
-            .min_size(Vec2::new(100., 50.))
-            .show_x(false)
-            .show_background(false)
-            .show_axes([false, false])
-            .allow_boxed_zoom(false)
-            .allow_double_click_reset(false)
-            .allow_drag(false)
-            .allow_scroll(false)
-            .allow_zoom(false)
-            .show(ui, |plot_ui| plot_ui.line(line));
-    }
-}
+        // Zoom in and out with mouse wheel
+        match mouse_wheel() {
+            (_x, y) if y != 0.0 => {
+                zoom = 1. + y.signum() * 0.05;
+            }
+            _ => (),
+        }
 
-impl App for BasicApp {
-    fn update(&mut self, ctx: &Context, _: &mut eframe::Frame) {
-        self.update_fps();
+        if let Some(graph_view) = graph_view.as_mut() {
+            // Render graph if node contraction is done
+            graph_view.update(zoom, pan);
+        } else if let Ok(og) = rx_contraction.try_recv() {
+            // If thread is done, create graph view and user input widget
+            overlay_graph = Some(og);
+            graph_view = Some(graph_view::GraphView::new(
+                overlay_graph.as_ref().unwrap(),
+                rx_graph.clone(),
+                tx_debug.clone(),
+                tx_search.clone(),
+                rx_search.clone(),
+            ));
+            user_input = Some(widgets::interaction::UserInputWidget::new(
+                overlay_graph.as_ref().unwrap(),
+                tx_graph.clone(),
+                rx_search.clone(),
+                tx_search.clone(),
+            ));
+        }
 
-        egui::SidePanel::right("right_panel")
-        .default_width(300.)
-        .show(ctx, |ui| {
-            ScrollArea::vertical().show(ui, |ui| {
-                CollapsingHeader::new("Widget")
-                .default_open(true)
-                .show(ui, |ui| {
-                        ui.add_space(10.);
+        egui_macroquad::ui(|egui_ctx| {
+            let style = egui::Style {
+                visuals: if COLOR_THEME.lock().unwrap().is_dark_theme {
+                    Visuals::dark()
+                } else {
+                    Visuals::light()
+                },
+                ..Style::default()
+            };
+            egui_ctx.set_style(style);
+            debug_widget.update(egui_ctx);
+            if let Some(user_input) = &mut user_input {
+                user_input.update(egui_ctx);
+            }
 
-                        ui.label("NavigationSettings");
-                        ui.separator();
-
-                        if ui
-                            .checkbox(&mut self.settings_navigation.fit_to_screen, "autofit")
-                            .changed()
-                            && self.settings_navigation.fit_to_screen
-                        {
-                            self.settings_navigation.zoom_and_pan = false
-                        };
-                        ui.label("Enable autofit to fit the graph to the screen on every frame.");
-
-                        ui.add_space(5.);
-
-                        ui.add_enabled_ui(!self.settings_navigation.fit_to_screen, |ui| {
-                            ui.vertical(|ui| {
-                                ui.checkbox(&mut self.settings_navigation.zoom_and_pan, "pan & zoom");
-                                ui.label("Enable pan and zoom. To pan use LMB + drag and to zoom use Ctrl + Mouse Wheel.");
-                            }).response.on_disabled_hover_text("disabled autofit to enable pan & zoom");
-                        });
-
-                        ui.add_space(10.);
-
-                        CollapsingHeader::new("Debug")
-                    .default_open(false)
-                    .show(ui, |ui| {
-                            ui.add_space(10.);
-
-                            ui.vertical(|ui| {
-                                ui.label(format!("fps: {:.1}", self.fps));
-                                ui.add_space(10.);
-                                self.draw_fps(ui);
-                            });
-                    });
-
-                    })
-            })
+            egui::Window::new("Log").show(egui_ctx, |ui| {
+                egui_logger::logger_ui(ui);
+            });
         });
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.add(GraphView::new(&self.elements).with_navigations(&self.settings_navigation));
-        });
+        // Draw things before egui
+
+        zoom = 1.0;
+        pan = Vec2::default();
+
+        egui_macroquad::draw();
+
+        // Draw things after egui
+
+        next_frame().await;
     }
-}
-
-fn into_elements(graph: Graph) -> Elements {
-    let mut nodes = HashMap::new();
-    let mut edges = HashMap::new();
-
-    for (i, node) in graph.nodes().enumerate() {
-        let lat = node.lat as f32;
-        let lon = node.lon as f32;
-
-        // Transform latitude and longitude into Pseudo-Mercator projection
-        let x = lon.to_radians().sin() * lat.to_radians().cos() * EARTH_RADIUS;
-        let y = lon.to_radians().cos() * lat.to_radians().cos() * EARTH_RADIUS;
-
-        let mut node = Node::new(node.id, egui::Vec2::new(x, y));
-        node.radius = NODE_RADIUS;
-
-        nodes.insert(i, node);
-    }
-
-    for graph_edge in graph.edges() {
-        let key = (graph_edge.source.index(), graph_edge.target.index());
-        edges.entry(key).or_insert_with(Vec::new);
-
-        let edge_list = edges.get_mut(&key).unwrap();
-        let list_idx = edge_list.len();
-
-        let mut edge = Edge::new(
-            graph_edge.source.index(),
-            graph_edge.target.index(),
-            list_idx,
-        );
-        edge.tip_size = EDGE_TIP_SIZE;
-        edge_list.push(edge);
-
-        nodes.get_mut(&graph_edge.source.index()).unwrap().radius += EDGE_SCALE_WEIGHT;
-        nodes.get_mut(&graph_edge.target.index()).unwrap().radius += EDGE_SCALE_WEIGHT;
-    }
-
-    Elements::new(nodes, edges)
-}
-
-fn main() {
-    let pbf_path = std::env::args().nth(1).expect("No path to PBF file given");
-    let graph = Graph::from_pbf(std::path::Path::new(&pbf_path)).unwrap();
-
-    let native_options = eframe::NativeOptions::default();
-    run_native(
-        "egui_graphs_basic_demo",
-        native_options,
-        Box::new(|cc| Box::new(BasicApp::new(cc, graph))),
-    )
-    .unwrap();
 }

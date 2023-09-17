@@ -1,2 +1,13 @@
 target/
 **history
+**.csv
+**.bin
+latex/bachelor-thesis.tdo
+latex/bachelor-thesis.auxlock
+crates/**/*.pdf
+crates/**/*.png
+crates/**/*.jpg
+crates/**/*.svg
+crates/ch_core/boxplot_rank.pdf
+crates/ch_core/boxplot_rank_log.pdf
+crates/ch_core/boxplot_rank_nodes.pdf

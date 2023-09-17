@@ -1,3 +1,23 @@
+//! Crate to parse *.osm.pbf files into a [RoadGraph].
+//!
+//! # Basic usage
+//! ```
+//! use std::path::Path;
+//! use osm_reader::RoadGraph;
+//!
+//! // Path to pbf file
+//! let path = Path::new("path/to/pbf/file.osm.pbf");
+//!
+//! // Create a road graph from a pbf file
+//! let road_graph = RoadGraph::from_pbf(&path).expect("Failed to create graph from pbf file");
+//!
+//! // Create a road graph from a pbf file with simplification
+//! let road_graph = RoadGraph::from_pbf_with_simplification(&path).expect("Failed to create graph from pbf file");
+//!
+//! println!("The graph has {} nodes and {} arcs", road_graph.get_nodes().len(), road_graph.get_arcs().len());
+//! ```
+//!
+use log::info;
 use osmpbf::{Element, IndexedReader};
 use rustc_hash::FxHashMap;
 use std::{collections::HashMap, fs::File, io::BufWriter, path::Path, str::FromStr};
@@ -5,12 +25,34 @@ use std::{collections::HashMap, fs::File, io::BufWriter, path::Path, str::FromSt
 mod road_types;
 use road_types::RoadType;
 
+/// Represents a road in a graph.
+pub struct Arc {
+    /// Start of the road
+    pub source: i64,
+    /// End of the road
+    pub target: i64,
+    /// Costs to traverse the road
+    pub weight: f64,
+}
+
+impl Arc {
+    fn new(source: i64, target: i64, weight: f64) -> Self {
+        Self {
+            source,
+            target,
+            weight,
+        }
+    }
+}
+
+/// A road graph, containing a set of nodes and arcs
 pub struct RoadGraph {
     nodes: FxHashMap<i64, [f64; 2]>,
-    arcs: Vec<(i64, i64, f64)>,
+    arcs: Vec<Arc>,
 }
 
 impl RoadGraph {
+    /// Create a new empty graph.
     pub fn new() -> Self {
         RoadGraph {
             nodes: FxHashMap::default(),
@@ -18,23 +60,27 @@ impl RoadGraph {
         }
     }
 
-    pub fn add_node(&mut self, id: i64, lat: f64, lon: f64) {
+    fn add_node(&mut self, id: i64, lat: f64, lon: f64) {
         self.nodes.insert(id, [lat, lon]);
     }
 
-    pub fn add_arc(&mut self, from: i64, to: i64, weight: f64) {
-        self.arcs.push((from, to, weight));
+    fn add_arc(&mut self, from: i64, to: i64, weight: f64) {
+        self.arcs.push(Arc::new(from, to, weight));
     }
 
+    /// Returns the nodes of the graph.
     pub fn get_nodes(&self) -> &FxHashMap<i64, [f64; 2]> {
         &self.nodes
     }
 
-    pub fn get_arcs(&self) -> &Vec<(i64, i64, f64)> {
+    /// Returns the arcs of the graph.
+    pub fn get_arcs(&self) -> &[Arc] {
         &self.arcs
     }
 
-    pub fn from_pbf_without_geometry(pbf_path: &Path) -> anyhow::Result<RoadGraph> {
+    /// Parses a pbf file and returns a road graph. Before the graph is returned it is simplified by removing nodes
+    /// which are no "real" nodes (mostly nodes with degree `2`) in the context of graph theory.
+    pub fn from_pbf_with_simplification(pbf_path: &Path) -> anyhow::Result<RoadGraph> {
         let mut graph = RoadGraph::new();
 
         let mut reader = IndexedReader::from_path(pbf_path)?;
@@ -50,6 +96,8 @@ impl RoadGraph {
 
         let mut nodes: FxHashMap<i64, [f64; 2]> = Default::default();
 
+        let now = std::time::Instant::now();
+        info!("BEGIN parsing {}", pbf_path.display());
         reader.read_ways_and_deps(road_filter, |element| match element {
             Element::Way(way) => {
                 let node_ids = way.refs().collect::<Vec<_>>();
@@ -79,51 +127,40 @@ impl RoadGraph {
 
                 (0..node_ids.len()).for_each(|i| {
                     let from = node_ids[i];
-                    // let to = node_ids[i + 1];
 
-                    // Increase ref count for from node
-                    *refs_count.entry(from).or_insert(0) += 1;
-
-                    // edges.push((from, to, road_type));
-
-                    // If bidirectional add reverse edge
-                    // if !is_oneway {
-                    //     edges.push((to, from, road_type));
-                    // }
+                    if i == 0 || i == node_ids.len() - 1 {
+                        // Start and End of a road should always be included
+                        *refs_count.entry(from).or_insert(0) += 2;
+                    } else {
+                        *refs_count.entry(from).or_insert(0) += 1;
+                    }
                 });
 
                 ways.push((node_ids, road_type, is_oneway));
             }
             Element::Node(node) => {
-                // graph.add_node(node.id(), node.lat(), node.lon());
                 nodes.insert(node.id(), [node.lat(), node.lon()]);
             }
             Element::DenseNode(dense_node) => {
-                // graph.add_node(dense_node.id(), dense_node.lat(), dense_node.lon());
                 nodes.insert(dense_node.id(), [dense_node.lat(), dense_node.lon()]);
             }
             Element::Relation(_) => {}
         })?;
+        info!("FINISHED parsing. Took {:?}", now.elapsed());
+
+        let now = std::time::Instant::now();
+        info!("BEGIN graph simplification");
 
         graph.arcs = Vec::with_capacity(ways.len() * 2);
+        // Split ways, but only keep nodes that are referenced more than once
         for (node_ids, road_type, is_oneway) in ways {
-            let nodes_to_keep: Vec<usize> = {
-                if node_ids.len() == 2 {
-                    // Always keeep start and end node of a way
-                    vec![0, 1]
-                } else {
-                    // Only keep nodes in between start and end node if they are referenced more than once by another way
-                    let mut nodes_to_keep = vec![0];
-                    (1..node_ids.len() - 1).for_each(|i| {
-                        let node_id = node_ids[i];
-                        if refs_count.get(&node_id).unwrap() > &1 {
-                            nodes_to_keep.push(i);
-                        }
-                    });
-                    nodes_to_keep.push(node_ids.len() - 1);
-                    nodes_to_keep
+            let mut nodes_to_keep = vec![];
+            (0..node_ids.len()).for_each(|i| {
+                let node_id = node_ids[i];
+                if refs_count.get(&node_id).unwrap() > &1 {
+                    nodes_to_keep.push(i);
                 }
-            };
+            });
 
             // Add nodes to graph
             for i in nodes_to_keep.iter() {
@@ -152,10 +189,12 @@ impl RoadGraph {
                 }
             }
         }
+        info!("FINISHED graph simplification. Took {:?}", now.elapsed());
 
         Ok(graph)
     }
 
+    /// Parses a pbf file and returns a road graph.
     pub fn from_pbf(pbf_path: &Path) -> anyhow::Result<RoadGraph> {
         let mut graph = RoadGraph::new();
 
@@ -168,6 +207,8 @@ impl RoadGraph {
 
         let mut edges = Vec::new();
 
+        let now = std::time::Instant::now();
+        info!("BEGIN parsing {}", pbf_path.display());
         reader.read_ways_and_deps(road_filter, |element| match element {
             Element::Way(way) => {
                 let node_ids = way.refs().collect::<Vec<_>>();
@@ -227,9 +268,11 @@ impl RoadGraph {
             graph.add_arc(from, to, weight(distance, &road_type));
         }
 
+        info!("FINISHED parsing. Took {:?}", now.elapsed());
         Ok(graph)
     }
 
+    /// Writes nodes to `nodes.csv` and edges to `edges.csv`.
     pub fn write_csv(&self) -> anyhow::Result<()> {
         use std::io::Write;
 
@@ -245,8 +288,13 @@ impl RoadGraph {
 
         let mut edges_writer = BufWriter::new(edges_file);
         let _ = edges_writer.write("source,target,weight\n".as_bytes())?;
-        for (from, to, weight) in self.arcs.iter() {
-            let _ = edges_writer.write(format!("{},{},{}\n", from, to, weight).as_bytes())?;
+        for Arc {
+            weight,
+            source,
+            target,
+        } in self.arcs.iter()
+        {
+            let _ = edges_writer.write(format!("{},{},{}\n", source, target, weight).as_bytes())?;
         }
         edges_writer.flush()?;
 
@@ -305,7 +353,7 @@ mod tests {
     fn graph_from_pbf_without_geometry_works() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("test_data/node_refs.osm.pbf");
 
-        let graph = RoadGraph::from_pbf_without_geometry(&path).unwrap();
+        let graph = RoadGraph::from_pbf_with_simplification(&path).unwrap();
 
         assert_eq!(graph.nodes.len(), 8);
         assert_eq!(graph.arcs.len(), 14);
@@ -315,7 +363,12 @@ mod tests {
                 haversine_distance(0., 0., 0., 1.) * 3.0,
                 &RoadType::Secondary
             ),
-            graph.arcs.iter().find(|e| e.0 == 2 && e.1 == 5).unwrap().2
+            graph
+                .arcs
+                .iter()
+                .find(|arc| arc.source == 2 && arc.target == 5)
+                .unwrap()
+                .weight
         );
     }
 }
