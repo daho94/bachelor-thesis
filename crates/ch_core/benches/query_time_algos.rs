@@ -2,8 +2,10 @@ use std::{collections::BinaryHeap, fs::File, path::Path};
 
 use ch_core::{
     constants::Weight,
+    contraction_params::ContractionParams,
     graph::{node_index, NodeIndex},
-    node_contraction::{ContractionParams, NodeContractor, PriorityParams},
+    node_contraction::NodeContractor,
+    prelude::PriorityParams,
     search::bidir_dijkstra::BidirDijkstra,
     util::{
         cli,
@@ -40,21 +42,14 @@ use std::io::Write;
 //   shown inside the box, and the whiskers extend to the minimum and maximum
 //   values, excluding outliers.
 fn main() {
-    const ITERATIONS: usize = 1_00;
-
-    // let cli = cli::parse();
+    const ITERATIONS: usize = 1_000;
 
     let mut g = if let Some(path) = std::env::args().find(|p| p.ends_with(".pbf")) {
         Graph::from_pbf_with_simplification(Path::new(&path)).expect("Invalid path")
     } else {
         graph_saarland()
     };
-    // let mut g;
-    // if cli.simplify {
-    //     g = Graph::from_pbf_with_simplification(Path::new(&cli.pbf_file)).expect("Invalid path");
-    // } else {
-    //     g = Graph::from_pbf(Path::new(&cli.pbf_file)).expect("Invalid path");
-    // }
+
     let mut params = ContractionParams::default();
     params = params.priority_params(PriorityParams {
         edge_difference_coeff: 190,
@@ -140,8 +135,8 @@ fn main() {
     writeln!(&mut file, "{}", header).unwrap();
 
     write_stats(&mut file, &mut timings_dijk, &nodes_settled_dijk);
-    write_stats(&mut file, &mut timings_astar, &nodes_settled_astar);
     write_stats(&mut file, &mut timings_bidir, &nodes_settled_bidir);
+    write_stats(&mut file, &mut timings_astar, &nodes_settled_astar);
     write_stats(&mut file, &mut timings_ch, &nodes_settled_ch);
 
     // Create plots
@@ -190,7 +185,6 @@ fn main() {
     plot.add_trace(trace_dijk);
     plot.add_trace(trace_astar);
     plot.add_trace(trace_bidir);
-    // plot.add_trace(trace_ch);
 
     let y_axis_log = Axis::new()
         .title(Title::new("Query-Time [μs]"))
@@ -204,7 +198,6 @@ fn main() {
         .zero_line(true);
 
     let layout = Layout::new()
-        // .width(1000) //800
         .height(600)
         .y_axis(y_axis)
         .font(Font::new().family("Calibri").size(20))
@@ -219,21 +212,16 @@ fn main() {
             Rgb::new(0, 77, 64),
             Rgb::new(255, 193, 7),
         ])
-        // .margin(Margin::default().top(8).bottom(8))
         .margin(Margin::default().top(2).right(15).pad(10))
         .legend(
             Legend::new()
                 .orientation(Orientation::Horizontal)
-                // .y(-1.00)
                 .valign(VAlign::Bottom)
                 .y(1.0),
         )
         .box_mode(BoxMode::Group);
 
     plot.set_layout(layout.clone());
-    // plot.show();
-
-    // plot.write_image("boxplot_rank.pdf", plotly::ImageFormat::PDF, 800, 600, 1.0);
 
     plot.set_layout(layout.clone().y_axis(y_axis_log.clone()));
     plot.show();

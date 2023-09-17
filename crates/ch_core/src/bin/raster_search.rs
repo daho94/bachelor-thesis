@@ -1,10 +1,8 @@
 use std::time::Instant;
 
 use ch_core::{
-    graph::node_index,
-    node_contraction::{ContractionParams, NodeContractor, PriorityParams},
-    search::ch_search::CHSearch,
-    util::test_graphs::graph_saarland,
+    contraction_params::ContractionParams, graph::node_index, node_contraction::NodeContractor,
+    prelude::PriorityParams, search::ch_search::CHSearch, util::test_graphs::graph_saarland,
 };
 
 use rand::prelude::*;

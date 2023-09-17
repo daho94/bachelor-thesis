@@ -1,9 +1,11 @@
 use std::path::Path;
 
 use ch_core::{
+    contraction_params::ContractionParams,
     contraction_strategy::{ContractionStrategy, UpdateStrategy},
     graph::Graph,
-    node_contraction::{ContractionParams, NodeContractor, PriorityParams},
+    node_contraction::NodeContractor,
+    prelude::PriorityParams,
     util::test_graphs::graph_saarland,
 };
 

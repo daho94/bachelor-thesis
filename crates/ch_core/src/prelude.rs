@@ -1,8 +1,8 @@
 //! Re-exports of the most commonly used items in `ch_core`.
+pub use crate::contraction_params::PriorityParams;
 pub use crate::contraction_strategy::ContractionStrategy;
 pub use crate::contraction_strategy::UpdateStrategy;
 pub use crate::node_contraction::NodeContractor;
-pub use crate::node_contraction::PriorityParams;
 
 pub use crate::search;
 

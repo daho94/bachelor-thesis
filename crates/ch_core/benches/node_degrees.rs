@@ -96,26 +96,6 @@ fn main() {
 
     let mut plot = Plot::new();
     let mut show_legend = true;
-
-    // for p in paths {
-    //     dbg!(&p);
-    //     let (trace, trace_simplified) = create_traces_in(Path::new(&p));
-    //     let x = format!("x{}", num_plots);
-    //     let y = format!("y{}", num_plots);
-
-    //     plot.add_trace(trace.x_axis(&x).y_axis(&y).show_legend(show_legend));
-    //     plot.add_trace(
-    //         trace_simplified
-    //             .x_axis(x)
-    //             .y_axis(y)
-    //             .show_legend(show_legend),
-    //     );
-    //     show_legend = false;
-    // }
-
-    // plot.set_layout(layout);
-
-    // plot.write_image("hist_deg_in.png", ImageFormat::PDF, 800, 600, 1.0);
 }
 
 #[allow(dead_code)]

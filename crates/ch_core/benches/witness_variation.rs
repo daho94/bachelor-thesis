@@ -1,8 +1,9 @@
 use std::path::Path;
 
 use ch_core::{
+    contraction_params::ContractionParams,
     graph::{node_index, Graph},
-    node_contraction::{ContractionParams, NodeContractor},
+    node_contraction::NodeContractor,
     search::ch_search::CHSearch,
     util::test_graphs::graph_saarland,
 };
@@ -17,7 +18,6 @@ fn main() {
         graph_saarland()
     };
 
-    // No, limited and perfect witness search
     let configs = vec![(0, 500), (50, 500), (500, 500)];
 
     let mut construction_data = Vec::new();

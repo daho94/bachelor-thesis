@@ -1,4 +1,5 @@
-use std::{collections::BinaryHeap, f64::INFINITY};
+//! Implementation of the bidirectional Dijkstra search algorithm.
+use std::collections::BinaryHeap;
 
 use crate::constants::Weight;
 use crate::graph::*;

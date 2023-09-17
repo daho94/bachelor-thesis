@@ -1,3 +1,4 @@
+//! Implementation of the A* search algorithm.
 use std::collections::BinaryHeap;
 
 use log::{debug, info};

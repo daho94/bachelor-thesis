@@ -1,8 +1,10 @@
 use std::path::Path;
 
 use ch_core::{
+    contraction_params::ContractionParams,
     graph::{node_index, Graph},
-    node_contraction::{ContractionParams, NodeContractor, PriorityParams},
+    node_contraction::NodeContractor,
+    prelude::PriorityParams,
     search::ch_search::CHSearch,
     util::test_graphs::graph_saarland,
 };
@@ -39,10 +41,6 @@ fn main() {
     };
 
     // Parameter config
-    // let e = PriorityParams::new(501, 0, 0, 0);
-    // let ec = PriorityParams::new(501, 401, 0, 0);
-    // let ecs = PriorityParams::new(501, 401, 1, 0);
-    // let ecso = PriorityParams::new(501, 401, 1, 70);
     let e = PriorityParams::new(190, 0, 0, 0);
     let ec = PriorityParams::new(190, 120, 0, 0);
     let ecs = PriorityParams::new(190, 120, 1, 0);

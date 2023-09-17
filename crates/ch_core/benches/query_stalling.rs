@@ -1,8 +1,10 @@
 use std::path::Path;
 
 use ch_core::{
+    contraction_params::ContractionParams,
     graph::{node_index, Graph},
-    node_contraction::{ContractionParams, NodeContractor, PriorityParams},
+    node_contraction::NodeContractor,
+    prelude::PriorityParams,
     search::ch_search::CHSearch,
     util::test_graphs::graph_saarland,
 };
@@ -29,7 +31,6 @@ fn main() {
 
     let mut ch = CHSearch::new(&overlay_graph);
 
-    // (time, nodes_settled, nodes_stalled)
     let mut stall_data = Vec::new();
     let mut no_stall_data = Vec::new();
 

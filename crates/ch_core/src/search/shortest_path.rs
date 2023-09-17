@@ -1,3 +1,5 @@
+//! Shortest path data structure.
+
 use crate::{constants::Weight, graph::NodeIndex};
 
 #[derive(Debug, PartialEq, Clone)]

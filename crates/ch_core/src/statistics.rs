@@ -89,6 +89,7 @@ pub fn average_out_degree(g: &Graph) -> f64 {
     sum / g.nodes.len() as f64
 }
 
+/// Collects statistics about the node contraction algorithm.
 #[derive(Debug, Clone, Copy)]
 pub struct ConstructionStats {
     pub node_ordering_time: Duration,

@@ -3,8 +3,9 @@ use std::path::PathBuf;
 use clap::Parser;
 
 use crate::{
+    contraction_params::ContractionParams,
     contraction_strategy::{ContractionStrategy, UpdateStrategy},
-    node_contraction::{ContractionParams, PriorityParams},
+    prelude::PriorityParams,
 };
 
 #[derive(Parser)]

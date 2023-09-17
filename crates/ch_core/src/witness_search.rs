@@ -1,3 +1,5 @@
+// Implementation of the local witness-search
+
 use std::collections::BinaryHeap;
 
 use rustc_hash::FxHashMap;
@@ -87,7 +89,7 @@ impl<'a> WitnessSearch<'a> {
 
             // Stop when maximum number of nodes settled is reached
             if nodes_settled >= self.max_nodes_settled_limit {
-                // break;
+                break;
             }
 
             // Stop if weight is greater than the P_max = max { <u,v,W> }

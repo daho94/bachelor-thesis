@@ -1,3 +1,4 @@
+//! Implementation of the Dijkstra search algorithm.
 use std::collections::BinaryHeap;
 
 use crate::constants::Weight;

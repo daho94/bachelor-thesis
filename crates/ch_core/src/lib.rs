@@ -28,6 +28,7 @@
 //!```
 //! [`Graph`]: crate::graph::Graph
 pub mod constants;
+pub mod contraction_params;
 pub mod contraction_strategy;
 pub mod graph;
 pub mod node_contraction;
