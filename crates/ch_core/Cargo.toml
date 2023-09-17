@@ -32,10 +32,6 @@ plotly = { version = "0.8.4", features = ["kaleido"] }
 name = "raster_search"
 path = "src/bin/raster_search.rs"
 
-[[bin]]
-name = "demo"
-path = "src/bin/demo.rs"
-
 [[bench]]
 name = "query_time_algos"
 harness = false
