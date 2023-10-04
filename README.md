@@ -33,6 +33,13 @@ of more than 1000 compared to the standard methods.
 
 ---
 ### Performance
-![Boxplot Rank Log](assets/boxplot_rank_log.pdf)
-<object data="./assets/boxplot_rank_log.pdf" type="application/pdf" width="100%">
-</object>
+<p align="center">
+<img src="assets/boxplot_rank_log.png" alt="drawing" width="80%"/>
+</p>
+
+--- 
+### Search space
+
+<p float="left" align="center">
+  <img src="assets/search_spaces.png" width="80%"/>
+</p>
