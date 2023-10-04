@@ -1,35 +1,38 @@
-<h2 align="center">Bachelorarbeit zum Thema:</h2>
-<h1 align="center">Effiziente Routenplanung in Straßennetzen mit Contraction Hierarchies</h1>
+<h2 align="center">Bachelorthesis:</h2>
+<h1 align="center">Efficient routeplanning in road networks with Contraction Hierachies</h1>
 
 <p align="center"><b>Daniel Holzner</b></p>
 <p align="center"><b>17.09.2023</b></p>
 
 ---
 
-### Zusammenfassung
-Diese Arbeit beschäftigt sich mit einem grundlegenden Problem der Graphentheorie: der
-Berechnung kürzester Wege zwischen zwei Knoten in einem Graphen. Ein praktisches
-Anwendungsgebiet hierfür ist die Routenplanung in Straßennetzen, bei der das Ziel darin
-besteht, die zeitlich kürzeste Route zwischen zwei Orten zu ermitteln. Obwohl klassische
-Algorithmen wie Dijkstra oder A⋆ in der Lage sind, diese Aufgabe zu bewältigen, stoßen
-sie bei großen Graphen mit Millionen von Knoten und Kanten an ihre Grenzen, was ihre
-Einsatzmöglichkeiten beispielsweise in Echtzeit-Navigation und standortbasierten Diensten
-einschränkt.
+### Summary
+This thesis addresses a fundamental problem in graph theory: the computation of shortest
+paths between two nodes in a graph. A practical area of application for this problem is route
+planning in road networks, where the goal is to determine the quickest route between two
+locations. While conventional algorithms such as Dijkstra or A⋆ are capable of handling this
+task, they reach their limits when dealing with large graphs with millions of nodes and edges.
+This limits their applicability, for example, in real-time navigation and
+location-based services.
 
-Mit der Methode der Contraction Hierarchies, erstmals von Geisberger et al. vorgestellt,
-können diese Einschränkungen überwunden werden. Hierbei wird der Graph zunächst
-in einer einmaligen Vorberechnungsphase durch Hinzufügen von Abkürzungskanten mit
-zusätzlichen Informationen erweitert. Diese Abkürzungskanten werden dann während der
-Suchphase ausgenutzt, um die Suche zu beschleunigen. Das Ziel dieser Arbeit ist es, anhand
-einer konkreten Implementierung dieser Technik zu zeigen, wie die Berechnung kürzester
-Wege in Straßennetzen beschleunigt werden kann. Dabei sollen die Ergebnisse auch mit
-konventionellen Techniken wie Dijkstra oder A⋆verglichen werden.
+The Contraction Hierarchies technique, initially introduced by Geisberger et al., can overcome
+these limitations. In this method, additional information is added to the graph during a
+precomputation phase by adding shortcut edges. These shortcut edges are then used in the
+search phase to speed up the search process. The goal of this thesis is to show, by implementing
+this technique, how the computation of shortest paths in road networks can be accelerated. A
+comparison of the results of this technique with traditional methods such as Dijkstra or A⋆ will
+also be part of the research.
 
-Die Implementierung wurde in der Programmiersprache Rust umgesetzt und ist als Bibliothek
-verfügbar. Die Laufzeitanalyse zeigt eine deutliche Verbesserung der Ausführungsgeschwindigkeit
-im Vergleich zu Dijkstra und A⋆. Alle Messungen wurden mit realen Straßendaten
-des OpenData-Projekts OpenStreetMap durchgeführt. In großen Straßennetzen, vergleichbar
-mit der Größe Deutschlands (10 Mio. Knoten und 22 Mio. Kanten), können Wegberechnungen
-über große Entfernungen durch Nutzung von CHs in weniger als einer Millisekunde
-durchgeführt werden, was einen Verbesserungsfaktor von mehr als 1000 gegenüber den
-Standardverfahren ergibt.
+The implementation was realised in the Rust programming language and is available as a Rust
+library. The runtime analysis shows a significant improvement in execution speed compared
+to Dijkstra and A⋆. All measurements were performed on real road data from the OpenData
+project OpenStreetMap. In large road networks, comparable to the size of Germany (10 million
+nodes and 22 million edges), path calculations over long distances can be performed in less
+than one millisecond by using Contraction Hierarchies, which results in an improvement factor
+of more than 1000 compared to the standard methods.
+
+---
+### Performance
+![Boxplot Rank Log](assets/boxplot_rank_log.pdf)
+<object data="./assets/boxplot_rank_log.pdf" type="application/pdf" width="100%">
+</object>
