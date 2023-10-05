@@ -43,3 +43,7 @@ of more than 1000 compared to the standard methods.
 <p float="left" align="center">
   <img src="assets/search_spaces.png" width="80%"/>
 </p>
+
+---
+### Visualization
+![demo video](assets/graph_viz_demo.mp4)
