@@ -5,7 +5,7 @@ use macroquad::{
 
 pub const DARK_THEME: ColorTheme = ColorTheme {
     bg_color: color_u8!(27, 27, 27, 255),
-    sp_color: WHITE,
+    sp_color: RED,
     line_color: color_u8!(128, 128, 128, 255),
     shortcut_color: color_u8!(255, 20, 20, 125),
     node_color: WHITE,
