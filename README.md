@@ -46,5 +46,5 @@ of more than 1000 compared to the standard methods.
 
 ---
 ### Visualization
-<!-- ![demo video](assets/graph_viz_demo.mp4) -->
-[![Watch the demo](assets/demo_thumbnail.png)](assets/graph_viz_demo.mp4)
+https://github.com/daho94/bachelor-thesis/assets/20201570/ae85c29c-2416-48cc-94a0-3bae61dae7be
+
