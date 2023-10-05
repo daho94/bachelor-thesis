@@ -46,4 +46,5 @@ of more than 1000 compared to the standard methods.
 
 ---
 ### Visualization
-![demo video](assets/graph_viz_demo.mp4)
+<!-- ![demo video](assets/graph_viz_demo.mp4) -->
+[![Watch the demo](assets/demo_thumbnail.png)](assets/graph_viz_demo.mp4)
